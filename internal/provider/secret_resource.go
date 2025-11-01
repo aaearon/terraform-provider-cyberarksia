@@ -193,19 +193,20 @@ func (r *secretResource) Configure(ctx context.Context, req resource.ConfigureRe
 
 // Create creates the resource and sets the initial Terraform state
 func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	// Check if provider is configured
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured API Client",
-			"Expected configured ProviderData. Please report this issue to the provider developers.",
-		)
-		return
-	}
-
 	// Retrieve values from plan
 	var plan models.SecretModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if provider is configured
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -295,19 +296,20 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 
 // Read refreshes the Terraform state with the latest data
 func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	// Check if provider is configured
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured API Client",
-			"Expected configured ProviderData. Please report this issue to the provider developers.",
-		)
-		return
-	}
-
 	// Get current state
 	var state models.SecretModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if provider is configured
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -377,20 +379,21 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 // Update updates the resource and sets the updated Terraform state on success
 func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Check if provider is configured
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured API Client",
-			"Expected configured ProviderData. Please report this issue to the provider developers.",
-		)
-		return
-	}
-
 	// Retrieve values from plan and state
 	var plan, state models.SecretModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if provider is configured
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -473,19 +476,20 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 // Delete deletes the resource and removes the Terraform state on success
 func (r *secretResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	// Check if provider is configured
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured API Client",
-			"Expected configured ProviderData. Please report this issue to the provider developers.",
-		)
-		return
-	}
-
 	// Retrieve values from state
 	var state models.SecretModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if provider is configured
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 

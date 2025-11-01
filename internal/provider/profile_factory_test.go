@@ -166,7 +166,10 @@ func TestSetProfileOnInstanceTarget_DBAuth(t *testing.T) {
 	}
 
 	// Set profile
-	SetProfileOnInstanceTarget(instanceTarget, "db_auth", profile)
+	err := SetProfileOnInstanceTarget(instanceTarget, "db_auth", profile)
+	if err != nil {
+		t.Fatalf("SetProfileOnInstanceTarget failed: %v", err)
+	}
 
 	// Verify profile was set
 	if instanceTarget.DBAuthProfile == nil {
@@ -212,7 +215,10 @@ func TestSetProfileOnInstanceTarget_ClearsOtherProfiles(t *testing.T) {
 	}
 
 	// Set profile (should clear db_auth and update ldap_auth)
-	SetProfileOnInstanceTarget(instanceTarget, "ldap_auth", profile)
+	err := SetProfileOnInstanceTarget(instanceTarget, "ldap_auth", profile)
+	if err != nil {
+		t.Fatalf("SetProfileOnInstanceTarget failed: %v", err)
+	}
 
 	// Verify old DB profile was cleared
 	if instanceTarget.DBAuthProfile != nil {
