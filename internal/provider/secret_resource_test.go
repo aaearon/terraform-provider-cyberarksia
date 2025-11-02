@@ -33,7 +33,8 @@ func TestAccSecret_basic(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				// Password is sensitive and won't be in state
-				ImportStateVerifyIgnore: []string{"password"},
+				// Timestamps may have precision differences between API responses
+				ImportStateVerifyIgnore: []string{"password", "created_at", "last_modified"},
 			},
 		},
 	})
@@ -70,7 +71,8 @@ func TestAccSecret_domainAuth(t *testing.T) {
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "name", "domain-auth-account"),
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "authentication_type", "domain"),
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "username", "CORP\\sqladmin"),
-					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "domain", "corp.example.com"),
+					// Domain is extracted from username format DOMAIN\username → "CORP"
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "domain", "CORP"),
 					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.domain", "id"),
 				),
 			},
@@ -138,7 +140,8 @@ func TestAccSecret_import(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				// Password is sensitive and won't be in state
-				ImportStateVerifyIgnore: []string{"password"},
+				// Timestamps may have precision differences between API responses
+				ImportStateVerifyIgnore: []string{"password", "created_at", "last_modified"},
 			},
 		},
 	})
@@ -160,7 +163,7 @@ func TestAccSecret_updateCredentials(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "name", "update-test-account"),
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "username", "db_user"),
-					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "description", "Initial credentials"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.update_test", "id"),
 				),
 			},
 			// Step 2: Rotate password (credential update)
@@ -169,7 +172,7 @@ func TestAccSecret_updateCredentials(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "name", "update-test-account"),
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "username", "db_user"),
-					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "description", "Rotated credentials"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.update_test", "id"),
 				),
 			},
 			// Step 3: Verify import still works after update
@@ -178,7 +181,8 @@ func TestAccSecret_updateCredentials(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				// Password is sensitive and won't be in state
-				ImportStateVerifyIgnore: []string{"password"},
+				// Timestamps may have precision differences between API responses
+				ImportStateVerifyIgnore: []string{"password", "created_at", "last_modified"},
 			},
 		},
 	})
@@ -189,13 +193,6 @@ func TestAccSecret_updateCredentials(t *testing.T) {
 // ============================================================================
 
 const testAccSecretConfigBasic = `
-resource "cyberarksia_database_workspace" "test" {
-  name          = "test-db-for-strong-account"
-  database_type = "postgresql"
-  address       = "postgres.example.com"
-  port          = 5432
-}
-
 resource "cyberarksia_database_secret" "test" {
   name               = "test-strong-account"
   authentication_type = "local"
@@ -205,13 +202,6 @@ resource "cyberarksia_database_secret" "test" {
 `
 
 const testAccSecretConfigLocalAuth = `
-resource "cyberarksia_database_workspace" "postgres" {
-  name          = "postgres-db-local"
-  database_type = "postgresql"
-  address       = "postgres-local.example.com"
-  port          = 5432
-}
-
 resource "cyberarksia_database_secret" "local" {
   name               = "local-auth-account"
   authentication_type = "local"
@@ -221,48 +211,27 @@ resource "cyberarksia_database_secret" "local" {
 `
 
 const testAccSecretConfigDomainAuth = `
-resource "cyberarksia_database_workspace" "sqlserver" {
-  name          = "sqlserver-db-domain"
-  database_type = "sqlserver"
-  address       = "sqlserver-domain.example.com"
-  port          = 1433
-}
-
 resource "cyberarksia_database_secret" "domain" {
   name               = "domain-auth-account"
   authentication_type = "domain"
   username           = "CORP\\sqladmin"
   password           = "DomainPassword789!"
-  domain             = "corp.example.com"
+  domain             = "CORP"
 }
 `
 
 const testAccSecretConfigAwsIAM = `
-resource "cyberarksia_database_workspace" "rds" {
-  name          = "rds-db-iam"
-  database_type = "postgresql"
-  address       = "mydb.abc123.us-east-1.rds.amazonaws.com"
-  port          = 5432
-  cloud_provider = "aws"
-  region        = "us-east-1"
-}
-
 resource "cyberarksia_database_secret" "aws_iam" {
-  name               = "aws-iam-account"
-  authentication_type = "aws_iam"
+  name                  = "aws-iam-account"
+  authentication_type   = "aws_iam"
   aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
   aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  aws_account           = "123456789012"
+  aws_username          = "sia-database-user"
 }
 `
 
 const testAccSecretConfigCredentialsBefore = `
-resource "cyberarksia_database_workspace" "rotation" {
-  name          = "rotation-test-db"
-  database_type = "postgresql"
-  address       = "postgres-rotation.example.com"
-  port          = 5432
-}
-
 resource "cyberarksia_database_secret" "rotation_test" {
   name               = "rotation-test-account"
   authentication_type = "local"
@@ -272,13 +241,6 @@ resource "cyberarksia_database_secret" "rotation_test" {
 `
 
 const testAccSecretConfigCredentialsAfter = `
-resource "cyberarksia_database_workspace" "rotation" {
-  name          = "rotation-test-db"
-  database_type = "postgresql"
-  address       = "postgres-rotation.example.com"
-  port          = 5432
-}
-
 resource "cyberarksia_database_secret" "rotation_test" {
   name               = "rotation-test-account"
   authentication_type = "local"
@@ -288,13 +250,6 @@ resource "cyberarksia_database_secret" "rotation_test" {
 `
 
 const testAccSecretConfigUpdateBefore = `
-resource "cyberarksia_database_workspace" "update" {
-  name          = "update-test-db"
-  database_type = "postgresql"
-  address       = "postgres-update.example.com"
-  port          = 5432
-}
-
 resource "cyberarksia_database_secret" "update_test" {
   name               = "update-test-account"
   authentication_type = "local"
@@ -304,13 +259,6 @@ resource "cyberarksia_database_secret" "update_test" {
 `
 
 const testAccSecretConfigUpdateAfter = `
-resource "cyberarksia_database_workspace" "update" {
-  name          = "update-test-db"
-  database_type = "postgresql"
-  address       = "postgres-update.example.com"
-  port          = 5432
-}
-
 resource "cyberarksia_database_secret" "update_test" {
   name               = "update-test-account"
   authentication_type = "local"

@@ -4,6 +4,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
 	"github.com/aaearon/terraform-provider-cyberark-sia/internal/models"
@@ -144,6 +145,26 @@ func (r *secretResource) Schema(ctx context.Context, req resource.SchemaRequest,
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
+			"aws_account": schema.StringAttribute{
+				Description: "AWS account number (12 digits). Required when authentication_type=aws_iam. " +
+					"Not allowed for local or domain authentication. " +
+					"Maps to IAMAccount in SDK. Example: 123456789012. " +
+					"Validated in ValidateConfig method.",
+				Optional: true,
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(12, 12),
+				},
+			},
+			"aws_username": schema.StringAttribute{
+				Description: "AWS IAM username portion from the IAM user ARN. Required when authentication_type=aws_iam. " +
+					"Not allowed for local or domain authentication. " +
+					"Maps to IAMUsername in SDK. Example: database-admin. " +
+					"Validated in ValidateConfig method.",
+				Optional: true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
+			},
 
 			// Optional metadata
 			"tags": schema.MapAttribute{
@@ -238,9 +259,8 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 		addSecretReq.SecretType = "iam_user"
 		addSecretReq.IAMAccessKeyID = plan.AWSAccessKeyID.ValueString()
 		addSecretReq.IAMSecretAccessKey = plan.AWSSecretAccessKey.ValueString()
-		// Note: IAMAccount and IAMUsername are optional fields in ARK SDK v1.5.0
-		// They may be derived automatically from the database_workspace_id if not provided
-		// The SDK associates the secret with the database workspace, which determines the account context
+		addSecretReq.IAMAccount = plan.AWSAccount.ValueString()
+		addSecretReq.IAMUsername = plan.AWSUsername.ValueString()
 
 	default:
 		resp.Diagnostics.AddError(
@@ -357,6 +377,59 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 	state.CreatedAt = types.StringValue(secretMetadata.CreationTime)
 	state.LastModified = types.StringValue(secretMetadata.LastUpdateTime)
 
+	// Map SecretType to AuthenticationType
+	// Per Create() logic: "local"/"domain" → "username_password", "aws_iam" → "iam_user"
+	// For Read/Import, we need to reverse this mapping
+	switch secretMetadata.SecretType {
+	case "username_password":
+		// Extract username from SecretExposedData to determine if it's domain or local
+		if username, ok := secretMetadata.SecretExposedData["username"].(string); ok {
+			state.Username = types.StringValue(username)
+			// Infer authentication_type based on username format
+			// Domain authentication uses: DOMAIN\username or username@domain
+			if strings.Contains(username, "\\") || strings.Contains(username, "@") {
+				state.AuthenticationType = types.StringValue("domain")
+				// Try to extract domain for user convenience
+				if strings.Contains(username, "\\") {
+					// Windows format: DOMAIN\username
+					parts := strings.Split(username, "\\")
+					if len(parts) == 2 {
+						state.Domain = types.StringValue(parts[0])
+					}
+				} else if strings.Contains(username, "@") {
+					// UPN format: username@domain
+					parts := strings.Split(username, "@")
+					if len(parts) == 2 {
+						state.Domain = types.StringValue(parts[1])
+					}
+				}
+			} else {
+				state.AuthenticationType = types.StringValue("local")
+				state.Domain = types.StringNull() // Clear domain if not domain auth
+			}
+		} else {
+			// Fallback if username not in exposed data
+			state.AuthenticationType = types.StringValue("local")
+		}
+	case "iam_user":
+		state.AuthenticationType = types.StringValue("aws_iam")
+		// Extract IAM fields from SecretExposedData
+		// Per SDK line 184-189: account, username, access_key_id, secret_access_key
+		if secretData, ok := secretMetadata.SecretExposedData["account"].(string); ok {
+			state.AWSAccount = types.StringValue(secretData)
+		}
+		if username, ok := secretMetadata.SecretExposedData["username"].(string); ok {
+			state.AWSUsername = types.StringValue(username)
+		}
+		// Note: access_key_id and secret_access_key are sensitive and not returned
+		// Keep existing values from state (during refresh) or leave empty (during import)
+	default:
+		tflog.Warn(ctx, "Unknown secret type returned by API", map[string]interface{}{
+			"secret_type": secretMetadata.SecretType,
+		})
+		// Keep existing authentication_type from state
+	}
+
 	// Convert tags from map[string]string to types.Map
 	if len(secretMetadata.Tags) > 0 {
 		tagsMap, diag := types.MapValueFrom(ctx, types.StringType, secretMetadata.Tags)
@@ -429,6 +502,12 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 		}
 		if !plan.AWSSecretAccessKey.IsNull() {
 			updateReq.IAMSecretAccessKey = plan.AWSSecretAccessKey.ValueString()
+		}
+		if !plan.AWSAccount.IsNull() {
+			updateReq.IAMAccount = plan.AWSAccount.ValueString()
+		}
+		if !plan.AWSUsername.IsNull() {
+			updateReq.IAMUsername = plan.AWSUsername.ValueString()
 		}
 	}
 
@@ -601,6 +680,20 @@ func (r *secretResource) ValidateConfig(ctx context.Context, req resource.Valida
 				path.Root("aws_secret_access_key"),
 				"Missing Required Field",
 				"aws_secret_access_key is required when authentication_type=aws_iam",
+			)
+		}
+		if config.AWSAccount.IsNull() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("aws_account"),
+				"Missing Required Field",
+				"aws_account is required when authentication_type=aws_iam (12-digit AWS account number)",
+			)
+		}
+		if config.AWSUsername.IsNull() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("aws_username"),
+				"Missing Required Field",
+				"aws_username is required when authentication_type=aws_iam (IAM username from ARN)",
 			)
 		}
 

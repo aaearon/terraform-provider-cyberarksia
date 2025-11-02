@@ -26,6 +26,8 @@ type SecretModel struct {
 	// AWS IAM authentication
 	AWSAccessKeyID     types.String `tfsdk:"aws_access_key_id"`     // Sensitive
 	AWSSecretAccessKey types.String `tfsdk:"aws_secret_access_key"` // Sensitive
+	AWSAccount         types.String `tfsdk:"aws_account"`           // AWS account number (12 digits)
+	AWSUsername        types.String `tfsdk:"aws_username"`          // IAM username from ARN
 
 	// Optional metadata
 	Tags types.Map `tfsdk:"tags"` // Key-value tags for organization

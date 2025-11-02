@@ -30,7 +30,9 @@ Manages a secret (credential) in CyberArk SIA. Secrets are credentials that SIA 
 ### Optional
 
 - `aws_access_key_id` (String, Sensitive) AWS IAM access key ID. Required when authentication_type=aws_iam. Not allowed for local or domain authentication. Maps to IAMAccessKeyID in SDK. Valid AWS access key format (20 characters). Validated in ValidateConfig method.
+- `aws_account` (String) AWS account number (12 digits). Required when authentication_type=aws_iam. Not allowed for local or domain authentication. Maps to IAMAccount in SDK. Example: 123456789012. Validated in ValidateConfig method.
 - `aws_secret_access_key` (String, Sensitive) AWS IAM secret access key. Required when authentication_type=aws_iam. Not allowed for local or domain authentication. Maps to IAMSecretAccessKey in SDK. NEVER logged or displayed in outputs. Validated in ValidateConfig method.
+- `aws_username` (String) AWS IAM username portion from the IAM user ARN. Required when authentication_type=aws_iam. Not allowed for local or domain authentication. Maps to IAMUsername in SDK. Example: database-admin. Validated in ValidateConfig method.
 - `domain` (String) Active Directory domain (e.g., corp.example.com). Optional field for documentation purposes when authentication_type=domain. NOTE: The ARK SDK does not have a separate domain field. Include the domain directly in the username field using either:
 - Windows format: DOMAIN\username
 - UPN format: username@domain.com
