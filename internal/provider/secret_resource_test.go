@@ -201,13 +201,6 @@ resource "cyberarksia_database_secret" "test" {
   authentication_type = "local"
   username           = "db_admin"
   password           = "InitialPassword123!"
-
-  description = "Test strong account"
-
-  tags = {
-    Environment = "test"
-    ManagedBy   = "Terraform"
-  }
 }
 `
 
@@ -224,13 +217,6 @@ resource "cyberarksia_database_secret" "local" {
   authentication_type = "local"
   username           = "postgres_admin"
   password           = "SecurePassword456!"
-
-  description = "Local authentication strong account for PostgreSQL"
-
-  tags = {
-    Environment = "test"
-    AuthType    = "local"
-  }
 }
 `
 
@@ -248,13 +234,6 @@ resource "cyberarksia_database_secret" "domain" {
   username           = "CORP\\sqladmin"
   password           = "DomainPassword789!"
   domain             = "corp.example.com"
-
-  description = "Active Directory authentication strong account for SQL Server"
-
-  tags = {
-    Environment = "test"
-    AuthType    = "domain"
-  }
 }
 `
 
@@ -273,13 +252,6 @@ resource "cyberarksia_database_secret" "aws_iam" {
   authentication_type = "aws_iam"
   aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
   aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-
-  description = "AWS IAM authentication strong account for RDS"
-
-  tags = {
-    Environment = "test"
-    AuthType    = "aws_iam"
-  }
 }
 `
 
@@ -296,13 +268,6 @@ resource "cyberarksia_database_secret" "rotation_test" {
   authentication_type = "local"
   username           = "initial_user"
   password           = "InitialPassword123!"
-
-  description = "Account for credential rotation testing"
-
-  tags = {
-    Environment = "test"
-    Phase       = "before-rotation"
-  }
 }
 `
 
@@ -319,13 +284,6 @@ resource "cyberarksia_database_secret" "rotation_test" {
   authentication_type = "local"
   username           = "updated_user"
   password           = "RotatedPassword456!"
-
-  description = "Account for credential rotation testing"
-
-  tags = {
-    Environment = "test"
-    Phase       = "after-rotation"
-  }
 }
 `
 
@@ -342,13 +300,6 @@ resource "cyberarksia_database_secret" "update_test" {
   authentication_type = "local"
   username           = "db_user"
   password           = "InitialPassword123!"
-
-  description = "Initial credentials"
-
-  tags = {
-    Environment = "test"
-    Phase       = "before-update"
-  }
 }
 `
 
@@ -365,12 +316,5 @@ resource "cyberarksia_database_secret" "update_test" {
   authentication_type = "local"
   username           = "db_user"
   password           = "RotatedPassword456!"
-
-  description = "Rotated credentials"
-
-  tags = {
-    Environment = "test"
-    Phase       = "after-update"
-  }
 }
 `
