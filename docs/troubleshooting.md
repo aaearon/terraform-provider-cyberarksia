@@ -773,7 +773,7 @@ terraform destroy -auto-approve
 
 ```bash
 # Delete secret and certificate (these work correctly)
-terraform destroy -target=cyberarksia_secret.db_admin -auto-approve
+terraform destroy -target=cyberarksia_database_secret.db_admin -auto-approve
 terraform destroy -target=cyberarksia_certificate.db_cert -auto-approve
 
 # Manually delete database workspace in SIA UI

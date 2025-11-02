@@ -11,11 +11,11 @@ resource "cyberarksia_database_workspace" "prod_postgres" {
   database_type = "postgres"
   address       = "postgres.example.com"
   port          = 5432
-  secret_id     = cyberarksia_secret.db_admin.id
+  secret_id     = cyberarksia_database_secret.db_admin.id
 }
 
 # Create secret for database
-resource "cyberarksia_secret" "db_admin" {
+resource "cyberarksia_database_secret" "db_admin" {
   name                = "postgres-admin"
   authentication_type = "local"
   username            = "admin"

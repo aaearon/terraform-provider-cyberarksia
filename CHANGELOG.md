@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING CHANGES
+- **Resource Rename**: `cyberarksia_secret` has been renamed to `cyberarksia_database_secret` to accurately reflect that it manages database credentials only (not VM secrets)
+
+### Migration Guide
+
+To upgrade existing Terraform state without recreating resources, run the following command for each secret resource:
+
+```bash
+terraform state mv 'cyberarksia_secret.example' 'cyberarksia_database_secret.example'
+```
+
+Replace `example` with your actual resource names. This preserves existing secrets in CyberArk SIA without deletion/recreation.
+
+**Example:**
+```bash
+# If you have: resource "cyberarksia_secret" "postgres_admin" { ... }
+terraform state mv 'cyberarksia_secret.postgres_admin' 'cyberarksia_database_secret.postgres_admin'
+
+# If you have: resource "cyberarksia_secret" "rds_iam_user" { ... }
+terraform state mv 'cyberarksia_secret.rds_iam_user' 'cyberarksia_database_secret.rds_iam_user'
+```
+
+### Changed
+- Renamed `cyberarksia_secret` resource to `cyberarksia_database_secret` in all:
+  - Resource implementation
+  - Examples and documentation
+  - Test files
+
 ### Added
 - Future changes will be documented here
 

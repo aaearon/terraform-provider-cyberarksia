@@ -37,7 +37,7 @@ resource "cyberarksia_database_workspace" "postgres" {
 
 # Strong account with local authentication
 # NOTE: Secrets are standalone resources - no database_workspace_id required
-resource "cyberarksia_secret" "postgres_admin" {
+resource "cyberarksia_database_secret" "postgres_admin" {
   name                = "postgres-admin-account"
   authentication_type = "local"
 
@@ -56,15 +56,15 @@ variable "postgres_admin_password" {
 # Outputs (safe - does not expose sensitive data)
 output "strong_account_id" {
   description = "ID of the created strong account"
-  value       = cyberarksia_secret.postgres_admin.id
+  value       = cyberarksia_database_secret.postgres_admin.id
 }
 
 output "strong_account_name" {
   description = "Name of the strong account"
-  value       = cyberarksia_secret.postgres_admin.name
+  value       = cyberarksia_database_secret.postgres_admin.name
 }
 
 output "created_at" {
   description = "Timestamp when the strong account was created"
-  value       = cyberarksia_secret.postgres_admin.created_at
+  value       = cyberarksia_database_secret.postgres_admin.created_at
 }

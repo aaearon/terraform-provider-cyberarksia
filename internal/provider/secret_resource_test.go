@@ -21,15 +21,15 @@ func TestAccSecret_basic(t *testing.T) {
 			{
 				Config: testAccSecretConfigBasic,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_secret.test", "name", "test-strong-account"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.test", "authentication_type", "local"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.test", "username", "db_admin"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_secret.test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.test", "name", "test-strong-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.test", "authentication_type", "local"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.test", "username", "db_admin"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.test", "id"),
 				),
 			},
 			// ImportState testing
 			{
-				ResourceName:      "cyberark_sia_secret.test",
+				ResourceName:      "cyberarksia_database_secret.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				// Password is sensitive and won't be in state
@@ -48,10 +48,10 @@ func TestAccSecret_localAuth(t *testing.T) {
 			{
 				Config: testAccSecretConfigLocalAuth,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_secret.local", "name", "local-auth-account"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.local", "authentication_type", "local"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.local", "username", "postgres_admin"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_secret.local", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.local", "name", "local-auth-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.local", "authentication_type", "local"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.local", "username", "postgres_admin"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.local", "id"),
 				),
 			},
 		},
@@ -67,11 +67,11 @@ func TestAccSecret_domainAuth(t *testing.T) {
 			{
 				Config: testAccSecretConfigDomainAuth,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_secret.domain", "name", "domain-auth-account"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.domain", "authentication_type", "domain"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.domain", "username", "CORP\\sqladmin"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.domain", "domain", "corp.example.com"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_secret.domain", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "name", "domain-auth-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "authentication_type", "domain"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "username", "CORP\\sqladmin"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain", "domain", "corp.example.com"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.domain", "id"),
 				),
 			},
 		},
@@ -87,9 +87,9 @@ func TestAccSecret_awsIAM(t *testing.T) {
 			{
 				Config: testAccSecretConfigAwsIAM,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_secret.aws_iam", "name", "aws-iam-account"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.aws_iam", "authentication_type", "aws_iam"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_secret.aws_iam", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.aws_iam", "name", "aws-iam-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.aws_iam", "authentication_type", "aws_iam"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.aws_iam", "id"),
 				),
 			},
 		},
@@ -106,16 +106,16 @@ func TestAccSecret_credentialUpdate(t *testing.T) {
 			{
 				Config: testAccSecretConfigCredentialsBefore,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_secret.rotation_test", "name", "rotation-test-account"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.rotation_test", "username", "initial_user"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.rotation_test", "name", "rotation-test-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.rotation_test", "username", "initial_user"),
 				),
 			},
 			// Step 2: Update credentials (password and username)
 			{
 				Config: testAccSecretConfigCredentialsAfter,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_secret.rotation_test", "name", "rotation-test-account"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.rotation_test", "username", "updated_user"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.rotation_test", "name", "rotation-test-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.rotation_test", "username", "updated_user"),
 				),
 			},
 		},
@@ -134,7 +134,7 @@ func TestAccSecret_import(t *testing.T) {
 			},
 			// Test import
 			{
-				ResourceName:      "cyberark_sia_secret.test",
+				ResourceName:      "cyberarksia_database_secret.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				// Password is sensitive and won't be in state
@@ -158,23 +158,23 @@ func TestAccSecret_updateCredentials(t *testing.T) {
 			{
 				Config: testAccSecretConfigUpdateBefore,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_secret.update_test", "name", "update-test-account"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.update_test", "username", "db_user"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.update_test", "description", "Initial credentials"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "name", "update-test-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "username", "db_user"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "description", "Initial credentials"),
 				),
 			},
 			// Step 2: Rotate password (credential update)
 			{
 				Config: testAccSecretConfigUpdateAfter,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_secret.update_test", "name", "update-test-account"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.update_test", "username", "db_user"),
-					resource.TestCheckResourceAttr("cyberark_sia_secret.update_test", "description", "Rotated credentials"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "name", "update-test-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "username", "db_user"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.update_test", "description", "Rotated credentials"),
 				),
 			},
 			// Step 3: Verify import still works after update
 			{
-				ResourceName:      "cyberark_sia_secret.update_test",
+				ResourceName:      "cyberarksia_database_secret.update_test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				// Password is sensitive and won't be in state
@@ -196,7 +196,7 @@ resource "cyberark_sia_database_workspace" "test" {
   port          = 5432
 }
 
-resource "cyberark_sia_secret" "test" {
+resource "cyberarksia_database_secret" "test" {
   name               = "test-strong-account"
   authentication_type = "local"
   username           = "db_admin"
@@ -219,7 +219,7 @@ resource "cyberark_sia_database_workspace" "postgres" {
   port          = 5432
 }
 
-resource "cyberark_sia_secret" "local" {
+resource "cyberarksia_database_secret" "local" {
   name               = "local-auth-account"
   authentication_type = "local"
   username           = "postgres_admin"
@@ -242,7 +242,7 @@ resource "cyberark_sia_database_workspace" "sqlserver" {
   port          = 1433
 }
 
-resource "cyberark_sia_secret" "domain" {
+resource "cyberarksia_database_secret" "domain" {
   name               = "domain-auth-account"
   authentication_type = "domain"
   username           = "CORP\\sqladmin"
@@ -268,7 +268,7 @@ resource "cyberark_sia_database_workspace" "rds" {
   region        = "us-east-1"
 }
 
-resource "cyberark_sia_secret" "aws_iam" {
+resource "cyberarksia_database_secret" "aws_iam" {
   name               = "aws-iam-account"
   authentication_type = "aws_iam"
   aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
@@ -291,7 +291,7 @@ resource "cyberark_sia_database_workspace" "rotation" {
   port          = 5432
 }
 
-resource "cyberark_sia_secret" "rotation_test" {
+resource "cyberarksia_database_secret" "rotation_test" {
   name               = "rotation-test-account"
   authentication_type = "local"
   username           = "initial_user"
@@ -314,7 +314,7 @@ resource "cyberark_sia_database_workspace" "rotation" {
   port          = 5432
 }
 
-resource "cyberark_sia_secret" "rotation_test" {
+resource "cyberarksia_database_secret" "rotation_test" {
   name               = "rotation-test-account"
   authentication_type = "local"
   username           = "updated_user"
@@ -337,7 +337,7 @@ resource "cyberark_sia_database_workspace" "update" {
   port          = 5432
 }
 
-resource "cyberark_sia_secret" "update_test" {
+resource "cyberarksia_database_secret" "update_test" {
   name               = "update-test-account"
   authentication_type = "local"
   username           = "db_user"
@@ -360,7 +360,7 @@ resource "cyberark_sia_database_workspace" "update" {
   port          = 5432
 }
 
-resource "cyberark_sia_secret" "update_test" {
+resource "cyberarksia_database_secret" "update_test" {
   name               = "update-test-account"
   authentication_type = "local"
   username           = "db_user"

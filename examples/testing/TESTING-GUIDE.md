@@ -361,7 +361,7 @@ This is the **comprehensive testing workflow** for all 6 SIA provider resources 
 ### Resources Validated
 1. Azure PostgreSQL Flexible Server (B1ms)
 2. `cyberarksia_certificate` - Azure SSL certificate
-3. `cyberarksia_secret` - Database admin credentials
+3. `cyberarksia_database_secret` - Database admin credentials
 4. `cyberarksia_database_workspace` - Azure PostgreSQL configuration
 5. `cyberarksia_database_policy` - Access policy with conditions
 6. `cyberarksia_database_policy_principal_assignment` - User assignments
@@ -462,7 +462,7 @@ terraform apply -target=cyberarksia_certificate.azure_cert -auto-approve
 ### Phase 4: CREATE - SIA Secret (< 1 minute)
 
 ```bash
-terraform apply -target=cyberarksia_secret.admin -auto-approve
+terraform apply -target=cyberarksia_database_secret.admin -auto-approve
 ```
 
 **Validation**:
@@ -802,7 +802,7 @@ ASSIGNMENT_ID=$(terraform state show cyberarksia_database_policy_database_assign
 
 # Remove resources from state
 terraform state rm cyberarksia_certificate.azure_cert
-terraform state rm cyberarksia_secret.admin
+terraform state rm cyberarksia_database_secret.admin
 terraform state rm cyberarksia_database_workspace.azure_postgres
 terraform state rm cyberarksia_database_policy.test
 terraform state rm cyberarksia_database_policy_principal_assignment.service_account
@@ -811,7 +811,7 @@ terraform state rm cyberarksia_database_policy_database_assignment.azure_postgre
 
 # Import each resource
 terraform import cyberarksia_certificate.azure_cert "$CERT_ID"
-terraform import cyberarksia_secret.admin "$SECRET_ID"
+terraform import cyberarksia_database_secret.admin "$SECRET_ID"
 terraform import cyberarksia_database_workspace.azure_postgres "$DB_ID"
 terraform import cyberarksia_database_policy.test "$POLICY_ID"
 terraform import cyberarksia_database_policy_principal_assignment.service_account "$PRINCIPAL_SERVICE_ID"
@@ -854,7 +854,7 @@ terraform destroy -target=cyberarksia_database_policy.test -auto-approve
 terraform destroy -target=cyberarksia_database_workspace.azure_postgres -auto-approve
 
 # Delete secret and certificate
-terraform destroy -target=cyberarksia_secret.admin -auto-approve
+terraform destroy -target=cyberarksia_database_secret.admin -auto-approve
 terraform destroy -target=cyberarksia_certificate.azure_cert -auto-approve
 
 # Delete Azure infrastructure
@@ -1339,7 +1339,7 @@ resource "cyberarksia_database_workspace" "azure_postgres" {
   region                        = var.azure_region
   address                       = azurerm_postgresql_flexible_server.test.fqdn
   port                          = 5432
-  secret_id                     = cyberarksia_secret.admin.id
+  secret_id                     = cyberarksia_database_secret.admin.id
   enable_certificate_validation = false  # Simplify testing
   certificate_id                = cyberarksia_certificate.azure_cert.id
 }
@@ -1430,7 +1430,7 @@ resource "cyberarksia_certificate" "azure_cert" {
 2. **Create SIA Resources** (< 1 minute)
    ```bash
    terraform apply -target=cyberarksia_certificate.azure_cert
-   terraform apply -target=cyberarksia_secret.admin
+   terraform apply -target=cyberarksia_database_secret.admin
    terraform apply -target=cyberarksia_database_workspace.azure_postgres
    ```
 

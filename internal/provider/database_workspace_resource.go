@@ -178,7 +178,7 @@ func (r *databaseWorkspaceResource) Schema(ctx context.Context, req resource.Sch
 			"secret_id": schema.StringAttribute{
 				Description: "Reference to a secret stored in SIA's secret service. " +
 					"Required for Zero Standing Privilege (ZSP) / Just-In-Time (JIT) access - SIA uses these credentials to provision ephemeral accounts. " +
-					"Must reference an existing cyberark_sia_secret resource. " +
+					"Must reference an existing cyberarksia_database_secret resource. " +
 					"Secret types: username_password, iam_user, cyberark_pam, atlas_access_keys",
 				Required: true,
 				Validators: []validator.String{

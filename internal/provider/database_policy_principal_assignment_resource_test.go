@@ -242,7 +242,7 @@ func TestAccPrincipalAssignment_forceNewAttributes(t *testing.T) {
 // ============================================================================
 
 const testAccPrincipalAssignmentConfigBasic = `
-resource "cyberarksia_secret" "test" {
+resource "cyberarksia_database_secret" "test" {
   name                = "test-principal-assignment-secret"
   authentication_type = "local"
   username            = "db_admin"
@@ -255,7 +255,7 @@ resource "cyberarksia_database_workspace" "test" {
   database_type = "postgresql"
   address       = "postgres.test.example.com"
   port          = 5432
-  secret_id     = cyberarksia_secret.test.id
+  secret_id     = cyberarksia_database_secret.test.id
 }
 
 resource "cyberarksia_database_policy" "test" {
@@ -284,7 +284,7 @@ resource "cyberarksia_database_policy_principal_assignment" "test" {
 `
 
 const testAccPrincipalAssignmentConfigMultipleTypes = `
-resource "cyberarksia_secret" "test" {
+resource "cyberarksia_database_secret" "test" {
   name                = "test-multiple-types-secret"
   authentication_type = "local"
   username            = "db_admin"
@@ -297,7 +297,7 @@ resource "cyberarksia_database_workspace" "test" {
   database_type = "postgresql"
   address       = "postgres.multitypes.example.com"
   port          = 5432
-  secret_id     = cyberarksia_secret.test.id
+  secret_id     = cyberarksia_database_secret.test.id
 }
 
 resource "cyberarksia_database_policy" "test" {
@@ -357,7 +357,7 @@ resource "cyberarksia_database_policy_principal_assignment" "role" {
 `
 
 const testAccPrincipalAssignmentConfigUpdateBefore = `
-resource "cyberarksia_secret" "test" {
+resource "cyberarksia_database_secret" "test" {
   name                = "test-update-secret"
   authentication_type = "local"
   username            = "db_admin"
@@ -370,7 +370,7 @@ resource "cyberarksia_database_workspace" "test" {
   database_type = "postgresql"
   address       = "postgres.update.example.com"
   port          = 5432
-  secret_id     = cyberarksia_secret.test.id
+  secret_id     = cyberarksia_database_secret.test.id
 }
 
 resource "cyberarksia_database_policy" "test" {
@@ -399,7 +399,7 @@ resource "cyberarksia_database_policy_principal_assignment" "update_test" {
 `
 
 const testAccPrincipalAssignmentConfigUpdateAfter = `
-resource "cyberarksia_secret" "test" {
+resource "cyberarksia_database_secret" "test" {
   name                = "test-update-secret"
   authentication_type = "local"
   username            = "db_admin"
@@ -412,7 +412,7 @@ resource "cyberarksia_database_workspace" "test" {
   database_type = "postgresql"
   address       = "postgres.update.example.com"
   port          = 5432
-  secret_id     = cyberarksia_secret.test.id
+  secret_id     = cyberarksia_database_secret.test.id
 }
 
 resource "cyberarksia_database_policy" "test" {
@@ -441,7 +441,7 @@ resource "cyberarksia_database_policy_principal_assignment" "update_test" {
 `
 
 const testAccPrincipalAssignmentConfigDuplicate = `
-resource "cyberarksia_secret" "test" {
+resource "cyberarksia_database_secret" "test" {
   name                = "test-duplicate-secret"
   authentication_type = "local"
   username            = "db_admin"
@@ -454,7 +454,7 @@ resource "cyberarksia_database_workspace" "test" {
   database_type = "postgresql"
   address       = "postgres.duplicate.example.com"
   port          = 5432
-  secret_id     = cyberarksia_secret.test.id
+  secret_id     = cyberarksia_database_secret.test.id
 }
 
 resource "cyberarksia_database_policy" "test" {

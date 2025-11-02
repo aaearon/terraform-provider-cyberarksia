@@ -173,7 +173,7 @@ When you're ready to clean up:
 terraform destroy -target=cyberarksia_database_policy_principal_assignment.tim_schindler
 terraform destroy -target=cyberarksia_database_policy.test
 terraform destroy -target=cyberarksia_database_workspace.azure_postgres
-terraform destroy -target=cyberarksia_secret.admin
+terraform destroy -target=cyberarksia_database_secret.admin
 
 # Delete Azure infrastructure
 terraform destroy

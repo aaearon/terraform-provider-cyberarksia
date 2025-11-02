@@ -188,7 +188,7 @@ EOT
 }
 
 # Secret: Database admin credentials
-resource "cyberarksia_secret" "postgres_admin" {
+resource "cyberarksia_database_secret" "postgres_admin" {
   name                = "azure-postgres-admin-${random_string.suffix.result}"
   authentication_type = "local"
   username            = var.postgres_admin_username
@@ -215,7 +215,7 @@ resource "cyberarksia_database_workspace" "azure_postgres" {
   port    = 5432
 
   # Secret reference (required for ZSP/JIT)
-  secret_id = cyberarksia_secret.postgres_admin.id
+  secret_id = cyberarksia_database_secret.postgres_admin.id
 
   # Certificate validation (Azure uses valid TLS certs)
   enable_certificate_validation = false
@@ -235,7 +235,7 @@ resource "cyberarksia_database_workspace" "azure_postgres" {
   # Ensure PostgreSQL is fully accessible before creating workspace
   depends_on = [
     azurerm_postgresql_flexible_server_database.testdb,
-    cyberarksia_secret.postgres_admin,
+    cyberarksia_database_secret.postgres_admin,
     cyberarksia_certificate.azure_postgres_cert # Certificate must exist first
   ]
 }

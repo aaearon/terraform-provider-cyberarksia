@@ -28,7 +28,7 @@ output "azure_postgres_admin_username" {
 
 output "secret_id" {
   description = "SIA secret ID for PostgreSQL admin credentials"
-  value       = cyberarksia_secret.admin.id
+  value       = cyberarksia_database_secret.admin.id
 }
 
 output "database_workspace_id" {
@@ -73,7 +73,7 @@ output "validation_summary" {
       region          = var.azure_region
     }
     sia_resources = {
-      secret_id                      = cyberarksia_secret.admin.id
+      secret_id                      = cyberarksia_database_secret.admin.id
       database_workspace_id          = cyberarksia_database_workspace.azure_postgres.id
       database_name                  = cyberarksia_database_workspace.azure_postgres.name
       certificate_validation_enabled = cyberarksia_database_workspace.azure_postgres.enable_certificate_validation

@@ -27,7 +27,7 @@ resource "cyberarksia_database_workspace" "staging_postgres" {
   database_type  = "postgres"
   address        = "staging-db.internal.example.com"
   port           = 5432
-  secret_id      = cyberarksia_secret.postgres_admin.id
+  secret_id      = cyberarksia_database_secret.postgres_admin.id
   cloud_provider = "on_premise"
 
   tags = {

@@ -39,7 +39,7 @@ type secretResource struct {
 
 // Metadata returns the resource type name
 func (r *secretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_secret"
+	resp.TypeName = req.ProviderTypeName + "_database_secret"
 }
 
 // Schema defines the schema for the resource

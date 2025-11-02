@@ -22,7 +22,7 @@ Manages a database workspace in CyberArk SIA. Database workspaces represent exis
 
 - `database_type` (String) Type of database engine. REQUIRED due to SDK v1.5.0 validation constraints (empty strings fail validation). Valid values include generic types (postgres, mysql, mariadb, mongo, oracle, mssql, sqlserver, db2) and platform-specific variants (postgres-aws-rds, mysql-azure-managed, mongo-atlas-managed, etc.). Validated against ARK SDK DatabaseEngineTypes - automatically stays in sync with SDK updates. **Changing this value will force replacement of the resource.**
 - `name` (String) Database name on the database server (e.g., 'customers', 'inventory', 'myapp'). This is the actual database/schema/catalog name that SIA will connect to. For PostgreSQL: the database name in connection string (postgres://host:5432/DATABASE_NAME). For MySQL: the database name (USE DATABASE_NAME). For MongoDB: the database name to connect to. Required, 1-255 characters, must be unique within SIA tenant.
-- `secret_id` (String) Reference to a secret stored in SIA's secret service. Required for Zero Standing Privilege (ZSP) / Just-In-Time (JIT) access - SIA uses these credentials to provision ephemeral accounts. Must reference an existing cyberark_sia_secret resource. Secret types: username_password, iam_user, cyberark_pam, atlas_access_keys
+- `secret_id` (String) Reference to a secret stored in SIA's secret service. Required for Zero Standing Privilege (ZSP) / Just-In-Time (JIT) access - SIA uses these credentials to provision ephemeral accounts. Must reference an existing cyberarksia_database_secret resource. Secret types: username_password, iam_user, cyberark_pam, atlas_access_keys
 
 ### Optional
 

@@ -3,7 +3,7 @@ package models
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
 // SecretModel represents a secret resource in Terraform.
-// Maps to cyberark_sia_secret resource.
+// Maps to cyberarksia_database_secret resource.
 // Secrets are standalone credentials that can be referenced by database workspaces, VM workspaces, etc.
 type SecretModel struct {
 	// Computed attributes
