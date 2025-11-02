@@ -157,13 +157,18 @@ secret, err := r.providerData.SIAAPI.SecretsVM().ChangeSecret(changeSecretReq)
 
 ### Delete (DeleteSecret)
 ```go
-// IMPORTANT: VM secrets DELETE is safe - no nil body bug!
-deleteSecretReq := &vmsecretsmodels.ArkSIAVMDeleteSecret{
-    SecretID: state.ID.ValueString(),
-}
+// CRITICAL: VM secrets DELETE has nil body panic bug - MUST use workaround!
+// Production proof: docs/development/ark-sdk-sia-services-analysis.md:L573-601
+// DO NOT use SDK method directly - it will panic
 
-err := r.providerData.SIAAPI.SecretsVM().DeleteSecret(deleteSecretReq)
-// No workaround needed unlike database secrets!
+// ✅ CORRECT - Use workaround
+err := client.DeleteVMSecretDirect(ctx, r.providerData.AuthContext, state.ID.ValueString())
+
+// ❌ WRONG - Will panic (same bug as database secrets)
+// deleteSecretReq := &vmsecretsmodels.ArkSIAVMDeleteSecret{
+//     SecretID: state.ID.ValueString(),
+// }
+// err := r.providerData.SIAAPI.SecretsVM().DeleteSecret(deleteSecretReq)
 ```
 
 ---

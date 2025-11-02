@@ -466,9 +466,9 @@ type ArkSIAVMSecretsStats struct {
 | **Method** | `DeleteSecret()` with `ArkSIADBDeleteSecret` | `DeleteSecret()` with `ArkSIAVMDeleteSecret` |
 | **HTTP Method** | DELETE | DELETE |
 | **Status Code** | 204 No Content | 204 No Content |
-| **SDK Bug** | YES - nil body panic (requires workaround) | NO - works correctly |
+| **SDK Bug** | YES - nil body panic (requires workaround) | YES - nil body panic (requires workaround) |
 
-**Important**: VM secrets DELETE does NOT have the nil body panic bug!
+**Important**: VM secrets DELETE DOES have the nil body panic bug (proven in production CLI testing)!
 
 ### List Operations
 
@@ -566,10 +566,11 @@ type ArkSIAVMSecretsStats struct {
 - `IsRotatable` available but likely read-only
 - `SecretDetails` is flexible map - may want to expose as optional JSON or map
 
-### 4. No Delete Workaround Needed
-- **VM secrets DELETE is safe** - unlike database secrets
-- Can use SDK method directly: `siaAPI.SecretsVM().DeleteSecret(deleteReq)`
-- No need for `delete_workarounds.go` adaptation
+### 4. Delete Workaround Required
+- **VM secrets DELETE is NOT safe** - same bug as database secrets
+- MUST use workaround: Add `DeleteVMSecretDirect()` to `internal/client/delete_workarounds.go`
+- SDK method `DeleteSecret()` will panic with nil body pointer
+- Production CLI testing confirms panic: See `docs/development/ark-sdk-sia-services-analysis.md:L573-601` for CLI reproduction evidence
 
 ### 5. Filtering Not Used by Provider
 - VM secrets filtering is client-side and incomplete
@@ -701,7 +702,7 @@ SecretName string `json:"secret_name,omitempty" mapstructure:"secret_name,omitem
 
 ## Critical Implementation Notes
 
-1. **SDK Stability**: VM secrets DELETE is stable (no nil body bug like database secrets)
+1. **SDK DELETE Bug**: VM secrets DELETE has the nil body panic bug (SAME as database secrets) - MUST use workaround in internal/client/delete_workarounds.go per FR-012. Production proof: docs/development/ark-sdk-sia-services-analysis.md:L573-601
 2. **Method Names**: Use `ChangeSecret()` not `UpdateSecret()` - different from DB secrets
 3. **HTTP Method**: Both Create and Update use POST
 4. **Inverse Field**: `IsDisabled` in request, `IsActive` in response

@@ -648,3 +648,9 @@ Track critical items as GitHub Issues for better visibility and prioritization:
 ```bash
 rg "TODO|FIXME" --glob "*.go" -A 2 -B 1
 ```
+
+## Active Technologies
+- N/A (stateless provider, Terraform state management) (003-virtual-machine-secret)
+
+## Recent Changes
+- 003-virtual-machine-secret: Added Go 1.25.0
