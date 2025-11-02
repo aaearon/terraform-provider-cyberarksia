@@ -215,7 +215,7 @@ func (r *databaseSecretResource) Configure(ctx context.Context, req resource.Con
 // Create creates the resource and sets the initial Terraform state
 func (r *databaseSecretResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
-	var plan models.SecretModel
+	var plan models.DatabaseSecretModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -317,7 +317,7 @@ func (r *databaseSecretResource) Create(ctx context.Context, req resource.Create
 // Read refreshes the Terraform state with the latest data
 func (r *databaseSecretResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get current state
-	var state models.SecretModel
+	var state models.DatabaseSecretModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -466,7 +466,7 @@ func (r *databaseSecretResource) Read(ctx context.Context, req resource.ReadRequ
 // Update updates the resource and sets the updated Terraform state on success
 func (r *databaseSecretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Retrieve values from plan and state
-	var plan, state models.SecretModel
+	var plan, state models.DatabaseSecretModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -569,7 +569,7 @@ func (r *databaseSecretResource) Update(ctx context.Context, req resource.Update
 // Delete deletes the resource and removes the Terraform state on success
 func (r *databaseSecretResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	// Retrieve values from state
-	var state models.SecretModel
+	var state models.DatabaseSecretModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -634,7 +634,7 @@ func (r *databaseSecretResource) ImportState(ctx context.Context, req resource.I
 
 // ValidateConfig performs cross-field validation for the secret resource
 func (r *databaseSecretResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var config models.SecretModel
+	var config models.DatabaseSecretModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
