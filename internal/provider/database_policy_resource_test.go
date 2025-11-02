@@ -340,7 +340,7 @@ func TestAccDatabasePolicy_forceNewOnNameChange(t *testing.T) {
 // ============================================================================
 
 const testAccDatabasePolicyConfigBasic = `
-resource "cyberarksia_secret" "test" {
+resource "cyberarksia_database_secret" "test" {
   name                = "test-policy-secret"
   authentication_type = "local"
   username            = "db_admin"
@@ -354,7 +354,7 @@ resource "cyberarksia_database_workspace" "test" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.test.id
+  secret_id             = cyberarksia_database_secret.test.id
 }
 
 data "cyberarksia_principal" "test_user" {
@@ -393,7 +393,7 @@ resource "cyberarksia_database_policy" "test" {
 `
 
 const testAccDatabasePolicyConfigWithConditions = `
-resource "cyberarksia_secret" "conditions" {
+resource "cyberarksia_database_secret" "conditions" {
   name                = "test-conditions-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -407,7 +407,7 @@ resource "cyberarksia_database_workspace" "conditions" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.conditions.id
+  secret_id             = cyberarksia_database_secret.conditions.id
 }
 
 data "cyberarksia_principal" "conditions_user" {
@@ -452,7 +452,7 @@ resource "cyberarksia_database_policy" "conditions_test" {
 `
 
 const testAccDatabasePolicyConfigWithTimeFrame = `
-resource "cyberarksia_secret" "timeframe" {
+resource "cyberarksia_database_secret" "timeframe" {
   name                = "test-timeframe-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -466,7 +466,7 @@ resource "cyberarksia_database_workspace" "timeframe" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.timeframe.id
+  secret_id             = cyberarksia_database_secret.timeframe.id
 }
 
 data "cyberarksia_principal" "timeframe_user" {
@@ -508,14 +508,14 @@ resource "cyberarksia_database_policy" "timeframe_test" {
 `
 
 const testAccDatabasePolicyConfigWithInlineAssignments = `
-resource "cyberarksia_secret" "inline1" {
+resource "cyberarksia_database_secret" "inline1" {
   name                = "test-inline-secret1"
   authentication_type = "local"
   username            = "db_user1"
   password            = "TestPassword111!"
 }
 
-resource "cyberarksia_secret" "inline2" {
+resource "cyberarksia_database_secret" "inline2" {
   name                = "test-inline-secret2"
   authentication_type = "local"
   username            = "db_user2"
@@ -529,7 +529,7 @@ resource "cyberarksia_database_workspace" "inline1" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.inline1.id
+  secret_id             = cyberarksia_database_secret.inline1.id
 }
 
 resource "cyberarksia_database_workspace" "inline2" {
@@ -539,7 +539,7 @@ resource "cyberarksia_database_workspace" "inline2" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.inline2.id
+  secret_id             = cyberarksia_database_secret.inline2.id
 }
 
 data "cyberarksia_principal" "inline_user" {
@@ -587,7 +587,7 @@ resource "cyberarksia_database_policy" "inline_test" {
 `
 
 const testAccDatabasePolicyConfigUpdateBefore = `
-resource "cyberarksia_secret" "update" {
+resource "cyberarksia_database_secret" "update" {
   name                = "test-update-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -601,7 +601,7 @@ resource "cyberarksia_database_workspace" "update" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.update.id
+  secret_id             = cyberarksia_database_secret.update.id
 }
 
 data "cyberarksia_principal" "update_user" {
@@ -640,7 +640,7 @@ resource "cyberarksia_database_policy" "update_test" {
 `
 
 const testAccDatabasePolicyConfigUpdateAfter = `
-resource "cyberarksia_secret" "update" {
+resource "cyberarksia_database_secret" "update" {
   name                = "test-update-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -654,7 +654,7 @@ resource "cyberarksia_database_workspace" "update" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.update.id
+  secret_id             = cyberarksia_database_secret.update.id
 }
 
 data "cyberarksia_principal" "update_user" {
@@ -693,7 +693,7 @@ resource "cyberarksia_database_policy" "update_test" {
 `
 
 const testAccDatabasePolicyConfigAccessWindowBefore = `
-resource "cyberarksia_secret" "window" {
+resource "cyberarksia_database_secret" "window" {
   name                = "test-window-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -707,7 +707,7 @@ resource "cyberarksia_database_workspace" "window" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.window.id
+  secret_id             = cyberarksia_database_secret.window.id
 }
 
 data "cyberarksia_principal" "window_user" {
@@ -750,7 +750,7 @@ resource "cyberarksia_database_policy" "window_test" {
 `
 
 const testAccDatabasePolicyConfigAccessWindowAfter = `
-resource "cyberarksia_secret" "window" {
+resource "cyberarksia_database_secret" "window" {
   name                = "test-window-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -764,7 +764,7 @@ resource "cyberarksia_database_workspace" "window" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.window.id
+  secret_id             = cyberarksia_database_secret.window.id
 }
 
 data "cyberarksia_principal" "window_user" {
@@ -807,7 +807,7 @@ resource "cyberarksia_database_policy" "window_test" {
 `
 
 const testAccDatabasePolicyConfigDBAuth = `
-resource "cyberarksia_secret" "dbauth" {
+resource "cyberarksia_database_secret" "dbauth" {
   name                = "test-dbauth-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -821,7 +821,7 @@ resource "cyberarksia_database_workspace" "dbauth" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.dbauth.id
+  secret_id             = cyberarksia_database_secret.dbauth.id
 }
 
 data "cyberarksia_principal" "dbauth_user" {
@@ -858,7 +858,7 @@ resource "cyberarksia_database_policy" "dbauth_test" {
 `
 
 const testAccDatabasePolicyConfigOracleAuth = `
-resource "cyberarksia_secret" "oracle" {
+resource "cyberarksia_database_secret" "oracle" {
   name                = "test-oracle-secret"
   authentication_type = "local"
   username            = "oracle_user"
@@ -872,7 +872,7 @@ resource "cyberarksia_database_workspace" "oracle" {
   port                  = 1521
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.oracle.id
+  secret_id             = cyberarksia_database_secret.oracle.id
 }
 
 data "cyberarksia_principal" "oracle_user" {
@@ -939,7 +939,7 @@ resource "cyberarksia_database_policy" "missing_targets" {
 `
 
 const testAccDatabasePolicyConfigMissingPrincipals = `
-resource "cyberarksia_secret" "missing_principals" {
+resource "cyberarksia_database_secret" "missing_principals" {
   name                = "test-missing-principals-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -953,7 +953,7 @@ resource "cyberarksia_database_workspace" "missing_principals" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.missing_principals.id
+  secret_id             = cyberarksia_database_secret.missing_principals.id
 }
 
 resource "cyberarksia_database_policy" "missing_principals" {
@@ -979,7 +979,7 @@ resource "cyberarksia_database_policy" "missing_principals" {
 `
 
 const testAccDatabasePolicyConfigMismatchedAuthProfile = `
-resource "cyberarksia_secret" "mismatched" {
+resource "cyberarksia_database_secret" "mismatched" {
   name                = "test-mismatched-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -993,7 +993,7 @@ resource "cyberarksia_database_workspace" "mismatched" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.mismatched.id
+  secret_id             = cyberarksia_database_secret.mismatched.id
 }
 
 data "cyberarksia_principal" "mismatched_user" {
@@ -1029,7 +1029,7 @@ resource "cyberarksia_database_policy" "mismatched" {
 `
 
 const testAccDatabasePolicyConfigForceNewBefore = `
-resource "cyberarksia_secret" "forcenew" {
+resource "cyberarksia_database_secret" "forcenew" {
   name                = "test-forcenew-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -1043,7 +1043,7 @@ resource "cyberarksia_database_workspace" "forcenew" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.forcenew.id
+  secret_id             = cyberarksia_database_secret.forcenew.id
 }
 
 data "cyberarksia_principal" "forcenew_user" {
@@ -1080,7 +1080,7 @@ resource "cyberarksia_database_policy" "forcenew_test" {
 `
 
 const testAccDatabasePolicyConfigForceNewAfter = `
-resource "cyberarksia_secret" "forcenew" {
+resource "cyberarksia_database_secret" "forcenew" {
   name                = "test-forcenew-secret"
   authentication_type = "local"
   username            = "db_user"
@@ -1094,7 +1094,7 @@ resource "cyberarksia_database_workspace" "forcenew" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.forcenew.id
+  secret_id             = cyberarksia_database_secret.forcenew.id
 }
 
 data "cyberarksia_principal" "forcenew_user" {

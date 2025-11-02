@@ -339,6 +339,15 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	// Validate certificate content before API call (no expiration check per Issue #13)
 	certBody := plan.CertBody.ValueString()
 	if err := client.ValidatePEMCertificate(certBody); err != nil {
@@ -383,7 +392,13 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		// NEVER log cert_body or cert_password!
 	})
 
-	certificate, err := r.certificatesAPI.CreateCertificate(ctx, createReq)
+	var certificate *client.Certificate
+	var err error
+	err = client.RetryWithBackoff(ctx, client.DefaultRetryConfig(), func() error {
+		var apiErr error
+		certificate, apiErr = r.certificatesAPI.CreateCertificate(ctx, createReq)
+		return apiErr
+	})
 	if err != nil {
 		resp.Diagnostics.Append(client.MapCertificateError(err, "create certificate"))
 		return
@@ -395,7 +410,12 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 
 	// Fetch full certificate details to populate ALL computed fields
 	// CREATE response only returns 8 fields, but Terraform requires ALL computed fields to be known
-	fullCertificate, err := r.certificatesAPI.GetCertificate(ctx, certificate.CertificateID)
+	var fullCertificate *client.Certificate
+	err = client.RetryWithBackoff(ctx, client.DefaultRetryConfig(), func() error {
+		var apiErr error
+		fullCertificate, apiErr = r.certificatesAPI.GetCertificate(ctx, certificate.CertificateID)
+		return apiErr
+	})
 	if err != nil {
 		resp.Diagnostics.Append(client.MapCertificateError(err, "read certificate after create"))
 		return
@@ -427,6 +447,15 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	// Get certificate ID from state
 	certificateID := state.CertificateID.ValueString()
 
@@ -435,7 +464,12 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 	})
 
 	// Call API to get certificate details
-	certificate, err := r.certificatesAPI.GetCertificate(ctx, certificateID)
+	var certificate *client.Certificate
+	err := client.RetryWithBackoff(ctx, client.DefaultRetryConfig(), func() error {
+		var apiErr error
+		certificate, apiErr = r.certificatesAPI.GetCertificate(ctx, certificateID)
+		return apiErr
+	})
 	if err != nil {
 		// Handle 404 Not Found: Remove from state (drift detection)
 		if client.IsNotFoundError(err) {
@@ -478,6 +512,15 @@ func (r *CertificateResource) Update(ctx context.Context, req resource.UpdateReq
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -541,7 +584,13 @@ func (r *CertificateResource) Update(ctx context.Context, req resource.UpdateReq
 		// NEVER log cert_body or cert_password!
 	})
 
-	certificate, err := r.certificatesAPI.UpdateCertificate(ctx, certificateID, updateReq)
+	var certificate *client.Certificate
+	var err error
+	err = client.RetryWithBackoff(ctx, client.DefaultRetryConfig(), func() error {
+		var apiErr error
+		certificate, apiErr = r.certificatesAPI.UpdateCertificate(ctx, certificateID, updateReq)
+		return apiErr
+	})
 	if err != nil {
 		resp.Diagnostics.Append(client.MapCertificateError(err, "update certificate"))
 		return
@@ -553,7 +602,12 @@ func (r *CertificateResource) Update(ctx context.Context, req resource.UpdateReq
 
 	// Fetch full certificate details to populate ALL computed fields
 	// UPDATE response only returns 8 fields, but Terraform requires ALL computed fields to be known
-	fullCertificate, err := r.certificatesAPI.GetCertificate(ctx, certificate.CertificateID)
+	var fullCertificate *client.Certificate
+	err = client.RetryWithBackoff(ctx, client.DefaultRetryConfig(), func() error {
+		var apiErr error
+		fullCertificate, apiErr = r.certificatesAPI.GetCertificate(ctx, certificate.CertificateID)
+		return apiErr
+	})
 	if err != nil {
 		resp.Diagnostics.Append(client.MapCertificateError(err, "read certificate after update"))
 		return
@@ -584,6 +638,15 @@ func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	// Get certificate ID from state
 	certificateID := state.CertificateID.ValueString()
 
@@ -592,7 +655,9 @@ func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteReq
 	})
 
 	// Call API to delete certificate
-	err := r.certificatesAPI.DeleteCertificate(ctx, certificateID)
+	err := client.RetryWithBackoff(ctx, client.DefaultRetryConfig(), func() error {
+		return r.certificatesAPI.DeleteCertificate(ctx, certificateID)
+	})
 	if err != nil {
 		// Map error to Terraform diagnostic (handles CERTIFICATE_IN_USE and other errors)
 		resp.Diagnostics.Append(client.MapCertificateError(err, "delete certificate"))

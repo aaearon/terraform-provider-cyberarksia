@@ -216,7 +216,35 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Create(ctx context.Context, r
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	LogOperationStart(ctx, "create", "policy_database_assignment")
+
+	// Check for unknown or null values
+	if data.PolicyID.IsNull() || data.PolicyID.IsUnknown() {
+		resp.Diagnostics.AddError(
+			"Unknown Policy ID",
+			"policy_id is not yet known. Ensure the policy resource is created before referencing it.",
+		)
+		return
+	}
+
+	if data.DatabaseWorkspaceID.IsNull() || data.DatabaseWorkspaceID.IsUnknown() {
+		resp.Diagnostics.AddError(
+			"Unknown Database Workspace ID",
+			"database_workspace_id is not yet known. "+
+				"This typically occurs when the database workspace is created in the same Terraform configuration. "+
+				"Ensure the database workspace resource is created before the assignment resource references it.",
+		)
+		return
+	}
 
 	policyID := data.PolicyID.ValueString()
 	databaseID := data.DatabaseWorkspaceID.ValueString()
@@ -330,7 +358,10 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Create(ctx context.Context, r
 	}
 
 	// Set profile on instance target
-	SetProfileOnInstanceTarget(instanceTarget, authMethod, profile)
+	if err := SetProfileOnInstanceTarget(instanceTarget, authMethod, profile); err != nil {
+		resp.Diagnostics.AddError("Profile Configuration Error", err.Error())
+		return
+	}
 
 	tflog.Debug(ctx, "Built instance target", map[string]interface{}{
 		"instance_name": instanceTarget.InstanceName,
@@ -389,6 +420,15 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Read(ctx context.Context, req
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -481,6 +521,15 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Update(ctx context.Context, r
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	LogOperationStart(ctx, "update", "policy_database_assignment")
 
 	// Step 1: Parse composite ID
@@ -527,7 +576,10 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Update(ctx context.Context, r
 	}
 
 	// Set profile on instance target (clears other profiles automatically)
-	SetProfileOnInstanceTarget(target, authMethod, profile)
+	if err := SetProfileOnInstanceTarget(target, authMethod, profile); err != nil {
+		resp.Diagnostics.AddError("Profile Configuration Error", err.Error())
+		return
+	}
 
 	// Update the target in the policy's targets map
 	targets := policy.Targets[workspaceType]
@@ -584,6 +636,15 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Delete(ctx context.Context, r
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 

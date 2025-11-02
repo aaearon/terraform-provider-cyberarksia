@@ -1,0 +1,21 @@
+# Gitleaks configuration for terraform-provider-cyberark-sia
+# https://github.com/gitleaks/gitleaks
+
+title = "gitleaks config"
+
+# Allowlist example files that contain placeholder credentials
+[[allowlists]]
+description = "Allowlist example documentation files with placeholder credentials"
+paths = [
+  '''examples/resources/cyberarksia_database_secret/.*\.tf''',
+  '''examples/provider/.*\.tf''',
+  '''examples/complete/.*\.tf''',
+  '''examples/testing/.*\.(tf|md)''',
+]
+
+# Only allowlist the specific hashicorp-tf-password rule in these paths
+regexTarget = "match"
+regexes = [
+  '''CYBERARK_PASSWORD=["']your-password["']''',
+  '''CYBERARK_PASSWORD=["'][^"']*["']''',
+]

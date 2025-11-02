@@ -169,7 +169,7 @@ terraform-provider-cyberark-sia/
 | Type | Name | Implementation | Status | Purpose |
 |------|------|----------------|--------|---------|
 | Resource | `cyberarksia_database_workspace` | `internal/provider/database_workspace_resource.go` | ✅ Stable | Database target configuration (60+ engines supported) |
-| Resource | `cyberarksia_secret` | `internal/provider/secret_resource.go` | ✅ Stable | Strong account credentials (username/password, AWS IAM) |
+| Resource | `cyberarksia_database_secret` | `internal/provider/secret_resource.go` | ✅ Stable | Strong account credentials (username/password, AWS IAM) |
 | Resource | `cyberarksia_certificate` | `internal/provider/certificate_resource.go` | ✅ Stable | TLS/mTLS certificates for database connections |
 | Resource | `cyberarksia_database_policy` | `internal/provider/database_policy_resource.go` | ✅ Stable | Access policies with time-based conditions |
 | Resource | `cyberarksia_database_policy_principal_assignment` | `internal/provider/database_policy_principal_assignment_resource.go` | ✅ Stable | Assign users/groups/roles TO policies (WHO gets access) |
@@ -181,7 +181,7 @@ terraform-provider-cyberark-sia/
 Typical configuration flow:
 
 ```
-1. cyberarksia_secret (credentials)
+1. cyberarksia_database_secret (credentials)
      ↓
 2. cyberarksia_database_workspace (database target, references secret)
      ↓

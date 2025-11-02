@@ -24,7 +24,7 @@ Key technical decisions, SDK limitations, and breaking changes for terraform-pro
 | `services` | `Services` | Optional | Oracle/SQL Server services ([]string) |
 | `account` | `Account` | Optional | Snowflake/Atlas account name |
 | `authentication_method` | `ConfiguredAuthMethodType` | Optional | ad_ephemeral_user, local_ephemeral_user, rds_iam_authentication, atlas_ephemeral_user |
-| `secret_id` | `SecretID` | ✅ Required | Links to cyberarksia_secret resource for ZSP/JIT access |
+| `secret_id` | `SecretID` | ✅ Required | Links to cyberarksia_database_secret resource for ZSP/JIT access |
 | `enable_certificate_validation` | `EnableCertificateValidation` | Optional | Enforce TLS cert validation (default: true) |
 | `certificate_id` | `Certificate` | Optional | TLS/mTLS certificate reference |
 | `cloud_provider` | `Platform` | Optional | aws, azure, gcp, on_premise, atlas |

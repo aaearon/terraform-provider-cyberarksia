@@ -7,6 +7,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING CHANGES
+
+1. **Resource Rename**: `cyberarksia_secret` has been renamed to `cyberarksia_database_secret` to accurately reflect that it manages database credentials only (not VM secrets)
+
+2. **AWS IAM Schema**: New required fields for AWS IAM authentication:
+   - `aws_account` (string, 12 digits) - AWS account number
+   - `aws_username` (string) - IAM username from ARN
+   - These fields are now **required** when `authentication_type = "aws_iam"`
+
+### Migration Guide
+
+#### Step 1: Update Terraform State
+
+To upgrade existing Terraform state without recreating resources, run the following command for each secret resource:
+
+```bash
+terraform state mv 'cyberarksia_secret.example' 'cyberarksia_database_secret.example'
+```
+
+Replace `example` with your actual resource names. This preserves existing secrets in CyberArk SIA without deletion/recreation.
+
+**Example:**
+```bash
+# If you have: resource "cyberarksia_secret" "postgres_admin" { ... }
+terraform state mv 'cyberarksia_secret.postgres_admin' 'cyberarksia_database_secret.postgres_admin'
+
+# If you have: resource "cyberarksia_secret" "rds_iam_user" { ... }
+terraform state mv 'cyberarksia_secret.rds_iam_user' 'cyberarksia_database_secret.rds_iam_user'
+```
+
+#### Step 2: Update HCL Resource Blocks
+
+Update your Terraform configuration files (`.tf` files) to use the new resource type name:
+
+**Before:**
+```hcl
+resource "cyberarksia_secret" "example" {
+  name                = "my-database-secret"
+  authentication_type = "local"
+  username            = "admin"
+  password            = "secret"
+}
+```
+
+**After:**
+```hcl
+resource "cyberarksia_database_secret" "example" {
+  name                = "my-database-secret"
+  authentication_type = "local"
+  username            = "admin"
+  password            = "secret"
+}
+```
+
+#### Step 3: Update AWS IAM Secrets (If Applicable)
+
+⚠️ **IMPORTANT**: If you use AWS IAM authentication (`authentication_type = "aws_iam"`), you MUST add the new required fields or your configuration will fail validation.
+
+**Before (will fail validation):**
+```hcl
+resource "cyberarksia_database_secret" "rds_iam" {
+  name                  = "rds-iam-secret"
+  authentication_type   = "aws_iam"
+  aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
+  aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  # ❌ Missing required fields - will cause error!
+}
+```
+
+**After (correct):**
+```hcl
+resource "cyberarksia_database_secret" "rds_iam" {
+  name                  = "rds-iam-secret"
+  authentication_type   = "aws_iam"
+  aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
+  aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  aws_account           = "123456789012"        # ✅ NEW: Your 12-digit AWS account number
+  aws_username          = "database-admin"      # ✅ NEW: IAM username from ARN
+}
+```
+
+**Finding your AWS account and username:**
+- `aws_account`: Your 12-digit AWS account ID (e.g., "123456789012")
+- `aws_username`: The IAM username portion from your ARN (e.g., if ARN is `arn:aws:iam::123456789012:user/database-admin`, use `"database-admin"`)
+
+### Changed
+- Renamed `cyberarksia_secret` resource to `cyberarksia_database_secret` in all:
+  - Resource implementation
+  - Examples and documentation
+  - Test files
+
 ### Added
 - Future changes will be documented here
 

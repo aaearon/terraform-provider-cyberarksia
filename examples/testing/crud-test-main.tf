@@ -53,7 +53,7 @@ resource "cyberarksia_certificate" "test_cert" {
 }
 
 # 2. Secret Resource - Required for database workspace authentication
-resource "cyberarksia_secret" "test_secret" {
+resource "cyberarksia_database_secret" "test_secret" {
   name                = "crud-test-secret-${formatdate("YYYYMMDDhhmmss", timestamp())}"
   authentication_type = "local"
   username            = "testuser"
@@ -73,7 +73,7 @@ resource "cyberarksia_database_workspace" "test_db" {
   cloud_provider                = "on_premise"
   address                       = "test.postgres.local"
   port                          = 5432
-  secret_id                     = cyberarksia_secret.test_secret.id
+  secret_id                     = cyberarksia_database_secret.test_secret.id
   certificate_id                = cyberarksia_certificate.test_cert.id
   enable_certificate_validation = false
 

@@ -421,7 +421,7 @@ func TestAccPolicyDatabaseAssignment_driftDetection(t *testing.T) {
 // ============================================================================
 
 const testAccPolicyDatabaseAssignmentConfigBasic = `
-resource "cyberarksia_secret" "test" {
+resource "cyberarksia_database_secret" "test" {
   name                = "test-db-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -435,7 +435,7 @@ resource "cyberarksia_database_workspace" "test" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.test.id
+  secret_id             = cyberarksia_database_secret.test.id
 }
 
 resource "cyberarksia_database_policy" "test" {
@@ -455,7 +455,7 @@ resource "cyberarksia_database_policy_database_assignment" "test" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigDBAuth = `
-resource "cyberarksia_secret" "db_auth" {
+resource "cyberarksia_database_secret" "db_auth" {
   name                = "db-auth-secret"
   authentication_type = "local"
   username            = "oracleadmin"
@@ -469,7 +469,7 @@ resource "cyberarksia_database_workspace" "db_auth" {
   port                  = 1521
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.db_auth.id
+  secret_id             = cyberarksia_database_secret.db_auth.id
 }
 
 resource "cyberarksia_database_policy" "db_auth" {
@@ -489,7 +489,7 @@ resource "cyberarksia_database_policy_database_assignment" "db_auth" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigLdapAuth = `
-resource "cyberarksia_secret" "ldap_auth" {
+resource "cyberarksia_database_secret" "ldap_auth" {
   name                = "ldap-auth-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -503,7 +503,7 @@ resource "cyberarksia_database_workspace" "ldap_auth" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.ldap_auth.id
+  secret_id             = cyberarksia_database_secret.ldap_auth.id
 }
 
 resource "cyberarksia_database_policy" "ldap_auth" {
@@ -526,7 +526,7 @@ resource "cyberarksia_database_policy_database_assignment" "ldap_auth" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigOracleAuth = `
-resource "cyberarksia_secret" "oracle_auth" {
+resource "cyberarksia_database_secret" "oracle_auth" {
   name                = "oracle-auth-secret"
   authentication_type = "local"
   username            = "oracleadmin"
@@ -540,7 +540,7 @@ resource "cyberarksia_database_workspace" "oracle_auth" {
   port                  = 1521
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.oracle_auth.id
+  secret_id             = cyberarksia_database_secret.oracle_auth.id
 }
 
 resource "cyberarksia_database_policy" "oracle_auth" {
@@ -563,7 +563,7 @@ resource "cyberarksia_database_policy_database_assignment" "oracle_auth" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigMongoAuth = `
-resource "cyberarksia_secret" "mongo_auth" {
+resource "cyberarksia_database_secret" "mongo_auth" {
   name                = "mongo-auth-secret"
   authentication_type = "local"
   username            = "mongoadmin"
@@ -577,7 +577,7 @@ resource "cyberarksia_database_workspace" "mongo_auth" {
   port                  = 27017
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.mongo_auth.id
+  secret_id             = cyberarksia_database_secret.mongo_auth.id
 }
 
 resource "cyberarksia_database_policy" "mongo_auth" {
@@ -600,7 +600,7 @@ resource "cyberarksia_database_policy_database_assignment" "mongo_auth" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigSqlserverAuth = `
-resource "cyberarksia_secret" "sqlserver_auth" {
+resource "cyberarksia_database_secret" "sqlserver_auth" {
   name                = "sqlserver-auth-secret"
   authentication_type = "local"
   username            = "sqladmin"
@@ -614,7 +614,7 @@ resource "cyberarksia_database_workspace" "sqlserver_auth" {
   port                  = 1433
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.sqlserver_auth.id
+  secret_id             = cyberarksia_database_secret.sqlserver_auth.id
 }
 
 resource "cyberarksia_database_policy" "sqlserver_auth" {
@@ -634,11 +634,13 @@ resource "cyberarksia_database_policy_database_assignment" "sqlserver_auth" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigRdsIAMAuth = `
-resource "cyberarksia_secret" "rds_iam" {
+resource "cyberarksia_database_secret" "rds_iam" {
   name                  = "rds-iam-secret"
   authentication_type   = "aws_iam"
   aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
   aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  aws_account           = "123456789012"
+  aws_username          = "sia-database-user"
 }
 
 resource "cyberarksia_database_workspace" "rds_iam" {
@@ -649,7 +651,7 @@ resource "cyberarksia_database_workspace" "rds_iam" {
   authentication_method = "rds_iam_authentication"
   cloud_provider        = "aws"
   region                = "us-east-1"
-  secret_id             = cyberarksia_secret.rds_iam.id
+  secret_id             = cyberarksia_database_secret.rds_iam.id
 }
 
 resource "cyberarksia_database_policy" "rds_iam" {
@@ -669,7 +671,7 @@ resource "cyberarksia_database_policy_database_assignment" "rds_iam_auth" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigUpdateBefore = `
-resource "cyberarksia_secret" "update_test" {
+resource "cyberarksia_database_secret" "update_test" {
   name                = "update-test-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -683,7 +685,7 @@ resource "cyberarksia_database_workspace" "update_test" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.update_test.id
+  secret_id             = cyberarksia_database_secret.update_test.id
 }
 
 resource "cyberarksia_database_policy" "update_test" {
@@ -703,7 +705,7 @@ resource "cyberarksia_database_policy_database_assignment" "update_test" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigUpdateAfter = `
-resource "cyberarksia_secret" "update_test" {
+resource "cyberarksia_database_secret" "update_test" {
   name                = "update-test-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -717,7 +719,7 @@ resource "cyberarksia_database_workspace" "update_test" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.update_test.id
+  secret_id             = cyberarksia_database_secret.update_test.id
 }
 
 resource "cyberarksia_database_policy" "update_test" {
@@ -737,7 +739,7 @@ resource "cyberarksia_database_policy_database_assignment" "update_test" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigProfileUpdateBefore = `
-resource "cyberarksia_secret" "profile_update" {
+resource "cyberarksia_database_secret" "profile_update" {
   name                = "profile-update-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -751,7 +753,7 @@ resource "cyberarksia_database_workspace" "profile_update" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.profile_update.id
+  secret_id             = cyberarksia_database_secret.profile_update.id
 }
 
 resource "cyberarksia_database_policy" "profile_update" {
@@ -771,7 +773,7 @@ resource "cyberarksia_database_policy_database_assignment" "profile_update" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigProfileUpdateAfter = `
-resource "cyberarksia_secret" "profile_update" {
+resource "cyberarksia_database_secret" "profile_update" {
   name                = "profile-update-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -785,7 +787,7 @@ resource "cyberarksia_database_workspace" "profile_update" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.profile_update.id
+  secret_id             = cyberarksia_database_secret.profile_update.id
 }
 
 resource "cyberarksia_database_policy" "profile_update" {
@@ -805,7 +807,7 @@ resource "cyberarksia_database_policy_database_assignment" "profile_update" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigForceNewBefore = `
-resource "cyberarksia_secret" "forcenew" {
+resource "cyberarksia_database_secret" "forcenew" {
   name                = "forcenew-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -819,7 +821,7 @@ resource "cyberarksia_database_workspace" "forcenew" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.forcenew.id
+  secret_id             = cyberarksia_database_secret.forcenew.id
 }
 
 resource "cyberarksia_database_policy" "forcenew1" {
@@ -844,7 +846,7 @@ resource "cyberarksia_database_policy_database_assignment" "forcenew_test" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigForceNewAfter = `
-resource "cyberarksia_secret" "forcenew" {
+resource "cyberarksia_database_secret" "forcenew" {
   name                = "forcenew-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -858,7 +860,7 @@ resource "cyberarksia_database_workspace" "forcenew" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.forcenew.id
+  secret_id             = cyberarksia_database_secret.forcenew.id
 }
 
 resource "cyberarksia_database_policy" "forcenew1" {
@@ -883,7 +885,7 @@ resource "cyberarksia_database_policy_database_assignment" "forcenew_test" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigForceNewDatabaseBefore = `
-resource "cyberarksia_secret" "forcenew_db" {
+resource "cyberarksia_database_secret" "forcenew_db" {
   name                = "forcenew-db-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -897,7 +899,7 @@ resource "cyberarksia_database_workspace" "forcenew_db1" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.forcenew_db.id
+  secret_id             = cyberarksia_database_secret.forcenew_db.id
 }
 
 resource "cyberarksia_database_workspace" "forcenew_db2" {
@@ -907,7 +909,7 @@ resource "cyberarksia_database_workspace" "forcenew_db2" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.forcenew_db.id
+  secret_id             = cyberarksia_database_secret.forcenew_db.id
 }
 
 resource "cyberarksia_database_policy" "forcenew_db" {
@@ -927,7 +929,7 @@ resource "cyberarksia_database_policy_database_assignment" "forcenew_db" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigForceNewDatabaseAfter = `
-resource "cyberarksia_secret" "forcenew_db" {
+resource "cyberarksia_database_secret" "forcenew_db" {
   name                = "forcenew-db-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -941,7 +943,7 @@ resource "cyberarksia_database_workspace" "forcenew_db1" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.forcenew_db.id
+  secret_id             = cyberarksia_database_secret.forcenew_db.id
 }
 
 resource "cyberarksia_database_workspace" "forcenew_db2" {
@@ -951,7 +953,7 @@ resource "cyberarksia_database_workspace" "forcenew_db2" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.forcenew_db.id
+  secret_id             = cyberarksia_database_secret.forcenew_db.id
 }
 
 resource "cyberarksia_database_policy" "forcenew_db" {
@@ -971,7 +973,7 @@ resource "cyberarksia_database_policy_database_assignment" "forcenew_db" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigMultiple = `
-resource "cyberarksia_secret" "multi" {
+resource "cyberarksia_database_secret" "multi" {
   name                = "multi-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -985,7 +987,7 @@ resource "cyberarksia_database_workspace" "multi1" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.multi.id
+  secret_id             = cyberarksia_database_secret.multi.id
 }
 
 resource "cyberarksia_database_workspace" "multi2" {
@@ -995,7 +997,7 @@ resource "cyberarksia_database_workspace" "multi2" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.multi.id
+  secret_id             = cyberarksia_database_secret.multi.id
 }
 
 resource "cyberarksia_database_workspace" "multi3" {
@@ -1005,7 +1007,7 @@ resource "cyberarksia_database_workspace" "multi3" {
   port                  = 1521
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.multi.id
+  secret_id             = cyberarksia_database_secret.multi.id
 }
 
 resource "cyberarksia_database_policy" "multi" {
@@ -1046,7 +1048,7 @@ resource "cyberarksia_database_policy_database_assignment" "multi3" {
 `
 
 const testAccPolicyDatabaseAssignmentConfigDrift = `
-resource "cyberarksia_secret" "drift" {
+resource "cyberarksia_database_secret" "drift" {
   name                = "drift-secret"
   authentication_type = "local"
   username            = "postgres"
@@ -1060,7 +1062,7 @@ resource "cyberarksia_database_workspace" "drift" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_secret.drift.id
+  secret_id             = cyberarksia_database_secret.drift.id
 }
 
 resource "cyberarksia_database_policy" "drift" {

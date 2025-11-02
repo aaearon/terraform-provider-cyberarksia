@@ -256,7 +256,7 @@ Subscriptions are restricted from provisioning in location 'eastus'
 2. **SIA Credentials**: Store in `.env` file at project root:
    ```
    CYBERARK_USERNAME=user@cyberark.cloud.XXXXX
-   CYBERARK_CLIENT_SECRET=your-secret
+   CYBERARK_PASSWORD=your-secret
    ```
 
 3. **Existing SIA Policy**: Create via UI or API before testing:

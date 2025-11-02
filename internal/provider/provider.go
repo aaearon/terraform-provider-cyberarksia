@@ -209,7 +209,7 @@ func (p *CyberArkSIAProvider) Configure(ctx context.Context, req provider.Config
 func (p *CyberArkSIAProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewDatabaseWorkspaceResource,
-		NewSecretResource,
+		NewDatabaseSecretResource,
 		NewCertificateResource,
 		NewDatabasePolicyResource,
 		NewDatabasePolicyPrincipalAssignmentResource,

@@ -66,22 +66,22 @@ output "certificate_metadata_subject" {
 # ----------------------------------------------------------------------------
 output "secret_id" {
   description = "Created secret ID (UUID format)"
-  value       = cyberarksia_secret.test_secret.id
+  value       = cyberarksia_database_secret.test_secret.id
 }
 
 output "secret_name" {
   description = "Secret name"
-  value       = cyberarksia_secret.test_secret.name
+  value       = cyberarksia_database_secret.test_secret.name
 }
 
 output "secret_created_at" {
   description = "Secret creation timestamp"
-  value       = cyberarksia_secret.test_secret.created_at
+  value       = cyberarksia_database_secret.test_secret.created_at
 }
 
 output "secret_authentication_type" {
   description = "Secret authentication type"
-  value       = cyberarksia_secret.test_secret.authentication_type
+  value       = cyberarksia_database_secret.test_secret.authentication_type
 }
 
 # ----------------------------------------------------------------------------
@@ -151,12 +151,12 @@ output "validation_summary" {
 
     # Resource creation
     certificate_created = cyberarksia_certificate.test_cert.id != ""
-    secret_created      = cyberarksia_secret.test_secret.id != ""
+    secret_created      = cyberarksia_database_secret.test_secret.id != ""
     database_created    = cyberarksia_database_workspace.test_db.id != ""
     assignment_created  = cyberarksia_database_policy_database_assignment.test_assignment.id != ""
 
     # Dependencies working
-    database_has_secret      = cyberarksia_database_workspace.test_db.secret_id == cyberarksia_secret.test_secret.id
+    database_has_secret      = cyberarksia_database_workspace.test_db.secret_id == cyberarksia_database_secret.test_secret.id
     database_has_certificate = cyberarksia_database_workspace.test_db.certificate_id == cyberarksia_certificate.test_cert.id
     assignment_has_database  = cyberarksia_database_policy_database_assignment.test_assignment.database_workspace_id == cyberarksia_database_workspace.test_db.id
     assignment_has_policy    = cyberarksia_database_policy_database_assignment.test_assignment.policy_id == data.cyberarksia_database_policy.test_policy.id

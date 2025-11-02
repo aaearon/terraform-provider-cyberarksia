@@ -12,6 +12,7 @@ import (
 	uapsiadbmodels "github.com/cyberark/ark-sdk-golang/pkg/services/uap/sia/db/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // changeInfoAttrTypes defines the attribute types for ChangeInfo objects (created_by, updated_on)
@@ -205,6 +206,36 @@ func (m *DatabasePolicyModel) FromSDK(ctx context.Context, policy *uapsiadbmodel
 	// Convert conditions
 	m.Conditions = convertConditionsFromSDK(ctx, &policy.Conditions)
 
+	// Convert inline principals from SDK
+	m.Principal = make([]InlinePrincipalModel, 0, len(policy.Principals))
+	for _, sdkPrincipal := range policy.Principals {
+		m.Principal = append(m.Principal, InlinePrincipalModel{
+			PrincipalID:         types.StringValue(sdkPrincipal.ID),
+			PrincipalType:       types.StringValue(sdkPrincipal.Type),
+			PrincipalName:       types.StringValue(sdkPrincipal.Name),
+			SourceDirectoryName: types.StringValue(sdkPrincipal.SourceDirectoryName),
+			SourceDirectoryID:   types.StringValue(sdkPrincipal.SourceDirectoryID),
+		})
+	}
+
+	// Convert inline target databases from SDK
+	m.TargetDatabase = make([]InlineDatabaseAssignmentModel, 0)
+	for _, targets := range policy.Targets {
+		for _, instance := range targets.Instances {
+			// Parse the authentication profile back from SDK format
+			assignment, err := parseInstanceTargetToAssignment(ctx, &instance)
+			if err != nil {
+				// Log error but continue - don't fail the entire read
+				tflog.Warn(ctx, "Failed to parse instance target", map[string]interface{}{
+					"instance_id": instance.InstanceID,
+					"error":       err.Error(),
+				})
+				continue
+			}
+			m.TargetDatabase = append(m.TargetDatabase, *assignment)
+		}
+	}
+
 	// Computed fields - convert to types.Object to handle unknown values properly
 	m.CreatedBy = createChangeInfoObject(policy.Metadata.CreatedBy.User, policy.Metadata.CreatedBy.Time)
 	m.UpdatedOn = createChangeInfoObject(policy.Metadata.UpdatedOn.User, policy.Metadata.UpdatedOn.Time)
@@ -282,4 +313,108 @@ func convertConditionsFromSDK(ctx context.Context, c *uapsiacommonmodels.ArkUAPS
 	}
 
 	return conditions
+}
+
+// parseInstanceTargetToAssignment converts an SDK instance target to an inline database assignment model
+// This enables drift detection for inline target_database blocks
+func parseInstanceTargetToAssignment(ctx context.Context, instance *uapsiadbmodels.ArkUAPSIADBInstanceTarget) (*InlineDatabaseAssignmentModel, error) {
+	if instance == nil {
+		return nil, fmt.Errorf("instance target is nil")
+	}
+
+	// Extract database workspace ID from InstanceID
+	assignment := &InlineDatabaseAssignmentModel{
+		DatabaseWorkspaceID:  types.StringValue(instance.InstanceID),
+		AuthenticationMethod: types.StringValue(instance.AuthenticationMethod),
+	}
+
+	// Parse authentication profiles based on method
+	// NOTE: For drift detection, we only populate basic profile information
+	// Full profile drift is detected through separate policy_database_assignment resources
+	// This simplified parsing allows us to detect database additions/removals in policies
+	switch instance.AuthenticationMethod {
+	case "db_auth":
+		if instance.DBAuthProfile != nil {
+			assignment.DBAuthProfile = &DBAuthProfileModel{
+				Roles: convertStringSliceToList(instance.DBAuthProfile.Roles),
+			}
+		}
+	case "ldap_auth":
+		if instance.LDAPAuthProfile != nil {
+			assignment.LDAPAuthProfile = &LDAPAuthProfileModel{
+				AssignGroups: convertStringSliceToList(instance.LDAPAuthProfile.AssignGroups),
+			}
+		}
+	case "oracle_auth":
+		if instance.OracleAuthProfile != nil {
+			assignment.OracleAuthProfile = &OracleAuthProfileModel{
+				Roles:       convertStringSliceToList(instance.OracleAuthProfile.Roles),
+				DbaRole:     types.BoolValue(instance.OracleAuthProfile.DbaRole),
+				SysdbaRole:  types.BoolValue(instance.OracleAuthProfile.SysdbaRole),
+				SysoperRole: types.BoolValue(instance.OracleAuthProfile.SysoperRole),
+			}
+		}
+	case "mongo_auth":
+		if instance.MongoAuthProfile != nil {
+			mongoProfile := &MongoAuthProfileModel{}
+			if len(instance.MongoAuthProfile.GlobalBuiltinRoles) > 0 {
+				mongoProfile.GlobalBuiltinRoles = convertStringSliceToList(instance.MongoAuthProfile.GlobalBuiltinRoles)
+			}
+			if len(instance.MongoAuthProfile.DatabaseBuiltinRoles) > 0 {
+				dbBuiltin, _ := types.MapValueFrom(ctx, types.ListType{ElemType: types.StringType}, instance.MongoAuthProfile.DatabaseBuiltinRoles)
+				mongoProfile.DatabaseBuiltinRoles = dbBuiltin
+			}
+			if len(instance.MongoAuthProfile.DatabaseCustomRoles) > 0 {
+				dbCustom, _ := types.MapValueFrom(ctx, types.ListType{ElemType: types.StringType}, instance.MongoAuthProfile.DatabaseCustomRoles)
+				mongoProfile.DatabaseCustomRoles = dbCustom
+			}
+			assignment.MongoAuthProfile = mongoProfile
+		}
+	case "sqlserver_auth":
+		if instance.SQLServerAuthProfile != nil {
+			sqlProfile := &SQLServerAuthProfileModel{}
+			if len(instance.SQLServerAuthProfile.GlobalBuiltinRoles) > 0 {
+				sqlProfile.GlobalBuiltinRoles = convertStringSliceToList(instance.SQLServerAuthProfile.GlobalBuiltinRoles)
+			}
+			if len(instance.SQLServerAuthProfile.GlobalCustomRoles) > 0 {
+				sqlProfile.GlobalCustomRoles = convertStringSliceToList(instance.SQLServerAuthProfile.GlobalCustomRoles)
+			}
+			if len(instance.SQLServerAuthProfile.DatabaseBuiltinRoles) > 0 {
+				dbBuiltin, _ := types.MapValueFrom(ctx, types.ListType{ElemType: types.StringType}, instance.SQLServerAuthProfile.DatabaseBuiltinRoles)
+				sqlProfile.DatabaseBuiltinRoles = dbBuiltin
+			}
+			if len(instance.SQLServerAuthProfile.DatabaseCustomRoles) > 0 {
+				dbCustom, _ := types.MapValueFrom(ctx, types.ListType{ElemType: types.StringType}, instance.SQLServerAuthProfile.DatabaseCustomRoles)
+				sqlProfile.DatabaseCustomRoles = dbCustom
+			}
+			assignment.SQLServerAuthProfile = sqlProfile
+		}
+	case "rds_iam_user_auth":
+		if instance.RDSIAMUserAuthProfile != nil {
+			assignment.RDSIAMUserAuthProfile = &RDSIAMUserAuthProfileModel{
+				DBUser: types.StringValue(instance.RDSIAMUserAuthProfile.DBUser),
+			}
+		}
+	default:
+		tflog.Debug(ctx, "Unknown authentication method", map[string]interface{}{
+			"method": instance.AuthenticationMethod,
+		})
+	}
+
+	return assignment, nil
+}
+
+// convertStringSliceToList converts a []string to types.List for Terraform state
+func convertStringSliceToList(values []string) types.List {
+	if len(values) == 0 {
+		return types.ListNull(types.StringType)
+	}
+
+	attrs := make([]attr.Value, len(values))
+	for i, v := range values {
+		attrs[i] = types.StringValue(v)
+	}
+
+	list, _ := types.ListValue(types.StringType, attrs)
+	return list
 }

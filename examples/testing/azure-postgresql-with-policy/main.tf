@@ -124,7 +124,7 @@ resource "azurerm_postgresql_flexible_server_database" "testdb" {
 # ============================================================================
 
 # Secret for PostgreSQL admin credentials
-resource "cyberarksia_secret" "admin" {
+resource "cyberarksia_database_secret" "admin" {
   name                = "azure-postgres-admin-${random_string.suffix.result}"
   authentication_type = "local"
   username            = var.postgres_admin_username
@@ -150,7 +150,7 @@ resource "cyberarksia_database_workspace" "azure_postgres" {
   port    = 5432
 
   # Credentials
-  secret_id = cyberarksia_secret.admin.id
+  secret_id = cyberarksia_database_secret.admin.id
 
   # Certificate validation DISABLED as requested
   enable_certificate_validation = false

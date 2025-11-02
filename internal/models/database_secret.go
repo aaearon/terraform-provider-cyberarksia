@@ -2,10 +2,10 @@ package models
 
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
-// SecretModel represents a secret resource in Terraform.
-// Maps to cyberark_sia_secret resource.
-// Secrets are standalone credentials that can be referenced by database workspaces, VM workspaces, etc.
-type SecretModel struct {
+// DatabaseSecretModel represents a database secret resource in Terraform.
+// Maps to cyberarksia_database_secret resource.
+// Database secrets are standalone credentials that can be referenced by database workspaces.
+type DatabaseSecretModel struct {
 	// Computed attributes
 	ID           types.String `tfsdk:"id"`
 	CreatedAt    types.String `tfsdk:"created_at"`
@@ -26,6 +26,8 @@ type SecretModel struct {
 	// AWS IAM authentication
 	AWSAccessKeyID     types.String `tfsdk:"aws_access_key_id"`     // Sensitive
 	AWSSecretAccessKey types.String `tfsdk:"aws_secret_access_key"` // Sensitive
+	AWSAccount         types.String `tfsdk:"aws_account"`           // AWS account number (12 digits)
+	AWSUsername        types.String `tfsdk:"aws_username"`          // IAM username from ARN
 
 	// Optional metadata
 	Tags types.Map `tfsdk:"tags"` // Key-value tags for organization

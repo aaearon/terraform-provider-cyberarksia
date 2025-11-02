@@ -29,12 +29,12 @@ output "postgres_version" {
 # SIA resource outputs
 output "sia_secret_id" {
   description = "CyberArk SIA secret ID"
-  value       = cyberarksia_secret.postgres_admin.id
+  value       = cyberarksia_database_secret.postgres_admin.id
 }
 
 output "sia_secret_name" {
   description = "CyberArk SIA secret name"
-  value       = cyberarksia_secret.postgres_admin.name
+  value       = cyberarksia_database_secret.postgres_admin.name
 }
 
 output "sia_database_workspace_id" {
@@ -95,7 +95,7 @@ output "validation_summary" {
     }
     sia_resources_created = {
       certificate        = cyberarksia_certificate.azure_postgres_cert.cert_name
-      secret             = cyberarksia_secret.postgres_admin.name
+      secret             = cyberarksia_database_secret.postgres_admin.name
       database_workspace = cyberarksia_database_workspace.azure_postgres.name
     }
     test_status = {

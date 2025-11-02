@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -78,10 +79,11 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Schema(ctx context.Context, 
 				},
 			},
 			"principal_name": schema.StringAttribute{
-				MarkdownDescription: "Principal name in email format (e.g., `user@example.com` or `tim.schindler@cyberark.cloud.40562`).",
+				MarkdownDescription: "Principal name. For USER principals, typically in email format (e.g., `user@example.com` or `tim.schindler@cyberark.cloud.40562`). For GROUP and ROLE principals, may be a display name or identifier without email format.",
 				Required:            true,
 				Validators: []validator.String{
-					validators.EmailLike(),
+					stringvalidator.LengthAtLeast(1),
+					stringvalidator.LengthAtMost(256),
 				},
 			},
 			"source_directory_name": schema.StringAttribute{
@@ -122,6 +124,15 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Create(ctx context.Context, 
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -194,6 +205,15 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Read(ctx context.Context, re
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	policyID := data.PolicyID.ValueString()
 	principalID := data.PrincipalID.ValueString()
 	principalType := data.PrincipalType.ValueString()
@@ -240,6 +260,15 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Update(ctx context.Context, 
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -312,6 +341,15 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Delete(ctx context.Context, 
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 

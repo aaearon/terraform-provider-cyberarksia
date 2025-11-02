@@ -136,7 +136,7 @@ Manages database workspace configurations for secure access.
 
 See [examples/resources/database_workspace/](examples/resources/database_workspace/) for usage examples.
 
-### `cyberarksia_secret`
+### `cyberarksia_database_secret`
 
 Manages database authentication secrets for use with database workspaces.
 
@@ -151,7 +151,7 @@ Manages database authentication secrets for use with database workspaces.
 - Support for domain-based authentication
 - AWS IAM role ARN configuration
 
-See [examples/resources/secret/](examples/resources/secret/) for usage examples.
+See [examples/resources/cyberarksia_database_secret/](examples/resources/cyberarksia_database_secret/) for usage examples.
 
 ### `cyberarksia_database_policy`
 

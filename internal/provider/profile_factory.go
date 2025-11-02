@@ -206,11 +206,12 @@ func buildRDSIAMUserAuthProfile(_ context.Context, data *models.DatabasePolicyDa
 
 // SetProfileOnInstanceTarget sets the appropriate profile field on instanceTarget based on auth method
 // This is a helper to cleanly set the profile after building it
+// Returns an error if profile type doesn't match the auth method (indicates a programming error)
 func SetProfileOnInstanceTarget(
 	instanceTarget *uapsiadbmodels.ArkUAPSIADBInstanceTarget,
 	authMethod string,
 	profile interface{},
-) {
+) error {
 	// Clear all profiles first
 	instanceTarget.DBAuthProfile = nil
 	instanceTarget.LDAPAuthProfile = nil
@@ -221,45 +222,46 @@ func SetProfileOnInstanceTarget(
 
 	// Set the appropriate one
 	// Type assertions should never fail if BuildAuthenticationProfile works correctly
-	// Panic on mismatch to catch programming errors early
+	// Return error on mismatch so it can be handled gracefully
 	switch authMethod {
 	case "db_auth":
 		p, ok := profile.(*uapsiadbmodels.ArkUAPSIADBDBAuthProfile)
 		if !ok {
-			panic(fmt.Sprintf("BUG: profile type mismatch for db_auth - got %T, expected *ArkUAPSIADBDBAuthProfile", profile))
+			return fmt.Errorf("internal error: profile type mismatch for db_auth - got %T, expected *ArkUAPSIADBDBAuthProfile. Please report this issue to the provider developers", profile)
 		}
 		instanceTarget.DBAuthProfile = p
 	case "ldap_auth":
 		p, ok := profile.(*uapsiadbmodels.ArkUAPSIADBLDAPAuthProfile)
 		if !ok {
-			panic(fmt.Sprintf("BUG: profile type mismatch for ldap_auth - got %T, expected *ArkUAPSIADBLDAPAuthProfile", profile))
+			return fmt.Errorf("internal error: profile type mismatch for ldap_auth - got %T, expected *ArkUAPSIADBLDAPAuthProfile. Please report this issue to the provider developers", profile)
 		}
 		instanceTarget.LDAPAuthProfile = p
 	case "oracle_auth":
 		p, ok := profile.(*uapsiadbmodels.ArkUAPSIADBOracleAuthProfile)
 		if !ok {
-			panic(fmt.Sprintf("BUG: profile type mismatch for oracle_auth - got %T, expected *ArkUAPSIADBOracleAuthProfile", profile))
+			return fmt.Errorf("internal error: profile type mismatch for oracle_auth - got %T, expected *ArkUAPSIADBOracleAuthProfile. Please report this issue to the provider developers", profile)
 		}
 		instanceTarget.OracleAuthProfile = p
 	case "mongo_auth":
 		p, ok := profile.(*uapsiadbmodels.ArkUAPSIADBMongoAuthProfile)
 		if !ok {
-			panic(fmt.Sprintf("BUG: profile type mismatch for mongo_auth - got %T, expected *ArkUAPSIADBMongoAuthProfile", profile))
+			return fmt.Errorf("internal error: profile type mismatch for mongo_auth - got %T, expected *ArkUAPSIADBMongoAuthProfile. Please report this issue to the provider developers", profile)
 		}
 		instanceTarget.MongoAuthProfile = p
 	case "sqlserver_auth":
 		p, ok := profile.(*uapsiadbmodels.ArkUAPSIADBSqlServerAuthProfile)
 		if !ok {
-			panic(fmt.Sprintf("BUG: profile type mismatch for sqlserver_auth - got %T, expected *ArkUAPSIADBSqlServerAuthProfile", profile))
+			return fmt.Errorf("internal error: profile type mismatch for sqlserver_auth - got %T, expected *ArkUAPSIADBSqlServerAuthProfile. Please report this issue to the provider developers", profile)
 		}
 		instanceTarget.SQLServerAuthProfile = p
 	case "rds_iam_user_auth":
 		p, ok := profile.(*uapsiadbmodels.ArkUAPSIADBRDSIAMUserAuthProfile)
 		if !ok {
-			panic(fmt.Sprintf("BUG: profile type mismatch for rds_iam_user_auth - got %T, expected *ArkUAPSIADBRDSIAMUserAuthProfile", profile))
+			return fmt.Errorf("internal error: profile type mismatch for rds_iam_user_auth - got %T, expected *ArkUAPSIADBRDSIAMUserAuthProfile. Please report this issue to the provider developers", profile)
 		}
 		instanceTarget.RDSIAMUserAuthProfile = p
 	}
+	return nil
 }
 
 // ParseAuthenticationProfile converts SDK instance target profile back to Terraform state

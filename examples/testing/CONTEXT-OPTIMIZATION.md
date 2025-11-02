@@ -135,7 +135,7 @@ terraform apply -auto-approve
 ```bash
 # Create resources incrementally with focused output
 terraform apply -target=azurerm_postgresql_flexible_server.sia_test -auto-approve | grep -A 3 "Apply complete"
-terraform apply -target=cyberarksia_secret.admin -auto-approve | grep -A 3 "Apply complete"
+terraform apply -target=cyberarksia_database_secret.admin -auto-approve | grep -A 3 "Apply complete"
 ```
 
 ## Implementation in This Project

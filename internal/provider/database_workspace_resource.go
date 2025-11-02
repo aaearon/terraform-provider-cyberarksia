@@ -178,7 +178,7 @@ func (r *databaseWorkspaceResource) Schema(ctx context.Context, req resource.Sch
 			"secret_id": schema.StringAttribute{
 				Description: "Reference to a secret stored in SIA's secret service. " +
 					"Required for Zero Standing Privilege (ZSP) / Just-In-Time (JIT) access - SIA uses these credentials to provision ephemeral accounts. " +
-					"Must reference an existing cyberark_sia_secret resource. " +
+					"Must reference an existing cyberarksia_database_secret resource. " +
 					"Secret types: username_password, iam_user, cyberark_pam, atlas_access_keys",
 				Required: true,
 				Validators: []validator.String{
@@ -303,19 +303,20 @@ func handleCertificateError(certificateID types.String, err error, resp interfac
 
 // Create creates the resource and sets the initial Terraform state
 func (r *databaseWorkspaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	// Check if provider is configured
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured API Client",
-			"Expected configured ProviderData. Please report this issue to the provider developers.",
-		)
-		return
-	}
-
 	// Retrieve values from plan
 	var plan models.DatabaseWorkspaceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if provider is configured
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -426,19 +427,20 @@ func (r *databaseWorkspaceResource) Create(ctx context.Context, req resource.Cre
 
 // Read refreshes the Terraform state with the latest data
 func (r *databaseWorkspaceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	// Check if provider is configured
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured API Client",
-			"Expected configured ProviderData. Please report this issue to the provider developers.",
-		)
-		return
-	}
-
 	// Get current state
 	var state models.DatabaseWorkspaceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if provider is configured
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -542,20 +544,21 @@ func (r *databaseWorkspaceResource) Read(ctx context.Context, req resource.ReadR
 
 // Update updates the resource and sets the updated Terraform state on success
 func (r *databaseWorkspaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Check if provider is configured
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured API Client",
-			"Expected configured ProviderData. Please report this issue to the provider developers.",
-		)
-		return
-	}
-
 	// Retrieve values from plan and state
 	var plan, state models.DatabaseWorkspaceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if provider is configured
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 
@@ -693,19 +696,20 @@ func (r *databaseWorkspaceResource) Update(ctx context.Context, req resource.Upd
 
 // Delete deletes the resource and removes the Terraform state on success
 func (r *databaseWorkspaceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	// Check if provider is configured
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured API Client",
-			"Expected configured ProviderData. Please report this issue to the provider developers.",
-		)
-		return
-	}
-
 	// Retrieve values from state
 	var state models.DatabaseWorkspaceModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if provider is configured
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
 		return
 	}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
@@ -521,6 +522,15 @@ func (r *DatabasePolicyResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	// Convert Terraform state to SDK policy (metadata only)
 	policy := data.ToSDK()
 
@@ -529,6 +539,17 @@ func (r *DatabasePolicyResource) Create(ctx context.Context, req resource.Create
 		policy.Targets = make(map[string]uapsiadbmodels.ArkUAPSIADBTargets)
 
 		for i, targetDB := range data.TargetDatabase {
+			// Check for unknown or null database workspace ID
+			if targetDB.DatabaseWorkspaceID.IsNull() || targetDB.DatabaseWorkspaceID.IsUnknown() {
+				resp.Diagnostics.AddError(
+					"Unknown Database Workspace ID",
+					fmt.Sprintf("target_databases[%d]: database_workspace_id is not yet known. "+
+						"This typically occurs when the database workspace is created in the same Terraform configuration. "+
+						"Ensure the database workspace resource is created before the policy resource references it.", i),
+				)
+				return
+			}
+
 			// Fetch database workspace to get instance details
 			databaseID := targetDB.DatabaseWorkspaceID.ValueString()
 			databaseIDInt, err := strconv.Atoi(databaseID)
@@ -660,6 +681,15 @@ func (r *DatabasePolicyResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	policyID := data.PolicyID.ValueString()
 
 	// Fetch policy from API
@@ -704,6 +734,15 @@ func (r *DatabasePolicyResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	policyID := data.PolicyID.ValueString()
 
 	// Convert new state to SDK (metadata only)
@@ -714,6 +753,17 @@ func (r *DatabasePolicyResource) Update(ctx context.Context, req resource.Update
 		updatedPolicy.Targets = make(map[string]uapsiadbmodels.ArkUAPSIADBTargets)
 
 		for i, targetDB := range data.TargetDatabase {
+			// Check for unknown or null database workspace ID
+			if targetDB.DatabaseWorkspaceID.IsNull() || targetDB.DatabaseWorkspaceID.IsUnknown() {
+				resp.Diagnostics.AddError(
+					"Unknown Database Workspace ID",
+					fmt.Sprintf("target_databases[%d]: database_workspace_id is not yet known. "+
+						"This typically occurs when the database workspace is created in the same Terraform configuration. "+
+						"Ensure the database workspace resource is created before the policy resource references it.", i),
+				)
+				return
+			}
+
 			// Fetch database workspace to get instance details
 			databaseID := targetDB.DatabaseWorkspaceID.ValueString()
 			databaseIDInt, err := strconv.Atoi(databaseID)
@@ -831,6 +881,15 @@ func (r *DatabasePolicyResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Provider was not configured. "+
+				"Please ensure provider configuration is complete before using resources.",
+		)
+		return
+	}
+
 	policyID := data.PolicyID.ValueString()
 
 	// Delete policy with retry logic using workaround (ARK SDK v1.5.0 bug)
@@ -904,10 +963,27 @@ func mustCompileRegex(pattern string) *regexp.Regexp {
 }
 
 // buildInstanceTarget creates an ArkUAPSIADBInstanceTarget from database workspace and assignment data
-// This function handles all 6 authentication methods and their corresponding profiles
+// This function leverages the profile factory to eliminate code duplication
 func buildInstanceTarget(ctx context.Context, database *dbmodels.ArkSIADBDatabase, targetDB models.InlineDatabaseAssignmentModel) (*uapsiadbmodels.ArkUAPSIADBInstanceTarget, error) {
 	authMethod := targetDB.AuthenticationMethod.ValueString()
 
+	// Convert inline assignment model to standard assignment model for profile factory
+	assignmentModel := convertInlineToAssignmentModel(&targetDB)
+
+	// Build authentication profile using centralized factory
+	var diagnostics diag.Diagnostics
+	profile := BuildAuthenticationProfile(ctx, authMethod, assignmentModel, &diagnostics)
+
+	// Check for errors from profile building
+	if diagnostics.HasError() {
+		// Extract first error message for return
+		for _, d := range diagnostics.Errors() {
+			return nil, fmt.Errorf("%s: %s", d.Summary(), d.Detail())
+		}
+		return nil, fmt.Errorf("failed to build authentication profile")
+	}
+
+	// Create instance target with database metadata
 	instanceTarget := &uapsiadbmodels.ArkUAPSIADBInstanceTarget{
 		InstanceName:         database.Name,
 		InstanceType:         database.ProviderDetails.Family,
@@ -915,113 +991,26 @@ func buildInstanceTarget(ctx context.Context, database *dbmodels.ArkSIADBDatabas
 		AuthenticationMethod: authMethod,
 	}
 
-	// Set the appropriate profile based on authentication method
-	switch authMethod {
-	case "db_auth":
-		if targetDB.DBAuthProfile == nil {
-			return nil, fmt.Errorf("db_auth_profile block is required when authentication_method is 'db_auth'")
-		}
-		var roles []string
-		targetDB.DBAuthProfile.Roles.ElementsAs(ctx, &roles, false)
-		instanceTarget.DBAuthProfile = &uapsiadbmodels.ArkUAPSIADBDBAuthProfile{Roles: roles}
-
-	case "ldap_auth":
-		if targetDB.LDAPAuthProfile == nil {
-			return nil, fmt.Errorf("ldap_auth_profile block is required when authentication_method is 'ldap_auth'")
-		}
-		var assignGroups []string
-		targetDB.LDAPAuthProfile.AssignGroups.ElementsAs(ctx, &assignGroups, false)
-		instanceTarget.LDAPAuthProfile = &uapsiadbmodels.ArkUAPSIADBLDAPAuthProfile{AssignGroups: assignGroups}
-
-	case "oracle_auth":
-		if targetDB.OracleAuthProfile == nil {
-			return nil, fmt.Errorf("oracle_auth_profile block is required when authentication_method is 'oracle_auth'")
-		}
-		var roles []string
-		targetDB.OracleAuthProfile.Roles.ElementsAs(ctx, &roles, false)
-		instanceTarget.OracleAuthProfile = &uapsiadbmodels.ArkUAPSIADBOracleAuthProfile{
-			Roles:       roles,
-			DbaRole:     targetDB.OracleAuthProfile.DbaRole.ValueBool(),
-			SysdbaRole:  targetDB.OracleAuthProfile.SysdbaRole.ValueBool(),
-			SysoperRole: targetDB.OracleAuthProfile.SysoperRole.ValueBool(),
-		}
-
-	case "mongo_auth":
-		if targetDB.MongoAuthProfile == nil {
-			return nil, fmt.Errorf("mongo_auth_profile block is required when authentication_method is 'mongo_auth'")
-		}
-		mongoProfile := &uapsiadbmodels.ArkUAPSIADBMongoAuthProfile{}
-
-		// Global builtin roles
-		if !targetDB.MongoAuthProfile.GlobalBuiltinRoles.IsNull() {
-			var globalRoles []string
-			targetDB.MongoAuthProfile.GlobalBuiltinRoles.ElementsAs(ctx, &globalRoles, false)
-			mongoProfile.GlobalBuiltinRoles = globalRoles
-		}
-
-		// Database builtin roles
-		if !targetDB.MongoAuthProfile.DatabaseBuiltinRoles.IsNull() {
-			dbBuiltinRoles := make(map[string][]string)
-			targetDB.MongoAuthProfile.DatabaseBuiltinRoles.ElementsAs(ctx, &dbBuiltinRoles, false)
-			mongoProfile.DatabaseBuiltinRoles = dbBuiltinRoles
-		}
-
-		// Database custom roles
-		if !targetDB.MongoAuthProfile.DatabaseCustomRoles.IsNull() {
-			dbCustomRoles := make(map[string][]string)
-			targetDB.MongoAuthProfile.DatabaseCustomRoles.ElementsAs(ctx, &dbCustomRoles, false)
-			mongoProfile.DatabaseCustomRoles = dbCustomRoles
-		}
-
-		instanceTarget.MongoAuthProfile = mongoProfile
-
-	case "sqlserver_auth":
-		if targetDB.SQLServerAuthProfile == nil {
-			return nil, fmt.Errorf("sqlserver_auth_profile block is required when authentication_method is 'sqlserver_auth'")
-		}
-		sqlProfile := &uapsiadbmodels.ArkUAPSIADBSqlServerAuthProfile{}
-
-		// Global builtin roles
-		if !targetDB.SQLServerAuthProfile.GlobalBuiltinRoles.IsNull() {
-			var globalBuiltin []string
-			targetDB.SQLServerAuthProfile.GlobalBuiltinRoles.ElementsAs(ctx, &globalBuiltin, false)
-			sqlProfile.GlobalBuiltinRoles = globalBuiltin
-		}
-
-		// Global custom roles
-		if !targetDB.SQLServerAuthProfile.GlobalCustomRoles.IsNull() {
-			var globalCustom []string
-			targetDB.SQLServerAuthProfile.GlobalCustomRoles.ElementsAs(ctx, &globalCustom, false)
-			sqlProfile.GlobalCustomRoles = globalCustom
-		}
-
-		// Database builtin roles
-		if !targetDB.SQLServerAuthProfile.DatabaseBuiltinRoles.IsNull() {
-			dbBuiltin := make(map[string][]string)
-			targetDB.SQLServerAuthProfile.DatabaseBuiltinRoles.ElementsAs(ctx, &dbBuiltin, false)
-			sqlProfile.DatabaseBuiltinRoles = dbBuiltin
-		}
-
-		// Database custom roles
-		if !targetDB.SQLServerAuthProfile.DatabaseCustomRoles.IsNull() {
-			dbCustom := make(map[string][]string)
-			targetDB.SQLServerAuthProfile.DatabaseCustomRoles.ElementsAs(ctx, &dbCustom, false)
-			sqlProfile.DatabaseCustomRoles = dbCustom
-		}
-
-		instanceTarget.SQLServerAuthProfile = sqlProfile
-
-	case "rds_iam_user_auth":
-		if targetDB.RDSIAMUserAuthProfile == nil {
-			return nil, fmt.Errorf("rds_iam_user_auth_profile block is required when authentication_method is 'rds_iam_user_auth'")
-		}
-		instanceTarget.RDSIAMUserAuthProfile = &uapsiadbmodels.ArkUAPSIADBRDSIAMUserAuthProfile{
-			DBUser: targetDB.RDSIAMUserAuthProfile.DBUser.ValueString(),
-		}
-
-	default:
-		return nil, fmt.Errorf("unsupported authentication method: %s", authMethod)
+	// Set profile on instance target using centralized setter
+	if err := SetProfileOnInstanceTarget(instanceTarget, authMethod, profile); err != nil {
+		return nil, err
 	}
 
 	return instanceTarget, nil
+}
+
+// convertInlineToAssignmentModel adapts an inline assignment model to the standard assignment model
+// This allows reuse of the profile factory with inline target_database blocks
+func convertInlineToAssignmentModel(inline *models.InlineDatabaseAssignmentModel) *models.DatabasePolicyDatabaseAssignmentModel {
+	return &models.DatabasePolicyDatabaseAssignmentModel{
+		DatabaseWorkspaceID:   inline.DatabaseWorkspaceID,
+		AuthenticationMethod:  inline.AuthenticationMethod,
+		DBAuthProfile:         inline.DBAuthProfile,
+		LDAPAuthProfile:       inline.LDAPAuthProfile,
+		OracleAuthProfile:     inline.OracleAuthProfile,
+		MongoAuthProfile:      inline.MongoAuthProfile,
+		SQLServerAuthProfile:  inline.SQLServerAuthProfile,
+		RDSIAMUserAuthProfile: inline.RDSIAMUserAuthProfile,
+		// PolicyID, ID, and LastModified are not needed for profile building
+	}
 }
