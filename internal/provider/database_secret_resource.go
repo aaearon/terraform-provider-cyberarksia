@@ -1,4 +1,4 @@
-// Package provider implements the secret resource
+// Package provider implements the database secret resource
 package provider
 
 import (
@@ -22,29 +22,29 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces
 var (
-	_ resource.Resource                   = &secretResource{}
-	_ resource.ResourceWithConfigure      = &secretResource{}
-	_ resource.ResourceWithImportState    = &secretResource{}
-	_ resource.ResourceWithValidateConfig = &secretResource{}
+	_ resource.Resource                   = &databaseSecretResource{}
+	_ resource.ResourceWithConfigure      = &databaseSecretResource{}
+	_ resource.ResourceWithImportState    = &databaseSecretResource{}
+	_ resource.ResourceWithValidateConfig = &databaseSecretResource{}
 )
 
-// NewSecretResource is a helper function to simplify the provider implementation
-func NewSecretResource() resource.Resource {
-	return &secretResource{}
+// NewDatabaseSecretResource is a helper function to simplify the provider implementation
+func NewDatabaseSecretResource() resource.Resource {
+	return &databaseSecretResource{}
 }
 
-// secretResource is the resource implementation
-type secretResource struct {
+// databaseSecretResource is the resource implementation
+type databaseSecretResource struct {
 	providerData *ProviderData
 }
 
 // Metadata returns the resource type name
-func (r *secretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *databaseSecretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_database_secret"
 }
 
 // Schema defines the schema for the resource
-func (r *secretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *databaseSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a secret (credential) in CyberArk SIA. Secrets are credentials " +
 			"that SIA uses to provision ephemeral database access for users. Supports local authentication, " +
@@ -193,7 +193,7 @@ func (r *secretResource) Schema(ctx context.Context, req resource.SchemaRequest,
 }
 
 // Configure adds the provider configured client to the resource
-func (r *secretResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *databaseSecretResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured
 	if req.ProviderData == nil {
 		return
@@ -213,7 +213,7 @@ func (r *secretResource) Configure(ctx context.Context, req resource.ConfigureRe
 }
 
 // Create creates the resource and sets the initial Terraform state
-func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *databaseSecretResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
 	var plan models.SecretModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -315,7 +315,7 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 }
 
 // Read refreshes the Terraform state with the latest data
-func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *databaseSecretResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get current state
 	var state models.SecretModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -382,13 +382,24 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 	// For Read/Import, we need to reverse this mapping
 	switch secretMetadata.SecretType {
 	case "username_password":
-		// Extract username from SecretExposedData to determine if it's domain or local
+		// Extract username from SecretExposedData
 		if username, ok := secretMetadata.SecretExposedData["username"].(string); ok {
 			state.Username = types.StringValue(username)
-			// Infer authentication_type based on username format
-			// Domain authentication uses: DOMAIN\username or username@domain
-			if strings.Contains(username, "\\") || strings.Contains(username, "@") {
-				state.AuthenticationType = types.StringValue("domain")
+
+			// Only infer authentication_type if it's currently unknown (e.g., during import)
+			// Otherwise, respect the existing value from state to avoid perpetual drift
+			if state.AuthenticationType.IsNull() || state.AuthenticationType.IsUnknown() {
+				// Infer authentication_type based on username format
+				// Domain authentication uses: DOMAIN\username or username@domain
+				if strings.Contains(username, "\\") || strings.Contains(username, "@") {
+					state.AuthenticationType = types.StringValue("domain")
+				} else {
+					state.AuthenticationType = types.StringValue("local")
+				}
+			}
+
+			// Extract domain if authentication_type is "domain" (either from state or inferred)
+			if state.AuthenticationType.ValueString() == "domain" {
 				// Try to extract domain for user convenience
 				if strings.Contains(username, "\\") {
 					// Windows format: DOMAIN\username
@@ -404,12 +415,14 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 					}
 				}
 			} else {
-				state.AuthenticationType = types.StringValue("local")
-				state.Domain = types.StringNull() // Clear domain if not domain auth
+				// Clear domain if not domain auth
+				state.Domain = types.StringNull()
 			}
 		} else {
 			// Fallback if username not in exposed data
-			state.AuthenticationType = types.StringValue("local")
+			if state.AuthenticationType.IsNull() || state.AuthenticationType.IsUnknown() {
+				state.AuthenticationType = types.StringValue("local")
+			}
 		}
 	case "iam_user":
 		state.AuthenticationType = types.StringValue("aws_iam")
@@ -451,7 +464,7 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 }
 
 // Update updates the resource and sets the updated Terraform state on success
-func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *databaseSecretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Retrieve values from plan and state
 	var plan, state models.SecretModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -554,7 +567,7 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 }
 
 // Delete deletes the resource and removes the Terraform state on success
-func (r *secretResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *databaseSecretResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	// Retrieve values from state
 	var state models.SecretModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -610,7 +623,7 @@ func (r *secretResource) Delete(ctx context.Context, req resource.DeleteRequest,
 }
 
 // ImportState imports an existing resource into Terraform state
-func (r *secretResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *databaseSecretResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Use the ID from import to retrieve the resource
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
@@ -620,7 +633,7 @@ func (r *secretResource) ImportState(ctx context.Context, req resource.ImportSta
 }
 
 // ValidateConfig performs cross-field validation for the secret resource
-func (r *secretResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+func (r *databaseSecretResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var config models.SecretModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
@@ -631,21 +644,77 @@ func (r *secretResource) ValidateConfig(ctx context.Context, req resource.Valida
 	authType := config.AuthenticationType.ValueString()
 
 	switch authType {
-	case "local", "domain":
-		// Username and password are required for local/domain authentication
+	case "local":
+		// Username and password are required for local authentication
 		// Skip validation if values are unknown (e.g., from variables during plan phase)
 		if config.Username.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("username"),
 				"Missing Required Field",
-				fmt.Sprintf("username is required when authentication_type=%s", authType),
+				"username is required when authentication_type=local",
 			)
 		}
 		if config.Password.IsNull() {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("password"),
 				"Missing Required Field",
-				fmt.Sprintf("password is required when authentication_type=%s", authType),
+				"password is required when authentication_type=local",
+			)
+		}
+
+		// Domain field should not be set for local authentication
+		if !config.Domain.IsNull() && !config.Domain.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("domain"),
+				"Invalid Field Combination",
+				"domain cannot be set when authentication_type=local (use authentication_type=domain for Active Directory accounts)",
+			)
+		}
+
+		// AWS IAM fields should not be set
+		if !config.AWSAccessKeyID.IsNull() && !config.AWSAccessKeyID.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("aws_access_key_id"),
+				"Invalid Field Combination",
+				"aws_access_key_id cannot be set when authentication_type=local",
+			)
+		}
+		if !config.AWSSecretAccessKey.IsNull() && !config.AWSSecretAccessKey.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("aws_secret_access_key"),
+				"Invalid Field Combination",
+				"aws_secret_access_key cannot be set when authentication_type=local",
+			)
+		}
+		if !config.AWSAccount.IsNull() && !config.AWSAccount.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("aws_account"),
+				"Invalid Field Combination",
+				"aws_account cannot be set when authentication_type=local",
+			)
+		}
+		if !config.AWSUsername.IsNull() && !config.AWSUsername.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("aws_username"),
+				"Invalid Field Combination",
+				"aws_username cannot be set when authentication_type=local",
+			)
+		}
+
+	case "domain":
+		// Username and password are required for domain authentication
+		if config.Username.IsNull() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("username"),
+				"Missing Required Field",
+				"username is required when authentication_type=domain",
+			)
+		}
+		if config.Password.IsNull() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("password"),
+				"Missing Required Field",
+				"password is required when authentication_type=domain",
 			)
 		}
 
@@ -662,6 +731,20 @@ func (r *secretResource) ValidateConfig(ctx context.Context, req resource.Valida
 				path.Root("aws_secret_access_key"),
 				"Invalid Field Combination",
 				fmt.Sprintf("aws_secret_access_key cannot be set when authentication_type=%s", authType),
+			)
+		}
+		if !config.AWSAccount.IsNull() && !config.AWSAccount.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("aws_account"),
+				"Invalid Field Combination",
+				fmt.Sprintf("aws_account cannot be set when authentication_type=%s", authType),
+			)
+		}
+		if !config.AWSUsername.IsNull() && !config.AWSUsername.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("aws_username"),
+				"Invalid Field Combination",
+				fmt.Sprintf("aws_username cannot be set when authentication_type=%s", authType),
 			)
 		}
 

@@ -1,4 +1,4 @@
-// Package provider implements acceptance tests for secret resource
+// Package provider implements acceptance tests for database secret resource
 package provider
 
 import (
@@ -80,6 +80,27 @@ func TestAccSecret_domainAuth(t *testing.T) {
 	})
 }
 
+// TestAccSecret_domainAuthUPN tests Active Directory authentication with UPN format (username@domain)
+func TestAccSecret_domainAuthUPN(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSecretConfigDomainAuthUPN,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain_upn", "name", "domain-upn-account"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain_upn", "authentication_type", "domain"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain_upn", "username", "sqladmin@corp.example.com"),
+					// Domain is extracted from UPN format username@domain → "corp.example.com"
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.domain_upn", "domain", "corp.example.com"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.domain_upn", "id"),
+				),
+			},
+		},
+	})
+}
+
 // TestAccSecret_awsIAM tests AWS IAM authentication strong account
 func TestAccSecret_awsIAM(t *testing.T) {
 	resource.Test(t, resource.TestCase{
@@ -91,6 +112,9 @@ func TestAccSecret_awsIAM(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.aws_iam", "name", "aws-iam-account"),
 					resource.TestCheckResourceAttr("cyberarksia_database_secret.aws_iam", "authentication_type", "aws_iam"),
+					// Verify AWS IAM fields are stored and retrieved correctly
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.aws_iam", "aws_account", "123456789012"),
+					resource.TestCheckResourceAttr("cyberarksia_database_secret.aws_iam", "aws_username", "sia-database-user"),
 					resource.TestCheckResourceAttrSet("cyberarksia_database_secret.aws_iam", "id"),
 				),
 			},
@@ -217,6 +241,16 @@ resource "cyberarksia_database_secret" "domain" {
   username           = "CORP\\sqladmin"
   password           = "DomainPassword789!"
   domain             = "CORP"
+}
+`
+
+const testAccSecretConfigDomainAuthUPN = `
+resource "cyberarksia_database_secret" "domain_upn" {
+  name               = "domain-upn-account"
+  authentication_type = "domain"
+  username           = "sqladmin@corp.example.com"
+  password           = "DomainPassword789!"
+  domain             = "corp.example.com"
 }
 `
 
