@@ -231,6 +231,15 @@ func (r *virtualMachineSecretResource) Create(ctx context.Context, req resource.
 		return
 	}
 
+	// Guard against nil provider data
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Expected configured provider data but got nil. Please report this issue to the provider developers.",
+		)
+		return
+	}
+
 	tflog.Info(ctx, "Creating VM secret", map[string]interface{}{
 		"name":        plan.SecretName.ValueString(),
 		"secret_type": plan.SecretType.ValueString(),
@@ -287,6 +296,15 @@ func (r *virtualMachineSecretResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
+	// Guard against nil provider data
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Expected configured provider data but got nil. Please report this issue to the provider developers.",
+		)
+		return
+	}
+
 	secretID := state.ID.ValueString()
 	tflog.Debug(ctx, "Reading VM secret", map[string]interface{}{
 		"secret_id": secretID,
@@ -323,6 +341,10 @@ func (r *virtualMachineSecretResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
+	// Update computed identifiers from API response (critical for import)
+	state.ID = types.StringValue(secret.SecretID)
+	state.SecretID = types.StringValue(secret.SecretID)
+
 	// Update mutable fields from API response
 	state.SecretName = types.StringValue(secret.SecretName)
 
@@ -358,6 +380,15 @@ func (r *virtualMachineSecretResource) Update(ctx context.Context, req resource.
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Guard against nil provider data
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Expected configured provider data but got nil. Please report this issue to the provider developers.",
+		)
 		return
 	}
 
@@ -420,14 +451,29 @@ func (r *virtualMachineSecretResource) Delete(ctx context.Context, req resource.
 		return
 	}
 
+	// Guard against nil provider data
+	if r.providerData == nil {
+		resp.Diagnostics.AddError(
+			"Unconfigured Provider",
+			"Expected configured provider data but got nil. Please report this issue to the provider developers.",
+		)
+		return
+	}
+
 	secretID := state.ID.ValueString()
 	tflog.Info(ctx, "Deleting VM secret", map[string]interface{}{
 		"secret_id": secretID,
 	})
 
 	// CRITICAL: Use delete workaround - SDK DELETE has nil body panic bug
-	// Production proof: docs/development/ark-sdk-sia-services-analysis.md:L573-601
-	err := client.DeleteVMSecretDirect(ctx, r.providerData.AuthContext, secretID)
+	// Wrap in retry for consistency with other operations
+	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
+		MaxRetries: client.DefaultMaxRetries,
+		BaseDelay:  client.BaseDelay,
+		MaxDelay:   client.MaxDelay,
+	}, func() error {
+		return client.DeleteVMSecretDirect(ctx, r.providerData.AuthContext, secretID)
+	})
 
 	// Handle 404 as success (idempotent delete)
 	if client.IsNotFoundError(err) {
