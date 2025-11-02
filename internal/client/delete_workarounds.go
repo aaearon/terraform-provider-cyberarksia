@@ -43,6 +43,9 @@ const (
 	// Secret DELETE endpoint (from SDK source)
 	secretDeleteURL = "/api/adb/secretsmgmt/secrets/%s" //nolint:gosec // URL path template, not a credential
 
+	// VM Secret DELETE endpoint (from SDK source)
+	vmSecretDeleteURL = "/api/secrets/%s" //nolint:gosec // URL path template, not a credential
+
 	// Policy DELETE endpoint (from SDK source)
 	policyDeleteURL = "/api/policies/%s"
 )
@@ -211,6 +214,92 @@ func DeleteSecretDirect(ctx context.Context, authCtx *ISPAuthContext, secretID s
 			"status_code": response.StatusCode,
 		})
 		return fmt.Errorf("failed to delete secret %s - [%d] - [%s]",
+			secretID, response.StatusCode, common.SerializeResponseToJSON(response.Body))
+	}
+
+	tflog.Debug(ctx, "DELETE workaround successful", map[string]interface{}{
+		"secret_id": secretID,
+	})
+
+	return nil
+}
+
+// DeleteVMSecretDirect bypasses SDK's buggy DeleteSecret() method for VM secrets
+// and makes HTTP DELETE request directly with empty body workaround.
+//
+// This function replicates the SDK's delete logic but passes map[string]string{}
+// instead of nil to avoid the panic.
+//
+// API Endpoint: DELETE /api/secrets/{id}
+// Success Response: HTTP 204 No Content
+// Error Responses:
+//   - 404 Not Found: VM secret already deleted (treated as success)
+//
+// Parameters:
+//   - ctx: Context for request cancellation
+//   - authCtx: ISPAuthContext for authentication
+//   - secretID: VM Secret ID (UUID string)
+//
+// Returns:
+//   - error: nil on success (including 404), error on failure
+func DeleteVMSecretDirect(ctx context.Context, authCtx *ISPAuthContext, secretID string) error {
+	tflog.Debug(ctx, "Executing DELETE workaround (ARK SDK bug bypass)", map[string]interface{}{
+		"resource_type": "vm_secret",
+		"secret_id":     secretID,
+		"workaround":    "empty_map_body",
+	})
+
+	// Create temporary ISP service client (same pattern as database secrets)
+	client, err := isp.FromISPAuth(
+		authCtx.ISPAuth,
+		"dpa", // Service name (constructs https://{subdomain}.dpa.{domain})
+		".",   // Separator
+		"",    // Base path
+		nil,   // No refresh callback needed for one-time operation
+	)
+	if err != nil {
+		tflog.Error(ctx, "Failed to create ISP client for DELETE workaround", map[string]interface{}{
+			"secret_id": secretID,
+			"error":     err.Error(),
+		})
+		return fmt.Errorf("failed to create ISP client for DELETE: %w", err)
+	}
+
+	// Construct endpoint URL
+	endpoint := fmt.Sprintf(vmSecretDeleteURL, secretID)
+
+	// Execute DELETE with empty map workaround (NOT nil!)
+	// This prevents the SDK panic by ensuring bodyBytes is initialized
+	response, err := client.Delete(ctx, endpoint, map[string]string{})
+	if err != nil {
+		tflog.Error(ctx, "DELETE workaround request failed", map[string]interface{}{
+			"secret_id": secretID,
+			"error":     err.Error(),
+		})
+		return fmt.Errorf("failed to delete VM secret %s: %w", secretID, err)
+	}
+	defer response.Body.Close()
+
+	tflog.Debug(ctx, "DELETE workaround response received", map[string]interface{}{
+		"secret_id":   secretID,
+		"status_code": response.StatusCode,
+	})
+
+	// Handle HTTP status codes (same as SDK's DeleteSecret logic)
+	if response.StatusCode == http.StatusNotFound {
+		tflog.Debug(ctx, "VM secret already deleted (404)", map[string]interface{}{
+			"secret_id": secretID,
+		})
+		// VM secret already deleted - treat as success
+		return nil
+	}
+
+	if response.StatusCode != http.StatusNoContent {
+		tflog.Error(ctx, "DELETE workaround failed with unexpected status", map[string]interface{}{
+			"secret_id":   secretID,
+			"status_code": response.StatusCode,
+		})
+		return fmt.Errorf("failed to delete VM secret %s - [%d] - [%s]",
 			secretID, response.StatusCode, common.SerializeResponseToJSON(response.Body))
 	}
 

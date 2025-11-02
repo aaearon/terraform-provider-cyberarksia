@@ -210,6 +210,7 @@ func (p *CyberArkSIAProvider) Resources(ctx context.Context) []func() resource.R
 	return []func() resource.Resource{
 		NewDatabaseWorkspaceResource,
 		NewDatabaseSecretResource,
+		NewVirtualMachineSecretResource,
 		NewCertificateResource,
 		NewDatabasePolicyResource,
 		NewDatabasePolicyPrincipalAssignmentResource,
