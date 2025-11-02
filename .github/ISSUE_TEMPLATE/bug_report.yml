@@ -46,7 +46,7 @@ body:
       options:
         - cyberarksia_certificate
         - cyberarksia_database_workspace
-        - cyberarksia_secret
+        - cyberarksia_database_secret
         - cyberarksia_database_policy
         - cyberarksia_database_policy_principal_assignment
         - cyberarksia_policy_database_assignment

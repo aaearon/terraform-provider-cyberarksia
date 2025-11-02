@@ -639,6 +639,8 @@ resource "cyberarksia_database_secret" "rds_iam" {
   authentication_type   = "aws_iam"
   aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
   aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  aws_account           = "123456789012"
+  aws_username          = "sia-database-user"
 }
 
 resource "cyberarksia_database_workspace" "rds_iam" {
