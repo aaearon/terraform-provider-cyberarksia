@@ -189,7 +189,7 @@ func TestAccSecret_updateCredentials(t *testing.T) {
 // ============================================================================
 
 const testAccSecretConfigBasic = `
-resource "cyberark_sia_database_workspace" "test" {
+resource "cyberarksia_database_workspace" "test" {
   name          = "test-db-for-strong-account"
   database_type = "postgresql"
   address       = "postgres.example.com"
@@ -212,7 +212,7 @@ resource "cyberarksia_database_secret" "test" {
 `
 
 const testAccSecretConfigLocalAuth = `
-resource "cyberark_sia_database_workspace" "postgres" {
+resource "cyberarksia_database_workspace" "postgres" {
   name          = "postgres-db-local"
   database_type = "postgresql"
   address       = "postgres-local.example.com"
@@ -235,7 +235,7 @@ resource "cyberarksia_database_secret" "local" {
 `
 
 const testAccSecretConfigDomainAuth = `
-resource "cyberark_sia_database_workspace" "sqlserver" {
+resource "cyberarksia_database_workspace" "sqlserver" {
   name          = "sqlserver-db-domain"
   database_type = "sqlserver"
   address       = "sqlserver-domain.example.com"
@@ -259,7 +259,7 @@ resource "cyberarksia_database_secret" "domain" {
 `
 
 const testAccSecretConfigAwsIAM = `
-resource "cyberark_sia_database_workspace" "rds" {
+resource "cyberarksia_database_workspace" "rds" {
   name          = "rds-db-iam"
   database_type = "postgresql"
   address       = "mydb.abc123.us-east-1.rds.amazonaws.com"
@@ -284,7 +284,7 @@ resource "cyberarksia_database_secret" "aws_iam" {
 `
 
 const testAccSecretConfigCredentialsBefore = `
-resource "cyberark_sia_database_workspace" "rotation" {
+resource "cyberarksia_database_workspace" "rotation" {
   name          = "rotation-test-db"
   database_type = "postgresql"
   address       = "postgres-rotation.example.com"
@@ -307,7 +307,7 @@ resource "cyberarksia_database_secret" "rotation_test" {
 `
 
 const testAccSecretConfigCredentialsAfter = `
-resource "cyberark_sia_database_workspace" "rotation" {
+resource "cyberarksia_database_workspace" "rotation" {
   name          = "rotation-test-db"
   database_type = "postgresql"
   address       = "postgres-rotation.example.com"
@@ -330,7 +330,7 @@ resource "cyberarksia_database_secret" "rotation_test" {
 `
 
 const testAccSecretConfigUpdateBefore = `
-resource "cyberark_sia_database_workspace" "update" {
+resource "cyberarksia_database_workspace" "update" {
   name          = "update-test-db"
   database_type = "postgresql"
   address       = "postgres-update.example.com"
@@ -353,7 +353,7 @@ resource "cyberarksia_database_secret" "update_test" {
 `
 
 const testAccSecretConfigUpdateAfter = `
-resource "cyberark_sia_database_workspace" "update" {
+resource "cyberarksia_database_workspace" "update" {
   name          = "update-test-db"
   database_type = "postgresql"
   address       = "postgres-update.example.com"
