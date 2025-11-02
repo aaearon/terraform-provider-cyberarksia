@@ -23,9 +23,7 @@ Implement Terraform resource `cyberarksia_virtual_machine_secret` for managing V
 **Target Platform**: Linux/macOS/Windows (Terraform provider binary)
 **Project Type**: Single (Terraform provider plugin)
 **Performance Goals**:
-- Secret creation: <30 seconds (spec SC-001)
 - API operations: <5 seconds per call (standard Terraform provider expectations)
-- First-attempt success: 95% (spec SC-006)
 
 **Constraints**:
 - ARK SDK v1.5.0 DELETE panic bug (requires workaround)
