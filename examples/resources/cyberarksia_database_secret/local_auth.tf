@@ -15,7 +15,7 @@ terraform {
 provider "cyberarksia" {
   # Authentication credentials should be set via environment variables:
   # export CYBERARK_USERNAME="service-account@cyberark.cloud.XXXXX"
-  # export CYBERARK_CLIENT_SECRET="your-client-secret"
+  # export CYBERARK_PASSWORD="your-password"
   # Optional (for GovCloud or custom deployments):
   # export CYBERARK_IDENTITY_URL="https://your-tenant.cyberarkgov.cloud"
 }
