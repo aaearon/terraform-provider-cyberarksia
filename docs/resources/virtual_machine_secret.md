@@ -283,7 +283,7 @@ output "secret_name" {
 
 ### Required
 
-- `secret_name` (String) User-friendly name for the secret (1-200 characters). Maps to SecretName in SDK. Updatable via PUT (ARK SDK ChangeSecret uses POST causing updates to fail, workaround required).
+- `secret_name` (String) User-friendly name for the secret (1-255 characters). Maps to SecretName in SDK. Updatable via PUT (ARK SDK ChangeSecret uses POST causing updates to fail, workaround required).
 - `secret_type` (String) Type of VM secret credentials. Valid values: ProvisionerUser, PCloudAccount. Immutable - changing this triggers resource replacement (ForceNew). Maps to SecretType in SDK.
 
 ### Optional

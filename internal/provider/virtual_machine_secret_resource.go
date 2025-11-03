@@ -70,11 +70,11 @@ func (r *virtualMachineSecretResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"secret_name": schema.StringAttribute{
-				Description: "User-friendly name for the secret (1-200 characters). Maps to SecretName in SDK. " +
+				Description: "User-friendly name for the secret (1-255 characters). Maps to SecretName in SDK. " +
 					"Updatable via PUT (ARK SDK ChangeSecret uses POST causing updates to fail, workaround required).",
 				Required: true,
 				Validators: []validator.String{
-					stringvalidator.LengthBetween(1, 200),
+					stringvalidator.LengthBetween(1, 255),
 				},
 			},
 			"secret_type": schema.StringAttribute{
@@ -416,6 +416,7 @@ func (r *virtualMachineSecretResource) Update(ctx context.Context, req resource.
 		SecretID:      secretID,
 		SecretName:    plan.SecretName.ValueString(),
 		SecretDetails: secretDetails,
+		IsDisabled:    !currentSecret.IsActive, // Preserve is_active status from current secret
 	}
 
 	// Add type-specific fields ONLY if changed (don't send credentials when just updating metadata)
