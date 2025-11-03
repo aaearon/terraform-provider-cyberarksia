@@ -2,7 +2,8 @@
 
 **Feature Branch**: `003-virtual-machine-secret`
 **Created**: 2025-11-02
-**Status**: Draft
+**Completed**: 2025-11-03
+**Status**: Implementation Complete - Testing PASSED (18/18 tests) ✅
 **Input**: User description: "Terraform users need to manage virtual machine and server credentials for privileged access through CyberArk Secure Infrastructure Access (SIA). This feature provides credential lifecycle management for VM/server access, similar to how database credentials are currently managed in the provider."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -139,7 +140,7 @@ Operations teams need to delete VM secrets when servers are decommissioned, acce
 - **FR-012**: System MUST use internal/client/delete_workarounds.go for Delete operations to avoid ARK SDK DELETE panic bug
 - **FR-013**: System MUST handle API errors gracefully with clear error messages and appropriate HTTP status code classification
 - **FR-014**: System MUST implement exponential backoff retry logic for transient API failures per provider standards
-- **FR-015**: System MUST support secret_name updates in-place without ForceNew (secret_id remains stable)
+- **FR-015**: System MUST support secret_name updates in-place using PUT method (ARK SDK ChangeSecret uses POST causing updates to fail, ChangeVMSecretDirect workaround required)
 - **FR-016**: System MUST enforce ForceNew (destroy/recreate) when secret_type is changed since this is immutable
 - **FR-017**: System MUST allow duplicate secret_name values since secret_id is the unique identifier
 

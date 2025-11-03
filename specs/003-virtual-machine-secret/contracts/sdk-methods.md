@@ -141,9 +141,13 @@ secret, err := r.providerData.SIAAPI.SecretsVM().Secret(getSecretReq)
 
 ### Update (ChangeSecret)
 ```go
+// CRITICAL: ARK SDK v1.5.0 ChangeSecret has POST→PUT bug on line 153
+// SDK uses client.Post() instead of client.Put() causing updates to fail
+// MUST use workaround until ARK SDK v1.6.0+
+
 changeSecretReq := &vmsecretsmodels.ArkSIAVMChangeSecret{
     SecretID:             state.ID.ValueString(),
-    SecretName:           plan.Name.ValueString(),
+    SecretName:           plan.Name.ValueString(),      // Updatable via PUT (SDK POST bug prevents this)
     IsDisabled:           plan.IsDisabled.ValueBool(),
     ProvisionerUsername:  plan.ProvisionerUsername.ValueString(),
     ProvisionerPassword:  plan.ProvisionerPassword.ValueString(),
@@ -152,19 +156,23 @@ changeSecretReq := &vmsecretsmodels.ArkSIAVMChangeSecret{
     SecretDetails:        secretDetailsMap,
 }
 
-secret, err := r.providerData.SIAAPI.SecretsVM().ChangeSecret(changeSecretReq)
+// ✅ CORRECT - Use workaround (PUT to /api/secrets/%s)
+secret, err := client.ChangeVMSecretDirect(ctx, r.providerData.AuthContext, changeSecretReq)
+
+// ❌ WRONG - SDK bug causes POST instead of PUT (line 153)
+// secret, err := r.providerData.SIAAPI.SecretsVM().ChangeSecret(changeSecretReq)
 ```
 
 ### Delete (DeleteSecret)
 ```go
-// CRITICAL: VM secrets DELETE has nil body panic bug - MUST use workaround!
-// Production proof: docs/development/ark-sdk-sia-services-analysis.md:L573-601
-// DO NOT use SDK method directly - it will panic
+// CRITICAL: ARK SDK v1.5.0 DELETE has nil body panic bug - MUST use workaround!
+// SDK passes nil body to doRequest() causing panic (same bug as database secrets)
+// MUST use workaround until ARK SDK v1.6.0+
 
-// ✅ CORRECT - Use workaround
+// ✅ CORRECT - Use workaround (DELETE to /api/secrets/%s with empty map body)
 err := client.DeleteVMSecretDirect(ctx, r.providerData.AuthContext, state.ID.ValueString())
 
-// ❌ WRONG - Will panic (same bug as database secrets)
+// ❌ WRONG - Will panic (nil body bug)
 // deleteSecretReq := &vmsecretsmodels.ArkSIAVMDeleteSecret{
 //     SecretID: state.ID.ValueString(),
 // }
@@ -430,7 +438,8 @@ tflog.Info(ctx, "Updating VM secret", map[string]interface{}{
 - [ ] Support 2 secret types only: `ProvisionerUser`, `PCloudAccount`
 - [ ] No tags support - remove from schema
 - [ ] No description/purpose fields - don't add to schema
-- [ ] No workaround needed for DELETE (SDK is stable)
+- [x] **WORKAROUND REQUIRED**: Use `client.DeleteVMSecretDirect()` for DELETE (nil body panic bug)
+- [x] **WORKAROUND REQUIRED**: Use `client.ChangeVMSecretDirect()` for UPDATE (POST→PUT bug on line 153)
 - [ ] Field name in response is `LastModified` not `LastUpdateTime`
 - [ ] No audit trail fields (`CreatedBy`, `LastUpdatedBy`)
 - [ ] Mark `provisioner_password` as `Sensitive: true` in schema

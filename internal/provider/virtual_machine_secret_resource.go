@@ -70,8 +70,9 @@ func (r *virtualMachineSecretResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"secret_name": schema.StringAttribute{
-				Description: "User-friendly name for the secret (1-200 characters). Maps to SecretName in SDK.",
-				Required:    true,
+				Description: "User-friendly name for the secret (1-200 characters). Maps to SecretName in SDK. " +
+					"Updatable via PUT (ARK SDK ChangeSecret uses POST causing updates to fail, workaround required).",
+				Required: true,
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, 200),
 				},
@@ -347,29 +348,13 @@ func (r *virtualMachineSecretResource) Read(ctx context.Context, req resource.Re
 
 	// Update mutable fields from API response
 	state.SecretName = types.StringValue(secret.SecretName)
+	state.SecretType = types.StringValue(secret.SecretType)
 
-	// Passwords are write-only - preserve existing state value
-	// Username can be updated from API
-	switch secret.SecretType {
-	case "ProvisionerUser":
-		// Update username from API if available in Secret.SecretData
-		if secretData, ok := secret.Secret.SecretData.(map[string]interface{}); ok {
-			if username, hasUsername := secretData["username"].(string); hasUsername {
-				state.ProvisionerUsername = types.StringValue(username)
-			}
-		}
-		// Password remains in state as-is (API never returns it)
-	case "PCloudAccount":
-		// Update PAM references from API if available in Secret.SecretData
-		if secretData, ok := secret.Secret.SecretData.(map[string]interface{}); ok {
-			if safe, hasSafe := secretData["safe"].(string); hasSafe {
-				state.PCloudSafeName = types.StringValue(safe)
-			}
-			if accountName, hasAccount := secretData["account_name"].(string); hasAccount {
-				state.PCloudAccountName = types.StringValue(accountName)
-			}
-		}
-	}
+	// Credential fields are write-only and encrypted by SIA API
+	// The API returns secret.Secret.SecretData as an encrypted string, not plaintext credentials
+	// All credential fields (provisioner_username, provisioner_password, pcloud_safe_name, pcloud_account_name)
+	// are preserved from existing state - they cannot be read back from the API for security reasons
+	// This is intentional API behavior, not a provider limitation
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -397,13 +382,43 @@ func (r *virtualMachineSecretResource) Update(ctx context.Context, req resource.
 		"secret_id": secretID,
 	})
 
-	// Build SDK request
-	changeSecretReq := &vmsecretsmodels.ArkSIAVMChangeSecret{
-		SecretID:   secretID,
-		SecretName: plan.SecretName.ValueString(),
+	// Fetch current secret to preserve secret_details (required by API)
+	getSecretReq := &vmsecretsmodels.ArkSIAVMGetSecret{
+		SecretID: secretID,
+	}
+	var currentSecret *vmsecretsmodels.ArkSIAVMSecret
+	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
+		MaxRetries: client.DefaultMaxRetries,
+		BaseDelay:  client.BaseDelay,
+		MaxDelay:   client.MaxDelay,
+	}, func() error {
+		var apiErr error
+		currentSecret, apiErr = r.providerData.SIAAPI.SecretsVM().Secret(getSecretReq)
+		return apiErr
+	})
+	if err != nil {
+		resp.Diagnostics.Append(client.MapError(err, "read current VM secret for update"))
+		return
 	}
 
-	// Add type-specific fields if changed
+	// Build SDK request with preserved secret_details
+	// Start with existing secret_details from current secret
+	secretDetails := make(map[string]interface{})
+	if currentSecret.SecretDetails != nil {
+		for k, v := range currentSecret.SecretDetails {
+			secretDetails[k] = v
+		}
+	}
+	// Add secret_type for workaround
+	secretDetails["secret_type"] = plan.SecretType.ValueString()
+
+	changeSecretReq := &vmsecretsmodels.ArkSIAVMChangeSecret{
+		SecretID:      secretID,
+		SecretName:    plan.SecretName.ValueString(),
+		SecretDetails: secretDetails,
+	}
+
+	// Add type-specific fields ONLY if changed (don't send credentials when just updating metadata)
 	if plan.SecretType.ValueString() == "ProvisionerUser" {
 		if !plan.ProvisionerUsername.Equal(state.ProvisionerUsername) || !plan.ProvisionerPassword.Equal(state.ProvisionerPassword) {
 			changeSecretReq.ProvisionerUsername = plan.ProvisionerUsername.ValueString()
@@ -416,15 +431,16 @@ func (r *virtualMachineSecretResource) Update(ctx context.Context, req resource.
 		}
 	}
 
-	// Call SDK with retry
+	// TODO: Remove workaround when ARK SDK v1.6.0+ fixes ChangeSecret() POST->PUT bug (line 153)
+	// Use direct HTTP PUT workaround instead of buggy SDK method
 	var secret *vmsecretsmodels.ArkSIAVMSecret
-	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
+	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
 		BaseDelay:  client.BaseDelay,
 		MaxDelay:   client.MaxDelay,
 	}, func() error {
 		var apiErr error
-		secret, apiErr = r.providerData.SIAAPI.SecretsVM().ChangeSecret(changeSecretReq)
+		secret, apiErr = client.ChangeVMSecretDirect(ctx, r.providerData.AuthContext, changeSecretReq)
 		return apiErr
 	})
 
