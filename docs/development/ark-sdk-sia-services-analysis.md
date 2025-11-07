@@ -1,8 +1,9 @@
 # ARK SDK SIA Services Analysis
 
-**Research Date**: 2025-11-02
+**Research Date**: 2025-11-07
 **ARK SDK Version**: v1.5.0
 **Analysis Method**: Multi-perspective research (Claude Code + Gemini + Codex)
+**Last Updated**: 2025-11-07 (VM Secrets implementation)
 
 ---
 
@@ -12,8 +13,8 @@ This document provides a comprehensive analysis of all Secure Infrastructure Acc
 
 **Key Findings**:
 - **9 SIA services** verified in ARK SDK v1.5.0 ✅ **Confirmed by CyberArk's official `ark` CLI**
-- **4 services currently implemented** (Database workspaces, secrets, certificates, policies)
-- **5 services available for implementation** (VM infrastructure: secrets, workspaces, policies; SSH CA; Connectors)
+- **5 services currently implemented** (Database workspaces, secrets, certificates, policies; VM secrets)
+- **4 services available for implementation** (VM infrastructure: workspaces, policies; SSH CA; Connectors)
 - **3 CLI-only services excluded** (end-user tools, not infrastructure management)
 - **Critical SDK bugs REPRODUCED IN CYBERARK'S PRODUCTION CLI**:
   - DELETE panic bug ✅ **Production CLI crashes**: `ark exec sia secrets vm delete-secret` panics with nil pointer dereference. Ironically, delete succeeds before crash.
@@ -22,9 +23,10 @@ This document provides a comprehensive analysis of all Secure Infrastructure Acc
 - **⚠️ Note**: 3 services initially identified by Gemini (K8s clusters, Accounts, Platforms) do not exist in SDK v1.5.0
 
 **Recommended Priority**:
-1. **Phase 1** (High): VM infrastructure (secrets, workspaces, policies) - Natural extension of DB resources
-2. **Phase 2** (Medium): SSH CA - Certificate-based authentication
-3. **Phase 3** (Optional): Data sources for automation (connector scripts, kubeconfig, SSO tokens)
+1. **Phase 1** (High): ✅ **COMPLETE** - VM Secrets implemented (PR #17, 2025-11-07)
+2. **Phase 2** (High): VM workspaces (target sets) and policies - Completes VM infrastructure
+3. **Phase 3** (Medium): SSH CA - Certificate-based authentication
+4. **Phase 4** (Optional): Data sources for automation (connector scripts, kubeconfig, SSO tokens)
 
 ---
 
@@ -190,13 +192,9 @@ These services are **already available** in the Terraform provider (v0.1.0):
 
 ---
 
-## Available Services (Not Yet Implemented)
+### 6. VM Secrets (`secrets/vm`) ✅ **IMPLEMENTED**
 
-These services are **available in ARK SDK v1.5.0** and suitable for Terraform implementation:
-
-### 6. VM Secrets (`secrets/vm`) 🔥 **HIGH PRIORITY**
-
-**Proposed Resource**: `cyberarksia_vm_secret`
+**Resource**: `cyberarksia_virtual_machine_secret`
 
 **SDK Service**: `ArkSIASecretsVMService`
 - **API Accessor**: `SecretsVM()`
@@ -211,37 +209,40 @@ These services are **available in ARK SDK v1.5.0** and suitable for Terraform im
 - `ArkSIAVMSecretsFilter` - Query filters
 
 **Secret Types**:
-- `ProvisionerUser` - Username/password for VM provisioning
+- `ProvisionerUser` - Username/password for VM provisioning (self-contained credentials)
 - `PCloudAccount` - Reference to CyberArk PAM vault account (safe + account name)
 
-**CRUD Operations**:
-```go
-AddSecret(secret *models.ArkSIAVMAddSecret) (*models.ArkSIAVMSecret, error)
-ChangeSecret(secret *models.ArkSIAVMChangeSecret) (*models.ArkSIAVMSecret, error)
-DeleteSecret(secret *models.ArkSIAVMDeleteSecret) error  // ⚠️ DELETE bug applies
-Secret(secret *models.ArkSIAVMGetSecret) (*models.ArkSIAVMSecret, error)
-ListSecrets() ([]*models.ArkSIAVMSecret, error)
-ListSecretsBy(filter *models.ArkSIAVMSecretsFilter) ([]*models.ArkSIAVMSecret, error)
-SecretsStats() (*models.ArkSIAVMSecretsStats, error)
-```
+**Key Features**:
+- Two authentication types (ProvisionerUser, PCloudAccount)
+- Sensitive data protection (passwords never logged)
+- Full CRUD lifecycle management with drift detection
+- State import for brownfield adoption
+- SDK bug workarounds (DELETE panic, POST->PUT for updates)
 
-**Dependencies**: None (standalone)
+**Implementation Details**:
+- **File**: `internal/provider/virtual_machine_secret_resource.go`
+- **Tests**: `internal/provider/virtual_machine_secret_resource_test.go` (18 acceptance tests, 100% pass rate)
+- **Models**: `internal/models/virtual_machine_secret.go`
+- **Workarounds**: `internal/client/sdk_workarounds.go` (DeleteVMSecretDirect, ChangeVMSecretDirect)
+- **Implementation Date**: 2025-11-07
+- **PR**: #17
 
-**Implementation Notes**:
-- Nearly identical pattern to `cyberarksia_database_secret`
-- ⚠️ **SDK Bug**: DELETE panic applies - need workaround in `delete_workarounds.go`
-- ⚠️ **SDK Bug**: `ListSecretsBy()` filtering broken (sends nil body) - use client-side filtering
-- Two authentication methods similar to database secrets
-- Sensitive data handling required
+**Known SDK Bugs** (workarounds implemented):
+- ⚠️ DELETE panic bug - uses `DeleteVMSecretDirect()` workaround
+- ⚠️ ChangeSecret POST→PUT bug - uses `ChangeVMSecretDirect()` workaround
+- ⚠️ ListSecretsBy() filtering broken - client-side filtering not yet implemented
 
-**Complexity**: Medium (bug workarounds + sensitive data)
-
-**Value**: High (extends provider to VM/server management)
-
-**Discovery Credit**: Claude (primary), validated by Gemini and Codex
-**CLI Validation**: ✅ Confirmed via `ark exec sia secrets vm` (all 7 operations present)
+**Testing**:
+- 18/18 acceptance tests passing
+- Full CRUD validation completed
+- Drift detection verified
+- Import functionality validated
 
 ---
+
+## Available Services (Not Yet Implemented)
+
+These services are **available in ARK SDK v1.5.0** and suitable for Terraform implementation:
 
 ### 7. Target Sets (`workspaces/targetsets`) 🔥 **HIGH PRIORITY**
 
