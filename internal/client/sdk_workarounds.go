@@ -3,12 +3,15 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/cyberark/ark-sdk-golang/pkg/common"
 	"github.com/cyberark/ark-sdk-golang/pkg/common/isp"
 	vmsecretsmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/secrets/vm/models"
+	targetsetmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/workspaces/targetsets/models"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -52,6 +55,12 @@ const (
 
 	// Policy DELETE endpoint (from SDK source)
 	policyDeleteURL = "/api/policies/%s"
+
+	// Target Set DELETE endpoint (from SDK source)
+	targetSetDeleteURL = "/api/targetsets/%s"
+
+	// Target Set UPDATE endpoint (from SDK source)
+	targetSetUpdateURL = "/api/targetsets/%s"
 )
 
 // DeleteDatabaseWorkspaceDirect bypasses SDK's buggy DeleteDatabase() method
@@ -569,4 +578,282 @@ func ChangeVMSecretDirect(
 		SecretID:   changeSecretReq.SecretID,
 		SecretName: changeSecretReq.SecretName,
 	}, nil
+}
+
+// DeleteTargetSetDirect bypasses SDK's buggy DeleteTargetSet() method
+// and makes HTTP DELETE request directly with empty body workaround.
+//
+// This function replicates the SDK's delete logic but passes map[string]string{}
+// instead of nil to avoid the panic.
+//
+// API Endpoint: DELETE /api/targetsets/{name}
+// Success Response: HTTP 204 No Content
+// Error Responses:
+//   - 404 Not Found: Target set already deleted (treated as success)
+//   - 403 Forbidden: Name contains forward slashes (URL path interpretation issue)
+//
+// Parameters:
+//   - ctx: Context for request cancellation
+//   - authCtx: ISPAuthContext for authentication
+//   - name: Target set name (string identifier)
+//
+// Returns:
+//   - error: nil on success (including 404), error on failure
+func DeleteTargetSetDirect(ctx context.Context, authCtx *ISPAuthContext, name string) error {
+	tflog.Debug(ctx, "Executing DELETE workaround (ARK SDK bug bypass)", map[string]interface{}{
+		"resource_type": "target_set",
+		"name":          name,
+		"workaround":    "empty_map_body",
+	})
+
+	// Create temporary ISP service client (same pattern as CertificatesClient)
+	client, err := isp.FromISPAuth(
+		authCtx.ISPAuth,
+		"dpa", // Service name (constructs https://{subdomain}.dpa.{domain})
+		".",   // Separator
+		"",    // Base path
+		nil,   // No refresh callback needed for one-time operation
+	)
+	if err != nil {
+		tflog.Error(ctx, "Failed to create ISP client for DELETE workaround", map[string]interface{}{
+			"name":  name,
+			"error": err.Error(),
+		})
+		return fmt.Errorf("failed to create ISP client for DELETE: %w", err)
+	}
+
+	// Construct endpoint URL with URL-encoded name
+	// Target set names are user-controlled and may contain spaces or reserved characters
+	endpoint := fmt.Sprintf(targetSetDeleteURL, url.PathEscape(name))
+
+	// Execute DELETE with empty map workaround (NOT nil!)
+	// This prevents the SDK panic by ensuring bodyBytes is initialized
+	response, err := client.Delete(ctx, endpoint, map[string]string{})
+	if err != nil {
+		tflog.Error(ctx, "DELETE workaround request failed", map[string]interface{}{
+			"name":  name,
+			"error": err.Error(),
+		})
+		return fmt.Errorf("failed to delete target set %s: %w", name, err)
+	}
+	defer response.Body.Close()
+
+	tflog.Debug(ctx, "DELETE workaround response received", map[string]interface{}{
+		"name":        name,
+		"status_code": response.StatusCode,
+	})
+
+	// Handle HTTP status codes (same as SDK's DeleteTargetSet logic)
+	if response.StatusCode == http.StatusNotFound {
+		tflog.Debug(ctx, "Target set already deleted (404)", map[string]interface{}{
+			"name": name,
+		})
+		// Resource already deleted - treat as success
+		return nil
+	}
+
+	if response.StatusCode != http.StatusNoContent {
+		tflog.Error(ctx, "DELETE workaround failed with unexpected status", map[string]interface{}{
+			"name":        name,
+			"status_code": response.StatusCode,
+		})
+		return fmt.Errorf("failed to delete target set %s - [%d] - [%s]",
+			name, response.StatusCode, common.SerializeResponseToJSON(response.Body))
+	}
+
+	tflog.Debug(ctx, "DELETE workaround successful", map[string]interface{}{
+		"name": name,
+	})
+
+	return nil
+}
+
+// GetTargetSetDirect bypasses SDK's TargetSet() method which doesn't URL-escape target set names
+// with forward slashes, causing 403 "Invalid key=value pair" auth signature errors.
+//
+// Root Cause: SDK interpolates name into URL path without escaping forward slashes,
+// breaking the canonical path for authentication signature calculation.
+//
+// API Endpoint: GET /api/targetsets/{name}
+// Success Response: HTTP 200 OK with target set wrapped in {"target_set": {...}}
+//
+// Parameters:
+//   - ctx: Context for request cancellation
+//   - authCtx: ISPAuthContext for authentication
+//   - name: Target set name (will be URL-encoded to handle special characters)
+//
+// Returns:
+//   - *targetsetmodels.ArkSIATargetSet: Retrieved target set
+//   - error: nil on success, 404 if not found, error on other failures
+func GetTargetSetDirect(ctx context.Context, authCtx *ISPAuthContext, name string) (*targetsetmodels.ArkSIATargetSet, error) {
+	tflog.Debug(ctx, "Executing GET workaround (SDK URL-escape bug bypass)", map[string]interface{}{
+		"resource_type": "target_set",
+		"name":          name,
+		"workaround":    "URL_path_escape",
+	})
+
+	// Create temporary ISP service client with token refresh callback
+	client, err := isp.FromISPAuth(
+		authCtx.ISPAuth,
+		"dpa",
+		".",
+		"",
+		func(ac *common.ArkClient) error {
+			return isp.RefreshClient(ac, authCtx.ISPAuth)
+		},
+	)
+	if err != nil {
+		tflog.Error(ctx, "Failed to create ISP client for GET workaround", map[string]interface{}{
+			"name":  name,
+			"error": err.Error(),
+		})
+		return nil, fmt.Errorf("failed to create ISP client for GET: %w", err)
+	}
+
+	// Construct endpoint URL with URL-encoded name to handle forward slashes
+	endpoint := fmt.Sprintf("/api/targetsets/%s", url.PathEscape(name))
+
+	// Execute GET request (empty map for query parameters)
+	response, err := client.Get(ctx, endpoint, map[string]string{})
+	if err != nil {
+		tflog.Error(ctx, "GET workaround request failed", map[string]interface{}{
+			"name":  name,
+			"error": err.Error(),
+		})
+		return nil, fmt.Errorf("failed to get target set %s: %w", name, err)
+	}
+	defer response.Body.Close()
+
+	tflog.Debug(ctx, "GET workaround response received", map[string]interface{}{
+		"name":        name,
+		"status_code": response.StatusCode,
+	})
+
+	// Handle HTTP status codes
+	if response.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("target set not found - [404]")
+	}
+
+	if response.StatusCode != http.StatusOK {
+		tflog.Error(ctx, "GET workaround failed with unexpected status", map[string]interface{}{
+			"name":        name,
+			"status_code": response.StatusCode,
+		})
+		return nil, fmt.Errorf("failed to get target set %s - [%d] - [%s]",
+			name, response.StatusCode, common.SerializeResponseToJSON(response.Body))
+	}
+
+	// Parse response body - API wraps response in {"target_set": {...}}
+	var wrapper struct {
+		TargetSet *targetsetmodels.ArkSIATargetSet `json:"target_set"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&wrapper); err != nil {
+		tflog.Error(ctx, "Failed to decode GET response", map[string]interface{}{
+			"name":  name,
+			"error": err.Error(),
+		})
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	tflog.Debug(ctx, "GET workaround successful", map[string]interface{}{
+		"name": name,
+	})
+
+	return wrapper.TargetSet, nil
+}
+
+// UpdateTargetSetDirect bypasses SDK's ArkSIAUpdateTargetSet struct which has omitempty tags
+// that prevent sending empty strings and false booleans. This workaround allows explicitly
+// setting description="" and enable_certificate_validation=false.
+//
+// ALSO works around ARK SDK v1.5.0 HTTP method bug (same as ChangeVMSecretDirect):
+// The SDK may use POST instead of PUT/PATCH, causing 403 "Invalid key=value pair" auth errors.
+// This function uses PUT to ensure proper auth signature matching.
+//
+// API Endpoint: PUT /api/targetsets/{name}
+// Success Response: HTTP 200 OK with updated target set
+//
+// Parameters:
+//   - ctx: Context for request cancellation
+//   - authCtx: ISPAuthContext for authentication
+//   - oldName: Current target set name (used in URL path)
+//   - req: Update request with all fields (including zero values)
+//
+// Returns:
+//   - map[string]interface{}: Updated target set
+//   - error: nil on success, error on failure
+func UpdateTargetSetDirect(ctx context.Context, authCtx *ISPAuthContext, oldName string, req map[string]interface{}) (map[string]interface{}, error) {
+	tflog.Debug(ctx, "Executing UPDATE workaround (SDK omitempty bypass)", map[string]interface{}{
+		"resource_type": "target_set",
+		"old_name":      oldName,
+		"workaround":    "PUT_method_and_explicit_zero_values",
+	})
+
+	// Create temporary ISP service client with token refresh callback
+	// This ensures long-running sessions can auto-refresh expired tokens (15min expiry)
+	client, err := isp.FromISPAuth(
+		authCtx.ISPAuth,
+		"dpa",
+		".",
+		"",
+		func(ac *common.ArkClient) error {
+			return isp.RefreshClient(ac, authCtx.ISPAuth)
+		},
+	)
+	if err != nil {
+		tflog.Error(ctx, "Failed to create ISP client for UPDATE workaround", map[string]interface{}{
+			"old_name": oldName,
+			"error":    err.Error(),
+		})
+		return nil, fmt.Errorf("failed to create ISP client for UPDATE: %w", err)
+	}
+
+	// Construct endpoint URL with URL-encoded name
+	endpoint := fmt.Sprintf(targetSetUpdateURL, url.PathEscape(oldName))
+
+	// Execute PUT with map[string]interface{} to preserve zero values
+	// FIX: Use PUT instead of PATCH to avoid auth signature mismatch (same bug as ChangeVMSecretDirect)
+	response, err := client.Put(ctx, endpoint, req)
+	if err != nil {
+		tflog.Error(ctx, "UPDATE workaround request failed", map[string]interface{}{
+			"old_name": oldName,
+			"error":    err.Error(),
+		})
+		return nil, fmt.Errorf("failed to update target set %s: %w", oldName, err)
+	}
+	defer response.Body.Close()
+
+	tflog.Debug(ctx, "UPDATE workaround response received", map[string]interface{}{
+		"old_name":    oldName,
+		"status_code": response.StatusCode,
+	})
+
+	// Handle HTTP status codes
+	if response.StatusCode != http.StatusOK {
+		tflog.Error(ctx, "UPDATE workaround failed with unexpected status", map[string]interface{}{
+			"old_name":    oldName,
+			"status_code": response.StatusCode,
+		})
+		return nil, fmt.Errorf("failed to update target set %s - [%d] - [%s]",
+			oldName, response.StatusCode, common.SerializeResponseToJSON(response.Body))
+	}
+
+	// Parse response body - API wraps response in {"target_set": {...}}
+	var wrapper struct {
+		TargetSet map[string]interface{} `json:"target_set"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&wrapper); err != nil {
+		tflog.Error(ctx, "Failed to decode UPDATE response", map[string]interface{}{
+			"old_name": oldName,
+			"error":    err.Error(),
+		})
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	tflog.Debug(ctx, "UPDATE workaround successful", map[string]interface{}{
+		"old_name": oldName,
+		"new_name": wrapper.TargetSet["name"],
+	})
+
+	return wrapper.TargetSet, nil
 }
