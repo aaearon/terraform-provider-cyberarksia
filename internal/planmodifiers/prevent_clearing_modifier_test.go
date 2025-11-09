@@ -8,7 +8,9 @@ import (
 	"github.com/aaearon/terraform-provider-cyberark-sia/internal/planmodifiers"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 func TestPreventClearingModifier_PlanModifyString(t *testing.T) {
@@ -71,11 +73,52 @@ func TestPreventClearingModifier_PlanModifyString(t *testing.T) {
 			ctx := context.Background()
 			modifier := planmodifiers.PreventClearing()
 
+			// Helper to convert types.String to tftypes value
+			stringToTftypesValue := func(v types.String) interface{} {
+				if v.IsNull() {
+					return nil
+				}
+				if v.IsUnknown() {
+					return tftypes.UnknownValue
+				}
+				return v.ValueString()
+			}
+
+			// Set up Plan.Raw based on whether this is a destruction or normal operation
+			// For resource destruction (planValue.IsUnknown()), Plan.Raw is null
+			// For normal operations, Plan.Raw contains the object with field values
+			var planRaw tftypes.Value
+			if tt.planValue.IsUnknown() {
+				// Resource destruction - entire plan is null
+				planRaw = tftypes.NewValue(tftypes.Object{}, nil)
+			} else {
+				// Normal operation - plan has object with fields
+				planRaw = tftypes.NewValue(tftypes.Object{
+					AttributeTypes: map[string]tftypes.Type{
+						"test_attribute": tftypes.String,
+					},
+				}, map[string]tftypes.Value{
+					"test_attribute": tftypes.NewValue(tftypes.String, stringToTftypesValue(tt.planValue)),
+				})
+			}
+
 			req := planmodifier.StringRequest{
 				Path:        path.Root("test_attribute"),
 				StateValue:  tt.stateValue,
 				PlanValue:   tt.planValue,
 				ConfigValue: tt.planValue,
+				Plan: tfsdk.Plan{
+					Raw: planRaw,
+				},
+				State: tfsdk.State{
+					Raw: tftypes.NewValue(tftypes.Object{
+						AttributeTypes: map[string]tftypes.Type{
+							"test_attribute": tftypes.String,
+						},
+					}, map[string]tftypes.Value{
+						"test_attribute": tftypes.NewValue(tftypes.String, stringToTftypesValue(tt.stateValue)),
+					}),
+				},
 			}
 
 			resp := &planmodifier.StringResponse{

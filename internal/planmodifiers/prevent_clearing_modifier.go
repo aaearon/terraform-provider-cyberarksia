@@ -35,7 +35,8 @@ func (m preventClearingModifier) PlanModifyString(ctx context.Context, req planm
 	}
 
 	// If the resource is being destroyed, allow it
-	if req.PlanValue.IsUnknown() {
+	// During resource destruction, the entire plan is null
+	if req.PlanValue.IsUnknown() || req.Plan.Raw.IsNull() {
 		return
 	}
 
