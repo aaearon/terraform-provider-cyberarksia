@@ -367,7 +367,7 @@ func (r *targetSetResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 	// Always include enable_certificate_validation (even if false)
 	// Fall back to state value if plan is unknown (field is Computed, so may be unknown)
-	if !plan.EnableCertificateValidation.IsUnknown() {
+	if !plan.EnableCertificateValidation.IsUnknown() && !plan.EnableCertificateValidation.IsNull() {
 		updateRequest["enable_certificate_validation"] = plan.EnableCertificateValidation.ValueBool()
 	} else if !state.EnableCertificateValidation.IsNull() {
 		updateRequest["enable_certificate_validation"] = state.EnableCertificateValidation.ValueBool()
