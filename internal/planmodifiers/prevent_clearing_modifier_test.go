@@ -16,9 +16,9 @@ func TestPreventClearingModifier_PlanModifyString(t *testing.T) {
 		name          string
 		stateValue    types.String
 		planValue     types.String
-		expectedError bool
 		expectedPlan  types.String
 		errorContains string
+		expectedError bool
 	}{
 		{
 			name:          "resource creation - no state value",

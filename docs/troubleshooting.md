@@ -652,6 +652,223 @@ func (a *ArkISPAuth) Authenticate(
 
 ---
 
+## Target Set Resource Issues
+
+### Forward Slashes in Target Set Names (⚠️ WARNING)
+
+**Status**: ⚠️ **KNOWN LIMITATION** - API design constraint
+
+**Issue**: Target sets with forward slashes (`/`) in the name can be created successfully but **cannot be deleted** via Terraform or the API.
+
+**Symptoms**:
+```
+Error: DELETE operation failed with status 403 Forbidden
+│
+│   with cyberarksia_target_set.example,
+│   on main.tf line 10, in resource "cyberarksia_target_set" "example":
+│   10: resource "cyberarksia_target_set" "example" {
+│
+│ Failed to delete target set 'env/test/servers'. Manual deletion via SIA UI required.
+```
+
+**Root Cause**: CyberArk SIA API limitation:
+- **POST (Create)**: Accepts names with forward slashes (e.g., `env/test/servers`)
+- **DELETE**: Treats forward slashes as URL path separators, resulting in malformed DELETE requests
+- **API Endpoint**: `/WorkspacesVMs/TargetSets/{name}` - forward slashes in `{name}` break the URL parsing
+
+**Example Problematic Names**:
+```hcl
+# ❌ AVOID - These will create successfully but cannot be deleted
+resource "cyberarksia_target_set" "problematic" {
+  name        = "env/test/servers"        # Contains forward slashes
+  name        = "domain/datacenter/host"  # Contains forward slashes
+  name        = "tier1/production/db"     # Contains forward slashes
+}
+
+# ✅ RECOMMENDED - Use dots, dashes, or underscores instead
+resource "cyberarksia_target_set" "recommended" {
+  name        = "env.test.servers"        # Dots are safe
+  name        = "domain-datacenter-host"  # Dashes are safe
+  name        = "tier1_production_db"     # Underscores are safe
+}
+```
+
+#### Detection
+
+The provider includes a **custom validator** that warns about forward slashes during `terraform plan`:
+
+```bash
+terraform plan
+
+# Output:
+│ Warning: Forward Slashes in Target Set Name
+│
+│   with cyberarksia_target_set.example,
+│   on main.tf line 10, in resource "cyberarksia_target_set" "example":
+│   10:   name = "env/test/servers"
+│
+│ The target set name contains forward slashes which will cause deletion failures.
+│ DELETE operations will fail with 403 Forbidden due to API URL parsing issues.
+│
+│ Recommended alternatives:
+│   - Use dots:        env.test.servers
+│   - Use dashes:      env-test-servers
+│   - Use underscores: env_test_servers
+```
+
+**Validator Implementation**: `internal/validators/target_set_name_validator.go`
+
+**Why it's a Warning (not Error)**:
+- Creation DOES work correctly
+- Some users may need forward slashes for organizational naming conventions
+- Manual SIA UI deletion is available as a workaround
+- Blocking creation would be overly restrictive
+
+#### Recovery Options
+
+If you've already created a target set with forward slashes:
+
+**Option 1: Manual Deletion via SIA UI + State Removal**
+
+```bash
+# 1. Log into CyberArk SIA UI
+# 2. Navigate to VM Access → Target Sets
+# 3. Find the problematic target set (e.g., "env/test/servers")
+# 4. Click Delete button in UI
+# 5. Confirm deletion
+
+# 6. Remove from Terraform state
+terraform state rm cyberarksia_target_set.example
+
+# 7. Continue with destroy for remaining resources
+terraform destroy -auto-approve
+```
+
+**Option 2: Leave Resource in Place**
+
+If the target set is actively used:
+```bash
+# Remove only the Terraform management (keep resource in SIA)
+terraform state rm cyberarksia_target_set.example
+
+# Target set remains in SIA and continues to function
+# Manually manage it via SIA UI going forward
+```
+
+**Option 3: Rename via Update (if supported)**
+
+Target sets support in-place rename. Try updating the name to remove forward slashes:
+
+```hcl
+# Change configuration
+resource "cyberarksia_target_set" "example" {
+  name        = "env.test.servers"  # CHANGED: dots instead of slashes
+  type        = "Domain"
+  secret_id   = cyberarksia_virtual_machine_secret.admin.id
+  secret_type = "ProvisionerUser"
+}
+```
+
+```bash
+terraform apply -auto-approve
+# If successful: Target set renamed, DELETE will now work
+# If fails: Fall back to Option 1 or 2
+```
+
+#### Prevention
+
+**Best Practices**:
+1. ✅ **Use the validator warnings** - Don't ignore warnings during `terraform plan`
+2. ✅ **Naming conventions**:
+   - Dots: `production.datacenter1.web`
+   - Dashes: `production-datacenter1-web`
+   - Underscores: `production_datacenter1_web`
+3. ✅ **Test in dev/staging** - Verify full CRUD lifecycle before production
+4. ✅ **Code review** - Check for forward slashes in target set names before merging
+
+**CI/CD Integration**:
+```bash
+# Add validation step to CI/CD pipeline
+rg --glob '*.tf' 'name\s*=\s*"[^"]*/' || echo "✅ No forward slashes in target set names"
+```
+
+#### Impact on Testing
+
+**CRUD Testing**:
+- **CREATE**: ✅ Works with forward slashes
+- **READ**: ✅ Works correctly
+- **UPDATE**: ✅ Works correctly (can rename to fix)
+- **DELETE**: ❌ Fails with 403 Forbidden
+
+**Acceptance Testing**:
+```go
+// Test forward slash warning (acceptance test pattern)
+func TestAccTargetSet_forwardSlashWarning(t *testing.T) {
+    targetSetName := "env/test/servers"  // Contains forward slashes
+
+    resource.Test(t, resource.TestCase{
+        // ... test setup ...
+        Steps: []resource.TestStep{
+            {
+                Config: testAccTargetSetConfigBasic(targetSetName),
+                Check: resource.ComposeAggregateTestCheckFunc(
+                    // Creation succeeds despite forward slashes
+                    testAccCheckTargetSetExists("cyberarksia_target_set.test"),
+                    resource.TestCheckResourceAttr("cyberarksia_target_set.test", "name", targetSetName),
+                ),
+                // NOTE: Validator emits warning during plan but doesn't block creation
+            },
+        },
+        // CheckDestroy will fail - manual cleanup required for this test
+    })
+}
+```
+
+#### Future Considerations
+
+**If API evolves**:
+- Monitor CyberArk SIA API updates for improved DELETE endpoint (e.g., ID-based deletion)
+- Consider URL encoding target set names in DELETE requests (may fix issue)
+- Track feedback with CyberArk product team
+
+**Provider Enhancements**:
+- Could upgrade validator to ERROR severity if strict mode is requested
+- Consider automatic name sanitization option (replace `/` with `.`)
+- Add import/export functionality for problematic resources
+
+#### Related Files
+
+- **Validator**: `internal/validators/target_set_name_validator.go`
+- **Validator Tests**: `internal/validators/target_set_name_validator_test.go`
+- **Resource Implementation**: `internal/provider/target_set_resource.go`
+- **Testing Guide**: `examples/testing/TESTING-GUIDE.md` (Section: Target Set Resource Testing → Phase 8)
+- **CRUD Template**: `examples/testing/crud-test-target-set.tf` (Advanced Test: Forward Slash Warning)
+
+#### References
+
+**ARK SDK**:
+- Target Set Service: `github.com/cyberark/ark-sdk-golang/pkg/services/sia/workspaces/targetsets`
+- DeleteTargetSet: Uses name-based URL construction
+- AddTargetSet: Accepts any string for name field
+
+**API Constraint**:
+```
+DELETE /WorkspacesVMs/TargetSets/{name}
+        └── {name} = "env/test/servers"
+        └── Interpreted as: /WorkspacesVMs/TargetSets/env/test/servers (path traversal)
+        └── Results in: 403 Forbidden or 404 Not Found
+```
+
+**Workaround Pattern**:
+```go
+// Custom DELETE workaround (if needed in future)
+// URL-encode the name to preserve forward slashes
+encodedName := url.PathEscape(targetSetName)  // "env%2Ftest%2Fservers"
+deleteURL := fmt.Sprintf("/WorkspacesVMs/TargetSets/%s", encodedName)
+```
+
+---
+
 ## FAQ: Do All Resources Use In-Memory Profile Authentication?
 
 **Q: Does the in-memory profile fix apply to database workspace and secret resources?**
