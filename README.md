@@ -1,18 +1,26 @@
 # Terraform Provider for CyberArk Secure Infrastructure Access (SIA)
 
-A Terraform provider for managing CyberArk Secure Infrastructure Access (SIA) resources, enabling infrastructure-as-code workflows for database access control and certificate management.
+A Terraform provider for managing CyberArk Secure Infrastructure Access (SIA) resources, enabling infrastructure-as-code workflows for database and VM/server access control with Just-In-Time privileged access.
 
 ## Features
 
+### Database Access Management
 - **Policy Management**: Create access policies with session limits and time-based restrictions
 - **User & Group Assignment**: Grant access to specific users, groups, or roles - no manual UUID lookups needed
 - **Principal Lookup**: Find users and groups by name across Cloud Directory, Azure AD, Active Directory
 - **Database Configuration**: Configure database workspaces with certificate-based authentication
 - **Database Assignment**: Connect databases to policies with 6 authentication methods
 - **Certificate Management**: Manage TLS/SSL certificates for secure database connections
-- **Secret Management**: Store database credentials (local auth, Active Directory, AWS IAM)
+- **Database Secret Management**: Store database credentials (local auth, Active Directory, AWS IAM)
 - **Multiple Database Engines**: PostgreSQL, MySQL, Oracle, SQL Server, MongoDB, Snowflake, and 60+ more
 - **Multi-Cloud Support**: AWS RDS, Azure SQL, GCP Cloud SQL, MongoDB Atlas, and on-premise
+
+### VM/Server Access Management
+- **VM Secret Management**: Store VM/server credentials (username/password or PAM vault references)
+- **Target Set Configuration**: Define server groupings with Domain, Suffix, or Target matching patterns
+- **Ephemeral Account Provisioning**: Configure temporary account naming for JIT access
+- **Certificate Validation**: Toggle TLS/SSL validation for VM connections
+- **Credential Rotation**: Update VM secrets with automatic propagation to all target sets
 
 ## Requirements
 
@@ -103,7 +111,9 @@ resource "cyberarksia_database_workspace" "prod_postgres" {
 
 ## Supported Resources
 
-### `cyberarksia_certificate`
+### Database Access Resources
+
+#### `cyberarksia_certificate`
 
 Manages TLS/SSL certificates for database connections.
 
@@ -115,7 +125,7 @@ Manages TLS/SSL certificates for database connections.
 
 See [examples/resources/cyberarksia_certificate/](examples/resources/cyberarksia_certificate/) for usage examples.
 
-### `cyberarksia_database_workspace`
+#### `cyberarksia_database_workspace`
 
 Manages database workspace configurations for secure access.
 
@@ -136,7 +146,7 @@ Manages database workspace configurations for secure access.
 
 See [examples/resources/database_workspace/](examples/resources/database_workspace/) for usage examples.
 
-### `cyberarksia_database_secret`
+#### `cyberarksia_database_secret`
 
 Manages database authentication secrets for use with database workspaces.
 
@@ -153,7 +163,7 @@ Manages database authentication secrets for use with database workspaces.
 
 See [examples/resources/cyberarksia_database_secret/](examples/resources/cyberarksia_database_secret/) for usage examples.
 
-### `cyberarksia_database_policy`
+#### `cyberarksia_database_policy`
 
 Create and manage access policies that control who can access which databases and when.
 
@@ -168,7 +178,7 @@ Think of policies as the rules. The other resources assign specific users and da
 
 See [docs/resources/database_policy.md](docs/resources/database_policy.md) for usage examples.
 
-### `cyberarksia_database_policy_principal_assignment`
+#### `cyberarksia_database_policy_principal_assignment`
 
 Grant specific users, groups, or roles access to databases through policies.
 
@@ -182,7 +192,7 @@ Grant specific users, groups, or roles access to databases through policies.
 
 See [docs/resources/database_policy_principal_assignment.md](docs/resources/database_policy_principal_assignment.md) for usage examples.
 
-### `cyberarksia_database_policy_database_assignment`
+#### `cyberarksia_database_policy_database_assignment`
 
 Connect database workspaces to access policies with specific authentication settings.
 
@@ -194,6 +204,47 @@ Connect database workspaces to access policies with specific authentication sett
 **Example use case:** You have a production PostgreSQL database and a policy for developers. This resource connects them together and specifies that users get the `readonly` role.
 
 See [docs/resources/policy_database_assignment.md](docs/resources/policy_database_assignment.md) and [examples/resources/cyberarksia_database_policy_database_assignment/](examples/resources/cyberarksia_database_policy_database_assignment/) for usage examples.
+
+### VM/Server Access Resources
+
+#### `cyberarksia_virtual_machine_secret`
+
+Manages VM/server credentials for privileged access.
+
+**Supported Secret Types:**
+- **ProvisionerUser**: Username/password stored directly in SIA
+- **PCloudAccount**: Reference to PAM vault account
+
+**Features:**
+- Secure credential storage for VM/server access
+- Integration with target sets for server grouping
+- Support for PAM vault account references
+- Credential rotation with automatic propagation
+
+**Example use case:** Store a privileged Linux admin account that will be used across multiple server groups (production, staging, development).
+
+See [examples/resources/cyberarksia_virtual_machine_secret/](examples/resources/cyberarksia_virtual_machine_secret/) for usage examples.
+
+#### `cyberarksia_target_set`
+
+Manages server/VM target groupings for Just-In-Time privileged access.
+
+**Matching Pattern Types:**
+- **Domain**: Match all servers in a domain (e.g., `*.example.com`)
+- **Suffix**: Match servers with hostname suffix (e.g., `*.dc1.example.com`)
+- **Target**: Match specific server hostname (e.g., `server01.example.com`)
+
+**Features:**
+- Three flexible matching patterns for server grouping
+- Custom ephemeral account naming via `provision_format`
+- In-place updates (rename, credential rotation, type changes)
+- Certificate validation toggle for TLS/SSL
+- Drift detection with external deletion handling
+- Import existing target sets by name
+
+**Example use case:** Create a target set for all production Linux servers in a datacenter using Domain pattern, reference a VM secret for credentials, and configure ephemeral account naming for audit trails.
+
+See [examples/resources/cyberarksia_target_set/](examples/resources/cyberarksia_target_set/) for usage examples.
 
 ## Data Sources
 
