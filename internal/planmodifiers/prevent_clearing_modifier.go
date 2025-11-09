@@ -40,18 +40,12 @@ func (m preventClearingModifier) PlanModifyString(ctx context.Context, req planm
 	}
 
 	// Check if the user is trying to clear the attribute
-	// Because this attribute has a Default, ConfigValue will NEVER be null (framework fills it with default)
-	// Instead, we compare PlanValue to StateValue to detect clearing attempts
 	stateHasValue := !req.StateValue.IsNull() && req.StateValue.ValueString() != ""
 
-	// User is trying to clear if:
-	// 1. State has a non-default value
-	// 2. Plan is reverting to the default value
-	// 3. ConfigValue is null (user removed attribute from config)
-	userRemovedAttribute := req.ConfigValue.IsNull()
-	planRevertingToDefault := !req.PlanValue.Equal(req.StateValue) // Plan differs from state
+	// User is trying to clear if plan value is null or empty string when state had a value
+	planIsEmpty := req.PlanValue.IsNull() || req.PlanValue.ValueString() == ""
 
-	if stateHasValue && userRemovedAttribute && planRevertingToDefault {
+	if stateHasValue && planIsEmpty {
 		resp.Diagnostics.AddError(
 			"Cannot Clear Attribute",
 			"The "+req.Path.String()+" field cannot be removed once set due to API limitations. "+
