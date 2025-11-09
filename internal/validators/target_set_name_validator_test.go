@@ -15,8 +15,8 @@ func TestNoForwardSlashesValidator(t *testing.T) {
 	tests := []struct {
 		name            string
 		value           types.String
-		expectWarning   bool
 		warningContains string
+		expectWarning   bool
 	}{
 		{
 			name:          "valid name with hyphens",
