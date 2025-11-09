@@ -110,9 +110,9 @@
 
 ### Implementation for User Story 3
 
-- [X] T044 [US3] Update policy_database_assignment_resource.go documentation comments (consistency updates: clarify location_type is always "FQDN/IP", document relationship with new database_policy resource)
-- [X] T045 [US3] Verify policy_database_assignment_resource.go uses location_type "FQDN/IP" consistently (no code changes expected, validation only per plan.md line 335-336)
-- [X] T046 [P] [US3] Update docs/resources/policy_database_assignment.md (rename from cyberarksia_policy_database_assignment to cyberarksia_database_policy_assignment for consistency, clarify location_type constraint, document relationship with database_policy resource)
+- [X] T044 [US3] Update policy_workspace_assignment_resource.go documentation comments (consistency updates: clarify location_type is always "FQDN/IP", document relationship with new database_policy resource)
+- [X] T045 [US3] Verify policy_workspace_assignment_resource.go uses location_type "FQDN/IP" consistently (no code changes expected, validation only per plan.md line 335-336)
+- [X] T046 [P] [US3] Update docs/resources/policy_workspace_assignment.md (rename from cyberarksia_policy_workspace_assignment to cyberarksia_database_policy_assignment for consistency, clarify location_type constraint, document relationship with database_policy resource)
 - [X] T047 [P] [US3] Update examples/resources/cyberarksia_database_policy_assignment/ examples (update resource name references for consistency, add cross-references to database_policy resource)
 - [X] T048 [US3] Verify examples/testing/TESTING-GUIDE.md database_assignment section (ensure 2-part composite ID "policy-id:database-id" is documented, no changes expected per plan.md)
 
@@ -163,7 +163,7 @@
 - [X] T055 [US6] Verify ImportState() methods preserve all computed fields (policy: created_by, updated_on; assignments: last_modified)
 - [X] T056 [US6] Add import examples to docs/resources/database_policy.md (terraform import commands with policy ID format)
 - [X] T057 [US6] Add import examples to docs/resources/database_policy_principal_assignment.md (terraform import with 3-part composite ID format, validation error examples)
-- [X] T058 [US6] Add import examples to docs/resources/policy_database_assignment.md (terraform import with 2-part composite ID format)
+- [X] T058 [US6] Add import examples to docs/resources/policy_workspace_assignment.md (terraform import with 2-part composite ID format)
 - [X] T059 [US6] Update quickstart.md Step 4 with detailed import workflows (import order: policy first, then principals, then databases)
 
 **Checkpoint**: All resources support import. Users can migrate existing SIA infrastructure to Terraform management.

@@ -97,7 +97,7 @@ type InlineDatabaseAssignmentModel struct {
 	AuthenticationMethod types.String `tfsdk:"authentication_method"`
 
 	// Authentication profiles (one will be set based on authentication_method)
-	// Reuse existing profile models from policy_database_assignment.go
+	// Reuse existing profile models from policy_workspace_assignment.go
 	DBAuthProfile         *DBAuthProfileModel         `tfsdk:"db_auth_profile"`
 	LDAPAuthProfile       *LDAPAuthProfileModel       `tfsdk:"ldap_auth_profile"`
 	OracleAuthProfile     *OracleAuthProfileModel     `tfsdk:"oracle_auth_profile"`
@@ -217,7 +217,7 @@ terraform destroy -auto-approve
 
 1. **Assignment Resource Models** (`PolicyDatabaseAssignmentModel`):
    - Have resource management fields: `id`, `policy_id`, `last_modified`
-   - Used by: `cyberarksia_database_policy_database_assignment` resource
+   - Used by: `cyberarksia_database_policy_workspace_assignment` resource
    - Purpose: Manage individual assignments as separate resources
 
 2. **Inline Models** (`InlineDatabaseAssignmentModel`):

@@ -365,7 +365,7 @@ This is the **comprehensive testing workflow** for all 6 SIA provider resources 
 4. `cyberarksia_database_workspace` - Azure PostgreSQL configuration
 5. `cyberarksia_database_policy` - Access policy with conditions
 6. `cyberarksia_database_policy_principal_assignment` - User assignments
-7. `cyberarksia_database_policy_database_assignment` - Database to policy assignment
+7. `cyberarksia_database_policy_workspace_assignment` - Database to policy assignment
 
 ### Phase 1: Setup (2 minutes)
 
@@ -638,7 +638,7 @@ terraform apply -target=cyberarksia_database_policy_principal_assignment.additio
 
 ### Phase 8: Inline Assignments Only - No Separate Database Assignment
 
-**Note**: In the inline assignment pattern (Phase 6), the database is already assigned via the `target_database` block. No separate `cyberarksia_database_policy_database_assignment` resource is needed.
+**Note**: In the inline assignment pattern (Phase 6), the database is already assigned via the `target_database` block. No separate `cyberarksia_database_policy_workspace_assignment` resource is needed.
 
 **If using hybrid pattern** (separate assignment resources for databases):
 ```hcl
@@ -652,7 +652,7 @@ resource "cyberarksia_database_policy" "test" {
 }
 
 # Separate database assignment
-resource "cyberarksia_database_policy_database_assignment" "additional_db" {
+resource "cyberarksia_database_policy_workspace_assignment" "additional_db" {
   policy_id             = cyberarksia_database_policy.test.policy_id
   database_workspace_id = cyberarksia_database_workspace.another_db.id
   authentication_method = "db_auth"
@@ -798,7 +798,7 @@ DB_ID=$(terraform output -raw database_workspace_id)
 POLICY_ID=$(terraform output -raw policy_id)
 PRINCIPAL_SERVICE_ID=$(terraform state show cyberarksia_database_policy_principal_assignment.service_account | grep "^id " | awk '{print $3}' | tr -d '"')
 PRINCIPAL_USER_ID=$(terraform state show cyberarksia_database_policy_principal_assignment.test_user | grep "^id " | awk '{print $3}' | tr -d '"')
-ASSIGNMENT_ID=$(terraform state show cyberarksia_database_policy_database_assignment.azure_postgres | grep "^id " | awk '{print $3}' | tr -d '"')
+ASSIGNMENT_ID=$(terraform state show cyberarksia_database_policy_workspace_assignment.azure_postgres | grep "^id " | awk '{print $3}' | tr -d '"')
 
 # Remove resources from state
 terraform state rm cyberarksia_certificate.azure_cert
@@ -807,7 +807,7 @@ terraform state rm cyberarksia_database_workspace.azure_postgres
 terraform state rm cyberarksia_database_policy.test
 terraform state rm cyberarksia_database_policy_principal_assignment.service_account
 terraform state rm cyberarksia_database_policy_principal_assignment.test_user
-terraform state rm cyberarksia_database_policy_database_assignment.azure_postgres
+terraform state rm cyberarksia_database_policy_workspace_assignment.azure_postgres
 
 # Import each resource
 terraform import cyberarksia_certificate.azure_cert "$CERT_ID"
@@ -816,7 +816,7 @@ terraform import cyberarksia_database_workspace.azure_postgres "$DB_ID"
 terraform import cyberarksia_database_policy.test "$POLICY_ID"
 terraform import cyberarksia_database_policy_principal_assignment.service_account "$PRINCIPAL_SERVICE_ID"
 terraform import cyberarksia_database_policy_principal_assignment.test_user "$PRINCIPAL_USER_ID"
-terraform import cyberarksia_database_policy_database_assignment.azure_postgres "$ASSIGNMENT_ID"
+terraform import cyberarksia_database_policy_workspace_assignment.azure_postgres "$ASSIGNMENT_ID"
 
 # Verify no changes after import
 terraform plan
@@ -843,7 +843,7 @@ Delete in reverse dependency order:
 
 ```bash
 # Delete assignment resources first
-terraform destroy -target=cyberarksia_database_policy_database_assignment.azure_postgres -auto-approve
+terraform destroy -target=cyberarksia_database_policy_workspace_assignment.azure_postgres -auto-approve
 terraform destroy -target=cyberarksia_database_policy_principal_assignment.test_user -auto-approve
 terraform destroy -target=cyberarksia_database_policy_principal_assignment.service_account -auto-approve
 
@@ -990,7 +990,7 @@ cd ~ && rm -rf $TEST_DIR
            ▼
 ┌─────────────────────────────────────┐
 │ Resource:                           │
-│ policy_database_assignment          │
+│ policy_workspace_assignment          │
 │ (assigns database to policy)        │
 └─────────────────────────────────────┘
 ```
@@ -1345,7 +1345,7 @@ resource "cyberarksia_database_workspace" "azure_postgres" {
 }
 
 # Policy Assignment (uses "FQDN/IP" target set for ALL databases)
-resource "cyberarksia_database_policy_database_assignment" "azure_postgres" {
+resource "cyberarksia_database_policy_workspace_assignment" "azure_postgres" {
   policy_id              = data.cyberarksia_database_policy.test_policy.id
   database_workspace_id  = cyberarksia_database_workspace.azure_postgres.id
   authentication_method  = "db_auth"
@@ -1436,7 +1436,7 @@ resource "cyberarksia_certificate" "azure_cert" {
 
 3. **Test Policy Assignment** (< 1 minute)
    ```bash
-   terraform apply -target=cyberarksia_database_policy_database_assignment.azure_postgres
+   terraform apply -target=cyberarksia_database_policy_workspace_assignment.azure_postgres
    ```
 
 4. **Verify in SIA UI**
@@ -2257,7 +2257,7 @@ EOF
 ### Documentation
 - [`CLAUDE.md`](../../CLAUDE.md) - Development guidelines (references this guide)
 - [`docs/testing-framework.md`](../../docs/testing-framework.md) - Conceptual testing framework
-- [`docs/resources/policy_database_assignment.md`](../../docs/resources/policy_database_assignment.md) - Policy database assignment documentation
+- [`docs/resources/policy_workspace_assignment.md`](../../docs/resources/policy_workspace_assignment.md) - Policy database assignment documentation
 - [`docs/resources/database_policy.md`](../../docs/resources/database_policy.md) - Database policy documentation
 - [`docs/resources/database_policy_principal_assignment.md`](../../docs/resources/database_policy_principal_assignment.md) - Principal assignment documentation
 - [`examples/resources/`](../resources/) - Per-resource usage examples

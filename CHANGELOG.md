@@ -9,16 +9,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
-1. **Resource Rename**: `cyberarksia_secret` has been renamed to `cyberarksia_database_secret` to accurately reflect that it manages database credentials only (not VM secrets)
+1. **Resource Rename**: `cyberarksia_database_policy_database_assignment` has been renamed to `cyberarksia_database_policy_workspace_assignment` for better consistency with other resource names
+   - **Rationale**: The new name follows the established pattern where assignment resources are named after their base resource (e.g., `cyberarksia_database_workspace`)
+   - **Action Required**: Update Terraform state and configuration files (see migration guide below)
 
-2. **AWS IAM Schema**: New required fields for AWS IAM authentication:
+2. **Resource Rename**: `cyberarksia_secret` has been renamed to `cyberarksia_database_secret` to accurately reflect that it manages database credentials only (not VM secrets)
+
+3. **AWS IAM Schema**: New required fields for AWS IAM authentication:
    - `aws_account` (string, 12 digits) - AWS account number
    - `aws_username` (string) - IAM username from ARN
    - These fields are now **required** when `authentication_type = "aws_iam"`
 
 ### Migration Guide
 
-#### Step 1: Update Terraform State
+#### Policy Database Assignment Rename
+
+**Step 1: Update Terraform State**
+
+To upgrade existing Terraform state for policy database assignments without recreating resources:
+
+```bash
+terraform state mv 'cyberarksia_database_policy_database_assignment.example' 'cyberarksia_database_policy_workspace_assignment.example'
+```
+
+Replace `example` with your actual resource names.
+
+**Step 2: Update HCL Resource Blocks**
+
+Update your Terraform configuration files:
+
+**Before:**
+```hcl
+resource "cyberarksia_database_policy_database_assignment" "prod_postgres" {
+  policy_id             = cyberarksia_database_policy.prod_access.id
+  database_workspace_id = cyberarksia_database_workspace.postgres.id
+  authentication_method = "db_auth"
+
+  db_auth_profile {
+    roles = ["read_only"]
+  }
+}
+```
+
+**After:**
+```hcl
+resource "cyberarksia_database_policy_workspace_assignment" "prod_postgres" {
+  policy_id             = cyberarksia_database_policy.prod_access.id
+  database_workspace_id = cyberarksia_database_workspace.postgres.id
+  authentication_method = "db_auth"
+
+  db_auth_profile {
+    roles = ["read_only"]
+  }
+}
+```
+
+#### Database Secret Rename
+
+**Step 1: Update Terraform State**
 
 To upgrade existing Terraform state without recreating resources, run the following command for each secret resource:
 
@@ -158,7 +206,7 @@ resource "cyberarksia_database_secret" "rds_iam" {
 - Comprehensive acceptance test coverage for policy resources
   - `database_policy_resource_test.go`: 12 tests covering CRUD, conditions, time frames, inline assignments, validation, and ForceNew behavior
   - `database_policy_principal_assignment_resource_test.go`: 10 tests covering principal types (USER, GROUP, ROLE), composite IDs, and assignments
-  - `policy_database_assignment_resource_test.go`: 14 tests covering all 6 authentication methods (db_auth, ldap_auth, oracle_auth, mongo_auth, sqlserver_auth, rds_iam_user_auth) and composite IDs
+  - `policy_workspace_assignment_resource_test.go`: 14 tests covering all 6 authentication methods (db_auth, ldap_auth, oracle_auth, mongo_auth, sqlserver_auth, rds_iam_user_auth) and composite IDs
 - Complete profile factory test coverage
   - Added tests for all 4 remaining authentication methods: OracleAuth, MongoAuth, SQLServerAuth, RDSIAMUserAuth
   - Total coverage: 14 tests for all 6 authentication profile types
@@ -192,7 +240,7 @@ resource "cyberarksia_database_secret" "rds_iam" {
 - Database policy principal assignment resource (`cyberarksia_database_policy_principal_assignment`)
   - Assign users, groups, or roles to policies
   - Support for multiple directory types (Cloud Directory, Azure AD, LDAP)
-- Policy database assignment resource (`cyberarksia_database_policy_database_assignment`)
+- Policy database assignment resource (`cyberarksia_database_policy_workspace_assignment`)
   - Connect database workspaces to policies
   - Support for 6 authentication methods
 - Secret resource (`cyberarksia_secret`)

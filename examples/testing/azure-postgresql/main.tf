@@ -123,7 +123,7 @@ data "cyberarksia_database_policy" "terraform_test" {
   name = "Terraform-Test-Policy"
 }
 
-resource "cyberarksia_database_policy_database_assignment" "azure_postgres_assignment" {
+resource "cyberarksia_database_policy_workspace_assignment" "azure_postgres_assignment" {
   policy_id             = data.cyberarksia_database_policy.terraform_test.id
   database_workspace_id = cyberarksia_database_workspace.azure_postgres.id
   authentication_method = "db_auth"

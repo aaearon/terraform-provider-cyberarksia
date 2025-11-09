@@ -386,7 +386,7 @@ TF_ACC=1 go test ./internal/provider -run TestPolicyDatabaseAssignment -v
 ```
 feat: add policy database assignment resource
 
-Implement cyberarksia_policy_database_assignment resource to manage
+Implement cyberarksia_policy_workspace_assignment resource to manage
 database assignments to existing SIA access policies. Follows AWS
 Security Group Rule pattern (separate resource per database).
 

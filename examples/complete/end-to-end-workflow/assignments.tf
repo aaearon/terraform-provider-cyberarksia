@@ -36,7 +36,7 @@ resource "cyberarksia_database_workspace" "staging_postgres" {
   }
 }
 
-resource "cyberarksia_database_policy_database_assignment" "staging_dev_access" {
+resource "cyberarksia_database_policy_workspace_assignment" "staging_dev_access" {
   policy_id             = cyberarksia_database_policy.developer_access.policy_id
   database_workspace_id = cyberarksia_database_workspace.staging_postgres.id
 

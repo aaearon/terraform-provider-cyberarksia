@@ -75,7 +75,7 @@ User provided curl request showing Azure database successfully assigned to polic
 
 ### Fix Applied
 
-**File**: `internal/provider/policy_database_assignment_resource.go`
+**File**: `internal/provider/policy_workspace_assignment_resource.go`
 
 **Before** (lines 1106-1121):
 ```go
@@ -319,7 +319,7 @@ Subscriptions are restricted from provisioning in location 'eastus'
 
 5. **Validate Results**:
    - Check logs for errors
-   - Verify policy assignment created: grep "policy_database_assignment" /tmp/terraform-apply.log
+   - Verify policy assignment created: grep "policy_workspace_assignment" /tmp/terraform-apply.log
    - Confirm all resources deleted: grep "Destroy complete" /tmp/terraform-destroy.log
 
 ### Common Issues

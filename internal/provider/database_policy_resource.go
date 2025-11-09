@@ -1001,8 +1001,8 @@ func buildInstanceTarget(ctx context.Context, database *dbmodels.ArkSIADBDatabas
 
 // convertInlineToAssignmentModel adapts an inline assignment model to the standard assignment model
 // This allows reuse of the profile factory with inline target_database blocks
-func convertInlineToAssignmentModel(inline *models.InlineDatabaseAssignmentModel) *models.DatabasePolicyDatabaseAssignmentModel {
-	return &models.DatabasePolicyDatabaseAssignmentModel{
+func convertInlineToAssignmentModel(inline *models.InlineDatabaseAssignmentModel) *models.DatabasePolicyWorkspaceAssignmentModel {
+	return &models.DatabasePolicyWorkspaceAssignmentModel{
 		DatabaseWorkspaceID:   inline.DatabaseWorkspaceID,
 		AuthenticationMethod:  inline.AuthenticationMethod,
 		DBAuthProfile:         inline.DBAuthProfile,

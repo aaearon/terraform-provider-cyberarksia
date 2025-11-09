@@ -111,7 +111,7 @@ resource "cyberarksia_database_policy_principal_assignment" "senior_devs" {
 }
 
 # Add database to existing policy
-resource "cyberarksia_database_policy_database_assignment" "staging_access" {
+resource "cyberarksia_database_policy_workspace_assignment" "staging_access" {
   policy_id             = cyberarksia_database_policy.developer_access.policy_id
   database_workspace_id = cyberarksia_database_workspace.staging_postgres.id
   # ...

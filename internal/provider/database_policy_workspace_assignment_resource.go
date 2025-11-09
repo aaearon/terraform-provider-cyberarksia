@@ -26,23 +26,23 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &DatabasePolicyDatabaseAssignmentResource{}
-var _ resource.ResourceWithImportState = &DatabasePolicyDatabaseAssignmentResource{}
+var _ resource.Resource = &DatabasePolicyWorkspaceAssignmentResource{}
+var _ resource.ResourceWithImportState = &DatabasePolicyWorkspaceAssignmentResource{}
 
-func NewDatabasePolicyDatabaseAssignmentResource() resource.Resource {
-	return &DatabasePolicyDatabaseAssignmentResource{}
+func NewDatabasePolicyWorkspaceAssignmentResource() resource.Resource {
+	return &DatabasePolicyWorkspaceAssignmentResource{}
 }
 
-// DatabasePolicyDatabaseAssignmentResource defines the resource implementation.
-type DatabasePolicyDatabaseAssignmentResource struct {
+// DatabasePolicyWorkspaceAssignmentResource defines the resource implementation.
+type DatabasePolicyWorkspaceAssignmentResource struct {
 	providerData *ProviderData
 }
 
-func (r *DatabasePolicyDatabaseAssignmentResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_database_policy_database_assignment"
+func (r *DatabasePolicyWorkspaceAssignmentResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_database_policy_workspace_assignment"
 }
 
-func (r *DatabasePolicyDatabaseAssignmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *DatabasePolicyWorkspaceAssignmentResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages the assignment of a database workspace to an existing SIA access policy. " +
 			"This resource follows the AWS Security Group Rule pattern - manage individual database assignments " +
@@ -190,7 +190,7 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Schema(ctx context.Context, r
 	}
 }
 
-func (r *DatabasePolicyDatabaseAssignmentResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *DatabasePolicyWorkspaceAssignmentResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -207,8 +207,8 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Configure(ctx context.Context
 	r.providerData = providerData
 }
 
-func (r *DatabasePolicyDatabaseAssignmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data models.DatabasePolicyDatabaseAssignmentModel
+func (r *DatabasePolicyWorkspaceAssignmentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data models.DatabasePolicyWorkspaceAssignmentModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -225,7 +225,7 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Create(ctx context.Context, r
 		return
 	}
 
-	LogOperationStart(ctx, "create", "policy_database_assignment")
+	LogOperationStart(ctx, "create", "policy_workspace_assignment")
 
 	// Check for unknown or null values
 	if data.PolicyID.IsNull() || data.PolicyID.IsUnknown() {
@@ -339,7 +339,7 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Create(ctx context.Context, r
 
 		// Update state with existing configuration
 		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-		LogOperationSuccess(ctx, "create", "policy_database_assignment", data.ID.ValueString())
+		LogOperationSuccess(ctx, "create", "policy_workspace_assignment", data.ID.ValueString())
 		return
 	}
 
@@ -411,11 +411,11 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Create(ctx context.Context, r
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
-	LogOperationSuccess(ctx, "create", "policy_database_assignment", data.ID.ValueString())
+	LogOperationSuccess(ctx, "create", "policy_workspace_assignment", data.ID.ValueString())
 }
 
-func (r *DatabasePolicyDatabaseAssignmentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data models.DatabasePolicyDatabaseAssignmentModel
+func (r *DatabasePolicyWorkspaceAssignmentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data models.DatabasePolicyWorkspaceAssignmentModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -432,7 +432,7 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Read(ctx context.Context, req
 		return
 	}
 
-	LogOperationStart(ctx, "read", "policy_database_assignment")
+	LogOperationStart(ctx, "read", "policy_workspace_assignment")
 
 	// Step 1: Parse composite ID
 	policyID, databaseID, err := helpers.ParsePolicyDatabaseID(data.ID.ValueString())
@@ -464,7 +464,7 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Read(ctx context.Context, req
 			"policy_id":   policyID,
 			"database_id": databaseID,
 		})
-		LogDriftDetected(ctx, "policy_database_assignment", data.ID.ValueString())
+		LogDriftDetected(ctx, "policy_workspace_assignment", data.ID.ValueString())
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -486,7 +486,7 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Read(ctx context.Context, req
 		tflog.Warn(ctx, "Database workspace not found - removing assignment", map[string]interface{}{
 			"database_id": databaseID,
 		})
-		LogDriftDetected(ctx, "policy_database_assignment", data.ID.ValueString())
+		LogDriftDetected(ctx, "policy_workspace_assignment", data.ID.ValueString())
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -509,11 +509,11 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Read(ctx context.Context, req
 	// Save updated state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
-	LogOperationSuccess(ctx, "read", "policy_database_assignment", data.ID.ValueString())
+	LogOperationSuccess(ctx, "read", "policy_workspace_assignment", data.ID.ValueString())
 }
 
-func (r *DatabasePolicyDatabaseAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data models.DatabasePolicyDatabaseAssignmentModel
+func (r *DatabasePolicyWorkspaceAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var data models.DatabasePolicyWorkspaceAssignmentModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -530,7 +530,7 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Update(ctx context.Context, r
 		return
 	}
 
-	LogOperationStart(ctx, "update", "policy_database_assignment")
+	LogOperationStart(ctx, "update", "policy_workspace_assignment")
 
 	// Step 1: Parse composite ID
 	policyID, databaseID, err := helpers.ParsePolicyDatabaseID(data.ID.ValueString())
@@ -627,11 +627,11 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Update(ctx context.Context, r
 	// Save updated state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
-	LogOperationSuccess(ctx, "update", "policy_database_assignment", data.ID.ValueString())
+	LogOperationSuccess(ctx, "update", "policy_workspace_assignment", data.ID.ValueString())
 }
 
-func (r *DatabasePolicyDatabaseAssignmentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data models.DatabasePolicyDatabaseAssignmentModel
+func (r *DatabasePolicyWorkspaceAssignmentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data models.DatabasePolicyWorkspaceAssignmentModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -648,7 +648,7 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Delete(ctx context.Context, r
 		return
 	}
 
-	LogOperationStart(ctx, "delete", "policy_database_assignment")
+	LogOperationStart(ctx, "delete", "policy_workspace_assignment")
 
 	// Step 1: Parse composite ID
 	policyID, databaseID, err := helpers.ParsePolicyDatabaseID(data.ID.ValueString())
@@ -730,10 +730,10 @@ func (r *DatabasePolicyDatabaseAssignmentResource) Delete(ctx context.Context, r
 		return
 	}
 
-	LogOperationSuccess(ctx, "delete", "policy_database_assignment", data.ID.ValueString())
+	LogOperationSuccess(ctx, "delete", "policy_workspace_assignment", data.ID.ValueString())
 }
 
-func (r *DatabasePolicyDatabaseAssignmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *DatabasePolicyWorkspaceAssignmentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Import ID format: policy-id:database-id
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

@@ -51,7 +51,7 @@ resource "cyberarksia_database_policy" "example" {
 
 **Relationship to Separate Assignment Resources**:
 - Inline blocks handle **initial policy creation** (API requirement)
-- Separate `cyberarksia_database_policy_principal_assignment` and `cyberarksia_policy_database_assignment` resources manage **additional assignments**
+- Separate `cyberarksia_database_policy_principal_assignment` and `cyberarksia_policy_workspace_assignment` resources manage **additional assignments**
 - Teams can use `lifecycle { ignore_changes = [principal, target_database] }` if managing all assignments externally
 
 This hybrid approach satisfies both the API constraint AND the composability goals of the modular pattern.

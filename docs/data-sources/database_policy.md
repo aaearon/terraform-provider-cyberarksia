@@ -24,7 +24,7 @@ data "cyberarksia_database_policy" "db_admins" {
 }
 
 # Use policy in database assignment resource
-resource "cyberarksia_database_policy_database_assignment" "prod_postgres" {
+resource "cyberarksia_database_policy_workspace_assignment" "prod_postgres" {
   policy_id             = data.cyberarksia_database_policy.db_admins.id
   database_workspace_id = cyberarksia_database_workspace.prod.id
   authentication_method = "db_auth"

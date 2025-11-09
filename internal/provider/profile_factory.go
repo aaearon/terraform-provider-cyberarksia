@@ -27,7 +27,7 @@ import (
 func BuildAuthenticationProfile(
 	ctx context.Context,
 	authMethod string,
-	data *models.DatabasePolicyDatabaseAssignmentModel,
+	data *models.DatabasePolicyWorkspaceAssignmentModel,
 	diagnostics *diag.Diagnostics,
 ) interface{} {
 	switch authMethod {
@@ -53,7 +53,7 @@ func BuildAuthenticationProfile(
 }
 
 // buildDBAuthProfile handles db_auth profile building
-func buildDBAuthProfile(ctx context.Context, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBDBAuthProfile {
+func buildDBAuthProfile(ctx context.Context, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBDBAuthProfile {
 	if data.DBAuthProfile == nil {
 		diagnostics.AddError("Missing db_auth Profile", "db_auth_profile block is required when authentication_method is 'db_auth'")
 		return nil
@@ -67,7 +67,7 @@ func buildDBAuthProfile(ctx context.Context, data *models.DatabasePolicyDatabase
 }
 
 // buildLDAPAuthProfile handles ldap_auth profile building
-func buildLDAPAuthProfile(ctx context.Context, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBLDAPAuthProfile {
+func buildLDAPAuthProfile(ctx context.Context, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBLDAPAuthProfile {
 	if data.LDAPAuthProfile == nil {
 		diagnostics.AddError("Missing ldap_auth Profile", "ldap_auth_profile block is required when authentication_method is 'ldap_auth'")
 		return nil
@@ -81,7 +81,7 @@ func buildLDAPAuthProfile(ctx context.Context, data *models.DatabasePolicyDataba
 }
 
 // buildOracleAuthProfile handles oracle_auth profile building
-func buildOracleAuthProfile(ctx context.Context, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBOracleAuthProfile {
+func buildOracleAuthProfile(ctx context.Context, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBOracleAuthProfile {
 	if data.OracleAuthProfile == nil {
 		diagnostics.AddError("Missing oracle_auth Profile", "oracle_auth_profile block is required when authentication_method is 'oracle_auth'")
 		return nil
@@ -100,7 +100,7 @@ func buildOracleAuthProfile(ctx context.Context, data *models.DatabasePolicyData
 }
 
 // buildMongoAuthProfile handles mongo_auth profile building
-func buildMongoAuthProfile(ctx context.Context, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBMongoAuthProfile {
+func buildMongoAuthProfile(ctx context.Context, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBMongoAuthProfile {
 	if data.MongoAuthProfile == nil {
 		diagnostics.AddError("Missing mongo_auth Profile", "mongo_auth_profile block is required when authentication_method is 'mongo_auth'")
 		return nil
@@ -142,7 +142,7 @@ func buildMongoAuthProfile(ctx context.Context, data *models.DatabasePolicyDatab
 }
 
 // buildSQLServerAuthProfile handles sqlserver_auth profile building
-func buildSQLServerAuthProfile(ctx context.Context, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBSqlServerAuthProfile {
+func buildSQLServerAuthProfile(ctx context.Context, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBSqlServerAuthProfile {
 	if data.SQLServerAuthProfile == nil {
 		diagnostics.AddError("Missing sqlserver_auth Profile", "sqlserver_auth_profile block is required when authentication_method is 'sqlserver_auth'")
 		return nil
@@ -194,7 +194,7 @@ func buildSQLServerAuthProfile(ctx context.Context, data *models.DatabasePolicyD
 }
 
 // buildRDSIAMUserAuthProfile handles rds_iam_user_auth profile building
-func buildRDSIAMUserAuthProfile(_ context.Context, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBRDSIAMUserAuthProfile {
+func buildRDSIAMUserAuthProfile(_ context.Context, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) *uapsiadbmodels.ArkUAPSIADBRDSIAMUserAuthProfile {
 	if data.RDSIAMUserAuthProfile == nil {
 		diagnostics.AddError("Missing rds_iam_user_auth Profile", "rds_iam_user_auth_profile block is required when authentication_method is 'rds_iam_user_auth'")
 		return nil
@@ -280,7 +280,7 @@ func SetProfileOnInstanceTarget(
 func ParseAuthenticationProfile(
 	ctx context.Context,
 	target *uapsiadbmodels.ArkUAPSIADBInstanceTarget,
-	data *models.DatabasePolicyDatabaseAssignmentModel,
+	data *models.DatabasePolicyWorkspaceAssignmentModel,
 	diagnostics *diag.Diagnostics,
 ) {
 	// CRITICAL: Clear all profile pointers before parsing to prevent stale data
@@ -310,7 +310,7 @@ func ParseAuthenticationProfile(
 }
 
 // parseDBAuthProfile handles db_auth profile parsing
-func parseDBAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) {
+func parseDBAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) {
 	if target.DBAuthProfile != nil {
 		rolesList, diags := types.ListValueFrom(ctx, types.StringType, target.DBAuthProfile.Roles)
 		diagnostics.Append(diags...)
@@ -321,7 +321,7 @@ func parseDBAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBI
 }
 
 // parseLDAPAuthProfile handles ldap_auth profile parsing
-func parseLDAPAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) {
+func parseLDAPAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) {
 	if target.LDAPAuthProfile != nil {
 		assignGroupsList, diags := types.ListValueFrom(ctx, types.StringType, target.LDAPAuthProfile.AssignGroups)
 		diagnostics.Append(diags...)
@@ -332,7 +332,7 @@ func parseLDAPAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIAD
 }
 
 // parseOracleAuthProfile handles oracle_auth profile parsing
-func parseOracleAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) {
+func parseOracleAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) {
 	if target.OracleAuthProfile != nil {
 		rolesList, diags := types.ListValueFrom(ctx, types.StringType, target.OracleAuthProfile.Roles)
 		diagnostics.Append(diags...)
@@ -348,7 +348,7 @@ func parseOracleAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSI
 }
 
 // parseMongoAuthProfile handles mongo_auth profile parsing
-func parseMongoAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) {
+func parseMongoAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) {
 	if target.MongoAuthProfile != nil {
 		mongoModel := &models.MongoAuthProfileModel{}
 
@@ -387,7 +387,7 @@ func parseMongoAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIA
 }
 
 // parseSQLServerAuthProfile handles sqlserver_auth profile parsing
-func parseSQLServerAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyDatabaseAssignmentModel, diagnostics *diag.Diagnostics) {
+func parseSQLServerAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) {
 	if target.SQLServerAuthProfile != nil {
 		sqlModel := &models.SQLServerAuthProfileModel{}
 
@@ -436,7 +436,7 @@ func parseSQLServerAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUA
 }
 
 // parseRDSIAMUserAuthProfile handles rds_iam_user_auth profile parsing
-func parseRDSIAMUserAuthProfile(_ context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyDatabaseAssignmentModel) {
+func parseRDSIAMUserAuthProfile(_ context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel) {
 	if target.RDSIAMUserAuthProfile != nil {
 		data.RDSIAMUserAuthProfile = &models.RDSIAMUserAuthProfileModel{
 			DBUser: types.StringValue(target.RDSIAMUserAuthProfile.DBUser),
