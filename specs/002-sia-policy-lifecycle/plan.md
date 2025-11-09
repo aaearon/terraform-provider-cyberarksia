@@ -44,7 +44,7 @@ This architecture follows the AWS Security Group Rule pattern, enabling distribu
 
 **Note**: Constitution file does not exist yet. Applying standard Terraform provider best practices:
 
-1. ✅ **Reuse Existing Patterns**: Follow established patterns from `policy_workspace_assignment_resource.go`
+1. ✅ **Reuse Existing Patterns**: Follow established patterns from `database_policy_workspace_assignment_resource.go`
 2. ✅ **Maximize SDK Usage**: Use ARK SDK v1.5.0 UAP methods (AddPolicy, UpdatePolicy, DeletePolicy, Policy, ListPolicies)
 3. ✅ **LLM-Friendly Documentation**: Follow FR-012/FR-013 requirements for AI assistant compatibility
 4. ✅ **Test Coverage**: CRUD testing per `examples/testing/TESTING-GUIDE.md`
@@ -79,7 +79,7 @@ internal/
 ├── provider/                                    # Terraform resource implementations
 │   ├── database_policy_resource.go             # NEW - Policy metadata + conditions
 │   ├── database_policy_principal_assignment_resource.go  # NEW - Principal assignments
-│   ├── policy_workspace_assignment_resource.go  # EXISTING - Update for consistency
+│   ├── database_policy_workspace_assignment_resource.go  # EXISTING - Update for consistency
 │   ├── access_policy_data_source.go            # EXISTING - No changes (already supports name/ID lookup)
 │   ├── provider.go                             # UPDATE - Register new resources
 │   └── logging.go                              # EXISTING - Reuse (no changes)
@@ -159,7 +159,7 @@ examples/
 2. **Read-Modify-Write Pattern** (research.md § Implementation Patterns)
    - Document how to preserve UI-managed principals/targets
    - Explain API constraint workaround for UpdatePolicy()
-   - Provide code examples from existing `policy_workspace_assignment_resource.go`
+   - Provide code examples from existing `database_policy_workspace_assignment_resource.go`
 
    **Algorithm**:
    1. **Fetch**: GET policy by ID (returns complete policy with all principals/targets)
@@ -428,7 +428,7 @@ This plan document ends after Phase 1. The `/speckit.tasks` command will:
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
-| UpdatePolicy() API constraint (single workspace type) causes issues | High | Low | Already handled in existing `policy_workspace_assignment_resource.go` (line 1110+) |
+| UpdatePolicy() API constraint (single workspace type) causes issues | High | Low | Already handled in existing `database_policy_workspace_assignment_resource.go` (line 1110+) |
 | Concurrent modification race conditions | Medium | Medium | Document as known limitation (same as aws_security_group_rule); users coordinate workspaces |
 | Principal directory validation complexity | Low | Low | Use API-only validation (same pattern as database workspace validation) |
 | Status management state conflicts | Medium | Low | Custom validator limits user input to "Active"\|"Suspended" only |

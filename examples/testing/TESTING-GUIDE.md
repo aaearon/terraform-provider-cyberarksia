@@ -2257,7 +2257,7 @@ EOF
 ### Documentation
 - [`CLAUDE.md`](../../CLAUDE.md) - Development guidelines (references this guide)
 - [`docs/testing-framework.md`](../../docs/testing-framework.md) - Conceptual testing framework
-- [`docs/resources/policy_workspace_assignment.md`](../../docs/resources/policy_workspace_assignment.md) - Policy database assignment documentation
+- [`docs/resources/database_policy_workspace_assignment.md`](../../docs/resources/database_policy_workspace_assignment.md) - Policy database assignment documentation
 - [`docs/resources/database_policy.md`](../../docs/resources/database_policy.md) - Database policy documentation
 - [`docs/resources/database_policy_principal_assignment.md`](../../docs/resources/database_policy_principal_assignment.md) - Principal assignment documentation
 - [`examples/resources/`](../resources/) - Per-resource usage examples

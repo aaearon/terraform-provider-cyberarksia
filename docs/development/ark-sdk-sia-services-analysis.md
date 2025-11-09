@@ -173,7 +173,7 @@ These services are **already available** in the Terraform provider (v0.1.0):
 **Implementation Files**:
 - `internal/provider/database_policy_resource.go`
 - `internal/provider/database_policy_principal_assignment_resource.go`
-- `internal/provider/policy_workspace_assignment_resource.go`
+- `internal/provider/database_policy_workspace_assignment_resource.go`
 
 ---
 

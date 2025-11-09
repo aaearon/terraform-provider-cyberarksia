@@ -203,7 +203,7 @@ Connect database workspaces to access policies with specific authentication sett
 
 **Example use case:** You have a production PostgreSQL database and a policy for developers. This resource connects them together and specifies that users get the `readonly` role.
 
-See [docs/resources/policy_workspace_assignment.md](docs/resources/policy_workspace_assignment.md) and [examples/resources/cyberarksia_database_policy_workspace_assignment/](examples/resources/cyberarksia_database_policy_workspace_assignment/) for usage examples.
+See [docs/resources/database_policy_workspace_assignment.md](docs/resources/database_policy_workspace_assignment.md) and [examples/resources/cyberarksia_database_policy_workspace_assignment/](examples/resources/cyberarksia_database_policy_workspace_assignment/) for usage examples.
 
 ### VM/Server Access Resources
 

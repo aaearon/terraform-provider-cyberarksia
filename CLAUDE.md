@@ -173,7 +173,7 @@ terraform-provider-cyberark-sia/
 | Resource | `cyberarksia_certificate` | `internal/provider/certificate_resource.go` | ✅ Stable | TLS/mTLS certificates for database connections |
 | Resource | `cyberarksia_database_policy` | `internal/provider/database_policy_resource.go` | ✅ Stable | Access policies with time-based conditions |
 | Resource | `cyberarksia_database_policy_principal_assignment` | `internal/provider/database_policy_principal_assignment_resource.go` | ✅ Stable | Assign users/groups/roles TO policies (WHO gets access) |
-| Resource | `cyberarksia_policy_workspace_assignment` | `internal/provider/policy_workspace_assignment_resource.go` | ✅ Stable | Assign database workspaces TO policies (WHAT they access) |
+| Resource | `cyberarksia_database_policy_workspace_assignment` | `internal/provider/database_policy_workspace_assignment_resource.go` | ✅ Stable | Assign database workspaces TO policies (WHAT they access) |
 | Resource | `cyberarksia_virtual_machine_secret` | `internal/provider/virtual_machine_secret_resource.go` | ✅ Stable | VM credentials (ProvisionerUser/PCloudAccount) |
 | Resource | `cyberarksia_target_set` | `internal/provider/target_set_resource.go` | ✅ Stable | VM/server target sets (Domain/Suffix/Target matching) |
 | Data Source | `cyberarksia_principal` | `internal/provider/principal_data_source.go` | ✅ Stable | Lookup users/groups/roles by name (no manual UUID needed) |
@@ -190,7 +190,7 @@ Typical configuration flow:
 3. cyberarksia_database_policy (access conditions)
      ↓
      ├→ 4a. cyberarksia_database_policy_principal_assignment (WHO: assign users/groups/roles)
-     └→ 4b. cyberarksia_policy_workspace_assignment (WHAT: assign database workspaces)
+     └→ 4b. cyberarksia_database_policy_workspace_assignment (WHAT: assign database workspaces)
 ```
 
 **Note**: Principal and database assignments can be managed independently by different teams (security team manages WHO, app team manages WHAT).

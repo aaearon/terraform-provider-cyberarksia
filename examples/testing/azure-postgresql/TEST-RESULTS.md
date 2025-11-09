@@ -75,7 +75,7 @@ User provided curl request showing Azure database successfully assigned to polic
 
 ### Fix Applied
 
-**File**: `internal/provider/policy_workspace_assignment_resource.go`
+**File**: `internal/provider/database_policy_workspace_assignment_resource.go`
 
 **Before** (lines 1106-1121):
 ```go
