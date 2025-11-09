@@ -35,24 +35,21 @@ func (m preventClearingModifier) PlanModifyString(ctx context.Context, req planm
 	}
 
 	// If the resource is being destroyed, allow it
-	// During resource destruction, the entire plan is null
-	if req.PlanValue.IsUnknown() || req.Plan.Raw.IsNull() {
+	if req.Plan.Raw.IsNull() {
 		return
 	}
 
-	// Check if the user is trying to clear the attribute
+	// Check if user removed attribute from config or set it to empty
 	stateHasValue := !req.StateValue.IsNull() && req.StateValue.ValueString() != ""
+	configIsAbsent := req.ConfigValue.IsNull()
+	configIsEmpty := !req.ConfigValue.IsNull() && req.ConfigValue.ValueString() == ""
 
-	// User is trying to clear if plan value is null or empty string when state had a value
-	planIsEmpty := req.PlanValue.IsNull() || req.PlanValue.ValueString() == ""
-
-	if stateHasValue && planIsEmpty {
+	if stateHasValue && (configIsAbsent || configIsEmpty) {
 		resp.Diagnostics.AddError(
 			"Cannot Clear Attribute",
-			"The "+req.Path.String()+" field cannot be removed once set due to API limitations. "+
+			"The "+req.Path.String()+" field cannot be removed once set due to API PATCH semantics. "+
 				"You can update it to a different value, but cannot clear it entirely.",
 		)
-		// Preserve the state value to prevent drift
 		resp.PlanValue = req.StateValue
 	}
 }

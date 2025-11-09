@@ -270,7 +270,7 @@ func (r *targetSetResource) Read(ctx context.Context, req resource.ReadRequest, 
 		"name": state.Name.ValueString(),
 	})
 
-	// Call API with retry logic using direct workaround (handles URL-escaping for forward slashes)
+	// Call API with retry logic
 	var targetSet *targetsetmodels.ArkSIATargetSet
 	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
@@ -278,7 +278,9 @@ func (r *targetSetResource) Read(ctx context.Context, req resource.ReadRequest, 
 		MaxDelay:   client.MaxDelay,
 	}, func() error {
 		var apiErr error
-		targetSet, apiErr = client.GetTargetSetDirect(ctx, r.providerData.AuthContext, state.Name.ValueString())
+		targetSet, apiErr = r.providerData.SIAAPI.WorkspacesTargetSets().TargetSet(&targetsetmodels.ArkSIAGetTargetSet{
+			ID: state.ID.ValueString(), // Use ID field (currently equals name, but may differ in future)
+		})
 		return apiErr
 	})
 

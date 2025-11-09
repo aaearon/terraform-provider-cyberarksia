@@ -39,11 +39,10 @@ func (v noForwardSlashesValidator) ValidateString(ctx context.Context, req valid
 
 	// Check if the name contains forward slashes
 	if strings.Contains(value, "/") {
-		resp.Diagnostics.AddWarning(
-			"Target Set Name Contains Forward Slashes",
-			"The name contains forward slashes which will cause deletion failures (403 errors). "+
-				"While the API accepts this during creation, you will not be able to destroy this resource. "+
-				"Consider using hyphens (-) or underscores (_) instead.\n\n"+
+		resp.Diagnostics.AddError(
+			"Invalid Target Set Name",
+			"Target set names cannot contain forward slashes due to API limitations. "+
+				"Use hyphens (-), underscores (_), or dots (.) instead.\n\n"+
 				"Current name: "+value,
 		)
 	}

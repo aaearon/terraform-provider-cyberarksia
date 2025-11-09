@@ -13,47 +13,47 @@ import (
 
 func TestNoForwardSlashesValidator(t *testing.T) {
 	tests := []struct {
-		name            string
-		value           types.String
-		warningContains string
-		expectWarning   bool
+		name          string
+		value         types.String
+		errorContains string
+		expectError   bool
 	}{
 		{
-			name:          "valid name with hyphens",
-			value:         types.StringValue("prod-servers"),
-			expectWarning: false,
+			name:        "valid name with hyphens",
+			value:       types.StringValue("prod-servers"),
+			expectError: false,
 		},
 		{
-			name:          "valid name with underscores",
-			value:         types.StringValue("prod_servers"),
-			expectWarning: false,
+			name:        "valid name with underscores",
+			value:       types.StringValue("prod_servers"),
+			expectError: false,
 		},
 		{
-			name:          "valid name with dots",
-			value:         types.StringValue("prod.example.com"),
-			expectWarning: false,
+			name:        "valid name with dots",
+			value:       types.StringValue("prod.example.com"),
+			expectError: false,
 		},
 		{
-			name:            "invalid name with forward slash",
-			value:           types.StringValue("prod/servers"),
-			expectWarning:   true,
-			warningContains: "forward slashes",
+			name:          "invalid name with forward slash",
+			value:         types.StringValue("prod/servers"),
+			expectError:   true,
+			errorContains: "Invalid Target Set Name",
 		},
 		{
-			name:            "invalid name with multiple forward slashes",
-			value:           types.StringValue("env/region/servers"),
-			expectWarning:   true,
-			warningContains: "deletion failures",
+			name:          "invalid name with multiple forward slashes",
+			value:         types.StringValue("env/region/servers"),
+			expectError:   true,
+			errorContains: "API limitations",
 		},
 		{
-			name:          "null value - skip validation",
-			value:         types.StringNull(),
-			expectWarning: false,
+			name:        "null value - skip validation",
+			value:       types.StringNull(),
+			expectError: false,
 		},
 		{
-			name:          "unknown value - skip validation",
-			value:         types.StringUnknown(),
-			expectWarning: false,
+			name:        "unknown value - skip validation",
+			value:       types.StringUnknown(),
+			expectError: false,
 		},
 	}
 
@@ -71,29 +71,29 @@ func TestNoForwardSlashesValidator(t *testing.T) {
 
 			nameValidator.ValidateString(ctx, req, resp)
 
-			// Check warning expectation
-			if tt.expectWarning {
-				warnings := resp.Diagnostics.Warnings()
-				if len(warnings) == 0 {
-					t.Fatalf("expected warning but got none")
+			// Check error expectation
+			if tt.expectError {
+				errors := resp.Diagnostics.Errors()
+				if len(errors) == 0 {
+					t.Fatalf("expected error but got none")
 				}
-				if tt.warningContains != "" {
+				if tt.errorContains != "" {
 					found := false
-					for _, diag := range warnings {
-						// Check both Detail and Summary for the warning text
-						if strings.Contains(diag.Detail(), tt.warningContains) || strings.Contains(diag.Summary(), tt.warningContains) {
+					for _, diag := range errors {
+						// Check both Detail and Summary for the error text
+						if strings.Contains(diag.Detail(), tt.errorContains) || strings.Contains(diag.Summary(), tt.errorContains) {
 							found = true
 							break
 						}
 					}
 					if !found {
-						t.Errorf("expected warning to contain %q, but diagnostics were: %v", tt.warningContains, resp.Diagnostics)
+						t.Errorf("expected error to contain %q, but diagnostics were: %v", tt.errorContains, resp.Diagnostics)
 					}
 				}
 			} else {
-				warnings := resp.Diagnostics.Warnings()
-				if len(warnings) > 0 {
-					t.Fatalf("unexpected warning: %v", resp.Diagnostics)
+				errors := resp.Diagnostics.Errors()
+				if len(errors) > 0 {
+					t.Fatalf("unexpected error: %v", resp.Diagnostics)
 				}
 			}
 		})

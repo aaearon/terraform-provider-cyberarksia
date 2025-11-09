@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+	targetsetmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/workspaces/targetsets/models"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -509,23 +509,17 @@ func TestAccTargetSet_invalidSecretType(t *testing.T) {
 	})
 }
 
-// TestAccTargetSet_forwardSlashWarning tests that forward slashes generate a warning
-func TestAccTargetSet_forwardSlashWarning(t *testing.T) {
+// TestAccTargetSet_forwardSlashError tests that forward slashes generate an error
+func TestAccTargetSet_forwardSlashError(t *testing.T) {
 	targetSetName := fmt.Sprintf("env/test/server-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckTargetSetDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccTargetSetConfigBasic(targetSetName),
-				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckTargetSetExists("cyberarksia_target_set.basic"),
-					resource.TestCheckResourceAttr("cyberarksia_target_set.basic", "name", targetSetName),
-				),
-				// This test verifies that creation succeeds even with forward slashes (warning, not error)
-				// The validator should emit a warning but not block creation
+				Config:      testAccTargetSetConfigBasic(targetSetName),
+				ExpectError: regexp.MustCompile("Invalid Target Set Name"),
 			},
 		},
 	})
@@ -563,35 +557,27 @@ func testAccCheckTargetSetDestroy(s *terraform.State) error {
 		return fmt.Errorf("failed to get provider data: %w", err)
 	}
 
-	ctx := context.Background()
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "cyberarksia_target_set" {
 			continue
 		}
 
 		// Query API to verify resource is gone
-		// Use GetTargetSetDirect to handle URL-escaping for forward slashes
-		targetSetName := rs.Primary.ID
-		_, err := client.GetTargetSetDirect(ctx, providerData.AuthContext, targetSetName)
+		targetSetID := rs.Primary.ID
+		_, err := providerData.SIAAPI.WorkspacesTargetSets().TargetSet(&targetsetmodels.ArkSIAGetTargetSet{
+			ID: targetSetID,
+		})
 		if err != nil {
 			// 404 means successfully deleted
 			if client.IsNotFoundError(err) {
 				continue
 			}
-			// 403 with forward slashes typically means the resource was already deleted
-			// but the URL-encoded path caused authentication issues
-			if client.IsForbiddenError(err) && strings.Contains(targetSetName, "/") {
-				// Log this scenario for troubleshooting
-				// In production, forward slashes in names can cause DELETE to return 403
-				// even when resource is gone, so we treat this as "deleted"
-				continue
-			}
 			// Other errors are unexpected
-			return fmt.Errorf("error checking target set %s: %w", targetSetName, err)
+			return fmt.Errorf("error checking target set %s: %w", targetSetID, err)
 		}
 
 		// Resource still exists - destroy failed
-		return fmt.Errorf("target set %s still exists after destroy", targetSetName)
+		return fmt.Errorf("target set %s still exists after destroy", targetSetID)
 	}
 
 	return nil
