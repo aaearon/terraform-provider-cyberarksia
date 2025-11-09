@@ -155,7 +155,7 @@ These services are **already available** in the Terraform provider (v0.1.0):
 **Resources**:
 - `cyberarksia_database_policy`
 - `cyberarksia_database_policy_principal_assignment`
-- `cyberarksia_policy_database_assignment`
+- `cyberarksia_policy_workspace_assignment`
 
 **SDK Service**: `ArkUAPSIADBService`
 - **API Accessor**: `Db()`
@@ -173,7 +173,7 @@ These services are **already available** in the Terraform provider (v0.1.0):
 **Implementation Files**:
 - `internal/provider/database_policy_resource.go`
 - `internal/provider/database_policy_principal_assignment_resource.go`
-- `internal/provider/policy_database_assignment_resource.go`
+- `internal/provider/database_policy_workspace_assignment_resource.go`
 
 ---
 
@@ -339,7 +339,7 @@ PoliciesStats() (*models.ArkUAPPoliciesStats, error)
 **Implementation Notes**:
 - Same UAP framework as database policies
 - ⚠️ **PROVEN API Constraint**: Read-Modify-Write pattern REQUIRED
-  - **Proof**: Working database policy implementation at `internal/provider/database_policy_database_assignment_resource.go:384-390`
+  - **Proof**: Working database policy implementation at `internal/provider/database_policy_workspace_assignment_resource.go:384-390`
   - **Evidence**: Comment states "CRITICAL: API only accepts ONE workspace type in Targets per update"
   - **Implementation**: Code explicitly constructs policy with ONLY modified workspace type in Targets map
   - **Pattern**: Fetch full policy → Modify specific element (principal/target) → Send back with ALL metadata/conditions but ONLY modified workspace type

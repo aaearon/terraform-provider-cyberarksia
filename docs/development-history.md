@@ -23,7 +23,7 @@ Implemented `cyberarksia_principal` data source enabling principal lookups by na
 **Scope**: Three resources implementing modular assignment pattern:
 - `cyberarksia_database_policy` - Policy metadata and access conditions (NEW)
 - `cyberarksia_database_policy_principal_assignment` - Assign users/groups/roles to policies (NEW)
-- `cyberarksia_database_policy_database_assignment` - Assign database workspaces to policies (consistency updates)
+- `cyberarksia_database_policy_workspace_assignment` - Assign database workspaces to policies (consistency updates)
 
 **Implementation Timeline**: ~6 hours across 9 phases (T001-T069, 69 tasks)
 - Phases 1-4: Core implementation (T001-T043) - Validators, models, resources, documentation

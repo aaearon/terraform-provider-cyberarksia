@@ -22,7 +22,7 @@
 
 **Impact**:
 - Eliminated 3 × 150-line switch statements from Create(), Read(), Update()
-- `policy_database_assignment_resource.go`: 1,177 → 767 lines (-410 lines / 35% reduction)
+- `database_policy_workspace_assignment_resource.go`: 1,177 → 767 lines (-410 lines / 35% reduction)
 - Zero duplicated profile handling code
 - All 6 authentication methods centralized
 
@@ -57,13 +57,13 @@
 **Example Failure Scenario**:
 ```hcl
 # Day 1: Create with db_auth
-resource "cyberarksia_database_policy_database_assignment" "example" {
+resource "cyberarksia_database_policy_workspace_assignment" "example" {
   authentication_method = "db_auth"
   db_auth_profile { roles = ["reader"] }
 }
 
 # Day 2: Switch to ldap_auth
-resource "cyberarksia_database_policy_database_assignment" "example" {
+resource "cyberarksia_database_policy_workspace_assignment" "example" {
   authentication_method = "ldap_auth"
   ldap_auth_profile { assign_groups = ["admins"] }
 }
@@ -133,7 +133,7 @@ This plan addresses critical technical debt in the CyberArk SIA Terraform provid
 
 **Success Criteria**:
 - All tests pass after each phase
-- `policy_database_assignment_resource.go` reduces from 1,177 to ~400 LOC
+- `database_policy_workspace_assignment_resource.go` reduces from 1,177 to ~400 LOC
 - Zero duplicated switch statements for profile handling
 - Documentation consolidated in `docs/` directory
 
@@ -143,7 +143,7 @@ This plan addresses critical technical debt in the CyberArk SIA Terraform provid
 
 ### Current State Problem
 
-The file `internal/provider/policy_database_assignment_resource.go` (1,177 lines) contains **4 identical 200+ line switch statements** that handle 6 authentication profiles:
+The file `internal/provider/database_policy_workspace_assignment_resource.go` (1,177 lines) contains **4 identical 200+ line switch statements** that handle 6 authentication profiles:
 - `db_auth` - Database roles
 - `ldap_auth` - LDAP groups
 - `oracle_auth` - Oracle roles with special privileges
@@ -199,7 +199,7 @@ This exact pattern is duplicated in `Create()`, `Read()`, and `Update()` with mi
 
 **Goal**: Create `internal/provider/profile_factory.go` to centralize all authentication profile logic.
 
-**Impact**: Reduce `policy_database_assignment_resource.go` from 1,177 to ~400 LOC
+**Impact**: Reduce `database_policy_workspace_assignment_resource.go` from 1,177 to ~400 LOC
 
 ### Task 1.1: Create Profile Factory File ✅ COMPLETE
 
@@ -638,7 +638,7 @@ go build ./internal/provider/profile_factory.go
 
 ### Task 1.2: Refactor Create() Method ✅ COMPLETE
 
-**File to Modify**: `internal/provider/policy_database_assignment_resource.go`
+**File to Modify**: `internal/provider/database_policy_workspace_assignment_resource.go`
 
 **Current Code** (lines ~318-469):
 ```go
@@ -694,7 +694,7 @@ SetProfileOnInstanceTarget(instanceTarget, authMethod, profile)
 
 ### Task 1.3: Refactor Read() Method ✅ COMPLETE
 
-**File to Modify**: `internal/provider/policy_database_assignment_resource.go`
+**File to Modify**: `internal/provider/database_policy_workspace_assignment_resource.go`
 
 **Current Code** (lines ~593-726):
 ```go
@@ -740,7 +740,7 @@ if resp.Diagnostics.HasError() {
 
 ### Task 1.4: Refactor Update() Method ✅ COMPLETE
 
-**File to Modify**: `internal/provider/policy_database_assignment_resource.go`
+**File to Modify**: `internal/provider/database_policy_workspace_assignment_resource.go`
 
 **Current Code** (lines ~779-927):
 ```go
@@ -809,7 +809,7 @@ go test ./... -v
 go test ./internal/provider -run TestPolicyDatabaseAssignment -v
 
 # Check line counts
-wc -l internal/provider/policy_database_assignment_resource.go
+wc -l internal/provider/database_policy_workspace_assignment_resource.go
 # Should be ~400-450 lines (down from 1,177)
 
 wc -l internal/provider/profile_factory.go
@@ -818,7 +818,7 @@ wc -l internal/provider/profile_factory.go
 
 **Success Criteria**:
 - ✅ All tests pass
-- ✅ `policy_database_assignment_resource.go` is under 500 LOC
+- ✅ `database_policy_workspace_assignment_resource.go` is under 500 LOC
 - ✅ No compilation errors
 - ✅ Zero duplicated switch statements for profile handling
 
@@ -846,7 +846,7 @@ import (
 )
 
 // ConvertDatabaseIDToInt converts a database ID string to integer with proper error handling
-// Used by database_workspace_resource, database_policy_resource, and policy_database_assignment_resource
+// Used by database_workspace_resource, database_policy_resource, and policy_workspace_assignment_resource
 func ConvertDatabaseIDToInt(id string, diagnostics *diag.Diagnostics, attrPath path.Path) (int, bool) {
 	databaseIDInt, err := strconv.Atoi(id)
 	if err != nil {
@@ -881,7 +881,7 @@ import (
 )
 
 // BuildCompositeID creates a composite ID from two parts
-// Used by policy_database_assignment (policy:database) and policy_principal_assignment (policy:principal:type)
+// Used by policy_workspace_assignment (policy:database) and policy_principal_assignment (policy:principal:type)
 func BuildCompositeID(parts ...string) string {
 	return strings.Join(parts, ":")
 }
@@ -927,11 +927,11 @@ func ParsePolicyPrincipalID(id string) (policyID, principalID, principalType str
 ### Task 2.3: Refactor Resources to Use Helpers ✅ COMPLETE
 
 **Files to Modify**:
-1. `internal/provider/policy_database_assignment_resource.go`
+1. `internal/provider/database_policy_workspace_assignment_resource.go`
 2. `internal/provider/database_workspace_resource.go`
 3. `internal/provider/database_policy_resource.go`
 
-**Example Refactoring** (policy_database_assignment_resource.go):
+**Example Refactoring** (database_policy_workspace_assignment_resource.go):
 
 **Before**:
 ```go
@@ -983,7 +983,7 @@ import "github.com/aaearon/terraform-provider-cyberark-sia/internal/provider/hel
 
 **Search and Replace Operations**:
 ```bash
-# In policy_database_assignment_resource.go
+# In database_policy_workspace_assignment_resource.go
 # Replace: buildCompositeID(policyID, databaseID)
 # With: helpers.BuildCompositeID(policyID, databaseID)
 
@@ -1212,7 +1212,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding conventions
 
 **Files to Modify**:
 1. `internal/provider/resource_certificate.go` (line ~404)
-2. `internal/provider/policy_database_assignment_resource.go` (lines ~238, ~288)
+2. `internal/provider/database_policy_workspace_assignment_resource.go` (lines ~238, ~288)
 
 **Search and Replace**:
 ```bash
@@ -1337,7 +1337,7 @@ go build -v
 go test ./... -v
 
 # 3. Check line counts
-wc -l internal/provider/policy_database_assignment_resource.go
+wc -l internal/provider/database_policy_workspace_assignment_resource.go
 
 # 4. Commit changes
 git add .
@@ -1356,7 +1356,7 @@ git checkout backup-before-refactoring
 
 ### Success Metrics
 - [ ] All tests pass
-- [ ] `policy_database_assignment_resource.go` < 500 LOC
+- [ ] `database_policy_workspace_assignment_resource.go` < 500 LOC
 - [ ] Zero duplicated profile switch statements
 - [ ] New files compile: `profile_factory.go`, `helpers/*.go`
 - [ ] Documentation consolidated in `docs/` directory
@@ -1402,7 +1402,7 @@ If blocked or uncertain:
 ### File Locations
 - Profile factory: `internal/provider/profile_factory.go` (NEW)
 - Helpers: `internal/provider/helpers/*.go` (NEW)
-- Main refactor target: `internal/provider/policy_database_assignment_resource.go`
+- Main refactor target: `internal/provider/database_policy_workspace_assignment_resource.go`
 - Documentation: `docs/development/` (NEW)
 
 ### Key Functions

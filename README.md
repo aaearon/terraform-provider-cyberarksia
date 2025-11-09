@@ -192,7 +192,7 @@ Grant specific users, groups, or roles access to databases through policies.
 
 See [docs/resources/database_policy_principal_assignment.md](docs/resources/database_policy_principal_assignment.md) for usage examples.
 
-#### `cyberarksia_database_policy_database_assignment`
+#### `cyberarksia_database_policy_workspace_assignment`
 
 Connect database workspaces to access policies with specific authentication settings.
 
@@ -203,7 +203,7 @@ Connect database workspaces to access policies with specific authentication sett
 
 **Example use case:** You have a production PostgreSQL database and a policy for developers. This resource connects them together and specifies that users get the `readonly` role.
 
-See [docs/resources/policy_database_assignment.md](docs/resources/policy_database_assignment.md) and [examples/resources/cyberarksia_database_policy_database_assignment/](examples/resources/cyberarksia_database_policy_database_assignment/) for usage examples.
+See [docs/resources/database_policy_workspace_assignment.md](docs/resources/database_policy_workspace_assignment.md) and [examples/resources/cyberarksia_database_policy_workspace_assignment/](examples/resources/cyberarksia_database_policy_workspace_assignment/) for usage examples.
 
 ### VM/Server Access Resources
 

@@ -214,7 +214,7 @@ func (p *CyberArkSIAProvider) Resources(ctx context.Context) []func() resource.R
 		NewCertificateResource,
 		NewDatabasePolicyResource,
 		NewDatabasePolicyPrincipalAssignmentResource,
-		NewDatabasePolicyDatabaseAssignmentResource,
+		NewDatabasePolicyWorkspaceAssignmentResource,
 		NewTargetSetResource,
 	}
 }

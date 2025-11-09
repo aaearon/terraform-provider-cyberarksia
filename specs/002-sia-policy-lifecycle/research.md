@@ -178,7 +178,7 @@ updatePolicy := &ArkUAPSIADBAccessPolicy{
 2. Send ONLY the modified workspace type in Targets (e.g., "FQDN/IP")
 3. NOT send all workspace types (API will reject)
 
-This constraint is already handled in `policy_database_assignment_resource.go:1110+`.
+This constraint is already handled in `database_policy_workspace_assignment_resource.go:1110+`.
 
 ---
 

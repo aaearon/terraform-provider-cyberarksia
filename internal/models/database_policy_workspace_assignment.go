@@ -5,8 +5,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// DatabasePolicyDatabaseAssignmentModel describes the resource data model for Terraform state
-type DatabasePolicyDatabaseAssignmentModel struct {
+// DatabasePolicyWorkspaceAssignmentModel describes the resource data model for Terraform state
+type DatabasePolicyWorkspaceAssignmentModel struct {
 	// Required inputs (ForceNew)
 	PolicyID             types.String `tfsdk:"policy_id"`
 	DatabaseWorkspaceID  types.String `tfsdk:"database_workspace_id"`

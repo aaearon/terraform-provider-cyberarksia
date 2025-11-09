@@ -157,7 +157,7 @@ output "update_validation" {
 #
 # IMPORTANT: Preservation of Principals and Targets
 # If this policy has principals (via cyberarksia_database_policy_principal_assignment)
-# or database assignments (via cyberarksia_database_policy_database_assignment), verify:
+# or database assignments (via cyberarksia_database_policy_workspace_assignment), verify:
 # [ ] Principal assignments remain intact after policy update (check SIA UI "Assigned To")
 # [ ] Database assignments remain intact after policy update (check SIA UI "Targets")
 #
@@ -187,12 +187,12 @@ output "update_validation" {
 # CASCADE DELETE BEHAVIOR:
 # The SIA API automatically removes all principals and database assignments when
 # a policy is deleted. If you have cyberarksia_database_policy_principal_assignment
-# or cyberarksia_database_policy_database_assignment resources in state, they will show as
+# or cyberarksia_database_policy_workspace_assignment resources in state, they will show as
 # "deleted" on the next terraform refresh.
 #
 # BEST PRACTICE: Delete assignment resources first, then the policy:
 #   terraform destroy -target=cyberarksia_database_policy_principal_assignment.*
-#   terraform destroy -target=cyberarksia_database_policy_database_assignment.*
+#   terraform destroy -target=cyberarksia_database_policy_workspace_assignment.*
 #   terraform destroy -target=cyberarksia_database_policy.test
 
 # ============================================================================

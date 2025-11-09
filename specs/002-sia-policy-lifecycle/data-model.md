@@ -287,7 +287,7 @@ func parseCompositeID(id string) (policyID, principalID, principalType string, e
 
 ## 3. Database Assignment Model
 
-**File**: `internal/models/policy_database_assignment.go`
+**File**: `internal/models/policy_workspace_assignment.go`
 
 ### State Model (Existing)
 
@@ -329,7 +329,7 @@ type PolicyDatabaseAssignmentModel struct {
 ### Consistency Updates
 
 **Documentation updates only**:
-- Update resource name in docs from `cyberarksia_policy_database_assignment` to `cyberarksia_database_policy_assignment`
+- Update resource name in docs from `cyberarksia_policy_workspace_assignment` to `cyberarksia_database_policy_assignment`
 - Clarify that location_type is always "FQDN/IP" for database policies
 - Document relationship with new `cyberarksia_database_policy` resource
 
@@ -354,7 +354,7 @@ type PolicyDatabaseAssignmentModel struct {
    - ToSDKPrincipal() and FromSDKPrincipal() methods
    - buildCompositeID() and parseCompositeID() helpers
 
-3. ✅ **internal/models/policy_database_assignment.go** (EXISTING)
+3. ✅ **internal/models/policy_workspace_assignment.go** (EXISTING)
    - No schema changes
    - Documentation updates only
 

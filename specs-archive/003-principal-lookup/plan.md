@@ -66,7 +66,7 @@ Implement a Terraform data source (`cyberarksia_principal`) that enables users t
 ### Gate 5: Error Handling Standards ✅
 **Requirement**: Use `internal/client.MapError()` and `RetryWithBackoff()`, provide actionable error messages
 **Status**: PASS - Will leverage existing error handling utilities
-**Evidence**: All resources/data sources use these utilities (see `policy_database_assignment_resource.go`)
+**Evidence**: All resources/data sources use these utilities (see `database_policy_workspace_assignment_resource.go`)
 
 ### Overall Constitution Compliance: ✅ PASS
 

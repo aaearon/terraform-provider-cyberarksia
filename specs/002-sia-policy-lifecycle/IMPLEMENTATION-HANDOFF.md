@@ -149,9 +149,9 @@ Successfully implemented 100% of the Database Policy Management feature. **All 9
 ## ✅ All Phases Complete (100%)
 
 **Phase 5: Database Assignment Updates (T044-T048)** ✅ COMPLETE
-- Updated documentation comments in `policy_database_assignment_resource.go`
+- Updated documentation comments in `database_policy_workspace_assignment_resource.go`
 - Verified location_type usage ("FQDN/IP" everywhere)
-- Updated `docs/resources/policy_database_assignment.md` with database_policy resource references
+- Updated `docs/resources/database_policy_workspace_assignment.md` with database_policy resource references
 - Examples updated for consistency
 - TESTING-GUIDE.md verified
 
@@ -270,7 +270,7 @@ terraform destroy
 - ✅ 3 validators working (policy_status, principal_type, location_type)
 - ✅ 2 models complete (database_policy, policy_principal_assignment)
 - ✅ 2 new resources fully functional (database_policy, database_policy_principal_assignment)
-- ✅ 1 existing resource enhanced (policy_database_assignment - consistency updates)
+- ✅ 1 existing resource enhanced (policy_workspace_assignment - consistency updates)
 - ✅ Comprehensive documentation (2 new docs, 1 updated)
 - ✅ 11 working examples
 - ✅ 2 CRUD test templates
@@ -315,7 +315,7 @@ terraform destroy
 ## 📞 Contact & Handoff
 
 **Implementation Notes**:
-- All code follows existing provider patterns (see `policy_database_assignment_resource.go` as reference)
+- All code follows existing provider patterns (see `database_policy_workspace_assignment_resource.go` as reference)
 - Retry logic with exponential backoff implemented (3 retries, 500ms-30s delays)
 - Error mapping uses `client.MapError(err, "operation")` for consistent error messages
 - Logging uses `tflog` with structured metadata (no sensitive data)
