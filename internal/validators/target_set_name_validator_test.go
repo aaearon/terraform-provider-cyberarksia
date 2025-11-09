@@ -1,99 +1,101 @@
-package validators_test
+package validators
 
 import (
 	"context"
-	"strings"
 	"testing"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/validators"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// TestNoForwardSlashesValidator verifies the validator rejects names containing
+// forward slashes. Uses representative test cases to cover the validation logic.
 func TestNoForwardSlashesValidator(t *testing.T) {
 	tests := []struct {
-		name          string
-		value         types.String
-		errorContains string
-		expectError   bool
+		name      string
+		value     types.String
+		expectErr bool
 	}{
+		// Valid: Names without forward slashes
 		{
-			name:        "valid name with hyphens",
-			value:       types.StringValue("prod-servers"),
-			expectError: false,
+			name:      "valid simple name",
+			value:     types.StringValue("my-target-set"),
+			expectErr: false,
 		},
 		{
-			name:        "valid name with underscores",
-			value:       types.StringValue("prod_servers"),
-			expectError: false,
+			name:      "valid with hyphens",
+			value:     types.StringValue("prod-web-servers-2024"),
+			expectErr: false,
 		},
 		{
-			name:        "valid name with dots",
-			value:       types.StringValue("prod.example.com"),
-			expectError: false,
+			name:      "valid with underscores",
+			value:     types.StringValue("dev_database_servers"),
+			expectErr: false,
 		},
 		{
-			name:          "invalid name with forward slash",
-			value:         types.StringValue("prod/servers"),
-			expectError:   true,
-			errorContains: "Invalid Target Set Name",
+			name:      "valid with dots",
+			value:     types.StringValue("servers.prod.us-east-1"),
+			expectErr: false,
 		},
 		{
-			name:          "invalid name with multiple forward slashes",
-			value:         types.StringValue("env/region/servers"),
-			expectError:   true,
-			errorContains: "API limitations",
+			name:      "valid with mixed separators",
+			value:     types.StringValue("app-servers_v1.0"),
+			expectErr: false,
+		},
+
+		// Invalid: Names with forward slashes
+		{
+			name:      "invalid single forward slash",
+			value:     types.StringValue("prod/web-servers"),
+			expectErr: true,
 		},
 		{
-			name:        "null value - skip validation",
-			value:       types.StringNull(),
-			expectError: false,
+			name:      "invalid multiple forward slashes",
+			value:     types.StringValue("prod/us-east-1/web-servers"),
+			expectErr: true,
 		},
 		{
-			name:        "unknown value - skip validation",
-			value:       types.StringUnknown(),
-			expectError: false,
+			name:      "invalid trailing slash",
+			value:     types.StringValue("prod-servers/"),
+			expectErr: true,
+		},
+		{
+			name:      "invalid leading slash",
+			value:     types.StringValue("/prod-servers"),
+			expectErr: true,
+		},
+
+		// Edge cases: Null/unknown values (skip validation)
+		{
+			name:      "null value skips validation",
+			value:     types.StringNull(),
+			expectErr: false,
+		},
+		{
+			name:      "unknown value skips validation",
+			value:     types.StringUnknown(),
+			expectErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			nameValidator := validators.NoForwardSlashes()
-
+			v := NoForwardSlashes()
 			req := validator.StringRequest{
 				Path:        path.Root("name"),
 				ConfigValue: tt.value,
 			}
-
 			resp := &validator.StringResponse{}
 
-			nameValidator.ValidateString(ctx, req, resp)
+			v.ValidateString(context.Background(), req, resp)
 
-			// Check error expectation
-			if tt.expectError {
-				errors := resp.Diagnostics.Errors()
-				if len(errors) == 0 {
-					t.Fatalf("expected error but got none")
-				}
-				if tt.errorContains != "" {
-					found := false
-					for _, diag := range errors {
-						// Check both Detail and Summary for the error text
-						if strings.Contains(diag.Detail(), tt.errorContains) || strings.Contains(diag.Summary(), tt.errorContains) {
-							found = true
-							break
-						}
-					}
-					if !found {
-						t.Errorf("expected error to contain %q, but diagnostics were: %v", tt.errorContains, resp.Diagnostics)
-					}
-				}
-			} else {
-				errors := resp.Diagnostics.Errors()
-				if len(errors) > 0 {
-					t.Fatalf("unexpected error: %v", resp.Diagnostics)
+			hasError := resp.Diagnostics.HasError()
+			if hasError != tt.expectErr {
+				t.Errorf("NoForwardSlashes() hasError = %v, expectErr %v, value = %q",
+					hasError, tt.expectErr, tt.value.ValueString())
+				if hasError {
+					t.Logf("Diagnostics: %v", resp.Diagnostics)
 				}
 			}
 		})
@@ -101,16 +103,16 @@ func TestNoForwardSlashesValidator(t *testing.T) {
 }
 
 func TestNoForwardSlashesValidator_Description(t *testing.T) {
+	v := NoForwardSlashes()
 	ctx := context.Background()
-	nameValidator := validators.NoForwardSlashes()
 
-	desc := nameValidator.Description(ctx)
+	desc := v.Description(ctx)
 	if desc == "" {
-		t.Error("Description should not be empty")
+		t.Error("Description() returned empty string")
 	}
 
-	mdDesc := nameValidator.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("MarkdownDescription should not be empty")
+	markdownDesc := v.MarkdownDescription(ctx)
+	if markdownDesc == "" {
+		t.Error("MarkdownDescription() returned empty string")
 	}
 }

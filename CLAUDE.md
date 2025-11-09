@@ -431,18 +431,27 @@ updated, err := siaAPI.AccessPolicies().UpdatePolicy(policyID, newPolicy)
 
 ## Testing Strategy
 
-### Primary: Acceptance Tests
+**CANONICAL REFERENCE**: [`docs/development/TESTING-STRATEGY.md`](docs/development/TESTING-STRATEGY.md)
+
+> **Philosophy**: "Tests should catch unique bugs, not test framework behavior."
+> Prefer acceptance testing over unit testing. Each test must answer: "What bug does this catch that others don't?"
+
+### Quick Summary
+
+**Primary: Acceptance Tests** (Required for all resources)
 - Test against real SIA API when `TF_ACC=1`
 - Verify CRUD operations end-to-end
 - Test ImportState functionality
 - Test ForceNew behavior and drift detection
 - Mock only when necessary (prefer real integration tests)
 
-### Selective: Unit Tests
-- Complex validators only
-- Error classification logic
-- Retry logic
-- Helper utilities
+**Selective: Unit Tests** (Only for complex utilities)
+- Complex helper functions (ID parsing, formatters)
+- Error classification and retry logic
+- Critical infrastructure code
+- **NOT for**: Simple validators, SDK enums, framework behavior
+
+**For complete testing philosophy, guidelines, and anti-patterns**, see [`docs/development/TESTING-STRATEGY.md`](docs/development/TESTING-STRATEGY.md)
 
 ### Acceptance Test Prerequisites
 
