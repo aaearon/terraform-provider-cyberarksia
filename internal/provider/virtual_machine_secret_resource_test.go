@@ -2,10 +2,14 @@
 package provider
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
+	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+	vmsecretsmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/secrets/vm/models"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -561,23 +565,38 @@ func testAccCheckVirtualMachineSecretExists(resourceName string) resource.TestCh
 }
 
 // testAccCheckVirtualMachineSecretDestroy verifies all secrets were destroyed
-// NOTE: This verifies resources are removed from state. The test framework
-// automatically calls Delete() and expects no errors. For API-level verification,
-// we would need provider instance access (not available in CheckDestroy functions
-// with the current test framework setup). The resource's Delete() method already
-// handles idempotent deletion and 404 errors correctly.
+// This function queries the API to ensure resources no longer exist
 func testAccCheckVirtualMachineSecretDestroy(s *terraform.State) error {
+	// Get provider configuration from environment
+	providerData, err := getProviderDataFromEnv()
+	if err != nil {
+		return fmt.Errorf("failed to get provider data: %w", err)
+	}
+
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "cyberarksia_virtual_machine_secret" {
 			continue
 		}
 
-		// Verify resource was removed from state
-		if rs.Primary.ID != "" {
-			// Resource still in state after destroy - this indicates the test
-			// framework detected the resource wasn't properly destroyed
-			return fmt.Errorf("VM secret %s still in state after destroy", rs.Primary.ID)
+		// Query API to verify resource is gone
+		secretID := rs.Primary.ID
+
+		getSecretReq := &vmsecretsmodels.ArkSIAVMGetSecret{
+			SecretID: secretID,
 		}
+
+		_, err := providerData.SIAAPI.SecretsVM().Secret(getSecretReq)
+		if err != nil {
+			// 404 means successfully deleted
+			if client.IsNotFoundError(err) {
+				continue
+			}
+			// Other errors are unexpected
+			return fmt.Errorf("error checking VM secret %s: %w", secretID, err)
+		}
+
+		// Resource still exists - destroy failed
+		return fmt.Errorf("VM secret %s still exists after destroy", secretID)
 	}
 
 	return nil
@@ -698,4 +717,42 @@ resource "cyberarksia_virtual_machine_secret" "invalid_mix" {
   pcloud_account_name  = "vm-admin-account"
 }
 `, secretName)
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// getProviderDataFromEnv creates a provider data instance from environment variables
+// This is used in destroy checks to verify resources are deleted via API
+func getProviderDataFromEnv() (*ProviderData, error) {
+	username := os.Getenv("CYBERARK_USERNAME")
+	password := os.Getenv("CYBERARK_PASSWORD")
+
+	if username == "" || password == "" {
+		return nil, fmt.Errorf("CYBERARK_USERNAME and CYBERARK_PASSWORD must be set")
+	}
+
+	// Create authentication context
+	authConfig := &client.AuthConfig{
+		Username:    username,
+		Password:    password,
+		IdentityURL: os.Getenv("CYBERARK_IDENTITY_URL"), // Optional
+	}
+
+	authCtx, err := client.NewISPAuth(context.Background(), authConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to authenticate: %w", err)
+	}
+
+	// Create SIA API client
+	siaAPI, err := client.NewSIAClient(context.Background(), authCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SIA client: %w", err)
+	}
+
+	return &ProviderData{
+		SIAAPI:      siaAPI,
+		AuthContext: authCtx,
+	}, nil
 }
