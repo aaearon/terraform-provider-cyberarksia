@@ -183,6 +183,14 @@ func IsNotFoundError(err error) bool {
 	return classifyError(err) == ErrorCategoryNotFound
 }
 
+// IsForbiddenError checks if error is a 403 Forbidden/permission error
+func IsForbiddenError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return classifyError(err) == ErrorCategoryPermission
+}
+
 // MapError converts ARK SDK errors to Terraform diagnostics with actionable guidance
 // Returns nil if err is nil (caller should check before appending)
 //

@@ -2,7 +2,7 @@
 
 **Purpose**: Quick reference for LLM-assisted development of the CyberArk SIA Terraform Provider
 
-**Last Updated**: 2025-10-30 (Complete rewrite with Environment Setup, Provider Overview, CRUD automation, Release guidelines)
+**Last Updated**: 2025-11-08 (Added Target Set resource implementation)
 
 ## Branch Protection & Workflow
 
@@ -174,6 +174,8 @@ terraform-provider-cyberark-sia/
 | Resource | `cyberarksia_database_policy` | `internal/provider/database_policy_resource.go` | ✅ Stable | Access policies with time-based conditions |
 | Resource | `cyberarksia_database_policy_principal_assignment` | `internal/provider/database_policy_principal_assignment_resource.go` | ✅ Stable | Assign users/groups/roles TO policies (WHO gets access) |
 | Resource | `cyberarksia_policy_database_assignment` | `internal/provider/policy_database_assignment_resource.go` | ✅ Stable | Assign database workspaces TO policies (WHAT they access) |
+| Resource | `cyberarksia_virtual_machine_secret` | `internal/provider/virtual_machine_secret_resource.go` | ✅ Stable | VM credentials (ProvisionerUser/PCloudAccount) |
+| Resource | `cyberarksia_target_set` | `internal/provider/target_set_resource.go` | ✅ Stable | VM/server target sets (Domain/Suffix/Target matching) |
 | Data Source | `cyberarksia_principal` | `internal/provider/principal_data_source.go` | ✅ Stable | Lookup users/groups/roles by name (no manual UUID needed) |
 
 ### Resource Dependencies
@@ -192,6 +194,13 @@ Typical configuration flow:
 ```
 
 **Note**: Principal and database assignments can be managed independently by different teams (security team manages WHO, app team manages WHAT).
+
+**VM/Server configuration flow:**
+```
+1. cyberarksia_virtual_machine_secret (VM credentials)
+     ↓
+2. cyberarksia_target_set (VM/server target grouping)
+```
 
 ## Architecture Patterns
 
@@ -651,6 +660,7 @@ rg "TODO|FIXME" --glob "*.go" -A 2 -B 1
 
 ## Active Technologies
 - N/A (stateless provider, Terraform state management) (003-virtual-machine-secret)
+- Terraform state only (stateless provider) (004-target-set)
 
 ## Recent Changes
 - 003-virtual-machine-secret: Added Go 1.25.0
