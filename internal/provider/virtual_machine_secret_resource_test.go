@@ -2,9 +2,7 @@
 package provider
 
 import (
-	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"testing"
 
@@ -723,36 +721,4 @@ resource "cyberarksia_virtual_machine_secret" "invalid_mix" {
 // Helper Functions
 // ============================================================================
 
-// getProviderDataFromEnv creates a provider data instance from environment variables
-// This is used in destroy checks to verify resources are deleted via API
-func getProviderDataFromEnv() (*ProviderData, error) {
-	username := os.Getenv("CYBERARK_USERNAME")
-	password := os.Getenv("CYBERARK_PASSWORD")
-
-	if username == "" || password == "" {
-		return nil, fmt.Errorf("CYBERARK_USERNAME and CYBERARK_PASSWORD must be set")
-	}
-
-	// Create authentication context
-	authConfig := &client.AuthConfig{
-		Username:    username,
-		Password:    password,
-		IdentityURL: os.Getenv("CYBERARK_IDENTITY_URL"), // Optional
-	}
-
-	authCtx, err := client.NewISPAuth(context.Background(), authConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to authenticate: %w", err)
-	}
-
-	// Create SIA API client
-	siaAPI, err := client.NewSIAClient(context.Background(), authCtx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SIA client: %w", err)
-	}
-
-	return &ProviderData{
-		SIAAPI:      siaAPI,
-		AuthContext: authCtx,
-	}, nil
-}
+// getProviderDataFromEnv is defined in testing_helpers.go
