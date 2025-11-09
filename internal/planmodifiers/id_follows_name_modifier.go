@@ -41,20 +41,25 @@ func (m idFollowsNameModifier) PlanModifyString(ctx context.Context, req planmod
 	}
 
 	// Get the name attribute from config
-	var namePlan string
+	var namePlan types.String
 	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("name"), &namePlan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	var nameState string
+	var nameState types.String
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("name"), &nameState)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	// If either name is null or unknown, we can't compare yet
+	if namePlan.IsNull() || namePlan.IsUnknown() || nameState.IsNull() || nameState.IsUnknown() {
+		return
+	}
+
 	// If name is changing, mark ID as unknown (it will be recomputed during apply)
-	if namePlan != nameState {
+	if !namePlan.Equal(nameState) {
 		resp.PlanValue = types.StringUnknown()
 		return
 	}
