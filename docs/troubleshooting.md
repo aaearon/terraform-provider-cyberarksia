@@ -1,5 +1,21 @@
 # Troubleshooting Guide: CyberArk SIA Terraform Provider
 
+## Table of Contents
+
+- [Partial State Failures](#partial-state-failures)
+- [Specific Error Scenarios](#specific-error-scenarios)
+- [State Drift Detection](#state-drift-detection)
+- [Best Practices for Preventing Issues](#best-practices-for-preventing-issues)
+- [Getting Help](#getting-help)
+- [Additional Resources](#additional-resources)
+- [Known Limitations](#known-limitations)
+- [ARK SDK Authentication and Cache Management](#ark-sdk-authentication-and-cache-management)
+- [Target Set Resource Issues](#target-set-resource-issues)
+- [FAQ: Do All Resources Use In-Memory Profile Authentication?](#faq-do-all-resources-use-in-memory-profile-authentication)
+- [Known ARK SDK Issues (v1.5.0)](#known-ark-sdk-issues-v150)
+
+---
+
 ## Partial State Failures
 
 ### Scenario: Database Created but SIA Onboarding Failed

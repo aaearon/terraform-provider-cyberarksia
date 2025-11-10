@@ -178,6 +178,33 @@ terraform-provider-cyberark-sia/
 | Resource | `cyberarksia_target_set` | `internal/provider/target_set_resource.go` | ✅ Stable | VM/server target sets (Domain/Suffix/Target matching) |
 | Data Source | `cyberarksia_principal` | `internal/provider/principal_data_source.go` | ✅ Stable | Lookup users/groups/roles by name (no manual UUID needed) |
 
+### Quick Reference: Resource Selection Guide
+
+**Use this decision tree to quickly identify which resources you need:**
+
+| If you need to... | Use this resource | Notes |
+|-------------------|-------------------|-------|
+| Store database credentials | `cyberarksia_database_secret` | Supports username/password, AWS IAM |
+| Configure a database target | `cyberarksia_database_workspace` | Requires secret_id reference |
+| Add TLS/mTLS certificate | `cyberarksia_certificate` | Optional for database connections |
+| Define access policy conditions | `cyberarksia_database_policy` | Time-based access windows |
+| Grant users access to policies | `cyberarksia_database_policy_principal_assignment` | WHO gets access |
+| Assign databases to policies | `cyberarksia_database_policy_workspace_assignment` | WHAT they access |
+| Store VM/server credentials | `cyberarksia_virtual_machine_secret` | ProvisionerUser or PCloudAccount |
+| Group VMs/servers by criteria | `cyberarksia_target_set` | Domain/Suffix/Target matching |
+| Look up user/group/role UUIDs | `cyberarksia_principal` (data source) | Avoids manual UUID lookup |
+
+**Common Tasks Quick Links:**
+
+| Task | Resources Needed | See Section |
+|------|------------------|-------------|
+| Set up database access for first time | database_secret → database_workspace → database_policy → principal_assignment + workspace_assignment | [Resource Dependencies](#resource-dependencies) |
+| Grant user access to database | principal_assignment | [Policy Management](#read-modify-write-for-policy-assignments) |
+| Add database to existing policy | workspace_assignment | [Policy Management](#read-modify-write-for-policy-assignments) |
+| Configure VM target management | virtual_machine_secret → target_set | [Resource Dependencies](#resource-dependencies) |
+| Rotate database credentials | Update database_secret resource | [Error Handling Pattern](#error-handling-pattern) |
+| Debug authentication issues | Check logs, verify credentials | [Debugging Test Failures](#debugging-test-failures) |
+
 ### Resource Dependencies
 
 Typical configuration flow:
@@ -666,10 +693,3 @@ Track critical items as GitHub Issues for better visibility and prioritization:
 ```bash
 rg "TODO|FIXME" --glob "*.go" -A 2 -B 1
 ```
-
-## Active Technologies
-- N/A (stateless provider, Terraform state management) (003-virtual-machine-secret)
-- Terraform state only (stateless provider) (004-target-set)
-
-## Recent Changes
-- 003-virtual-machine-secret: Added Go 1.25.0
