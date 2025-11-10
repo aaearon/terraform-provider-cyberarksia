@@ -46,7 +46,7 @@ mkdir -p $TEST_DIR
 cd $TEST_DIR
 
 # 2. Copy target set template
-cp ~/terraform-provider-cyberark-sia/examples/testing/crud-test-target-set.tf .
+cp ~/terraform-provider-cyberarksia/examples/testing/crud-test-target-set.tf .
 
 # 3. Export environment variables (recommended)
 export CYBERARK_USERNAME="your-username@cyberark.cloud.XXXX"
@@ -54,7 +54,7 @@ export CYBERARK_PASSWORD="<your-password-here>"
 export TF_ACC=1
 
 # Verify environment
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 make check-env
 
 # 4. Build and install provider
@@ -398,7 +398,7 @@ Error: Failed to read VM secret: 404 Not Found
 
 **Quick Diagnostics**:
 1. **Validate environment**: `make check-env` - verifies `CYBERARK_USERNAME` and `CYBERARK_PASSWORD`
-2. **Rebuild provider**: `cd ~/terraform-provider-cyberark-sia && make build && make install`
+2. **Rebuild provider**: `cd ~/terraform-provider-cyberarksia && make build && make install`
 3. **Reinitialize Terraform**: `rm -rf .terraform .terraform.lock.hcl && terraform init`
 4. **Check template**: Ensure `local.test_suffix` is updated to avoid name conflicts
 

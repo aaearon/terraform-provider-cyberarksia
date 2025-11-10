@@ -189,7 +189,7 @@ Successfully implemented 100% of the Database Policy Management feature. **All 9
 ### 1. Build and Install
 
 ```bash
-cd /home/tim/terraform-provider-cyberark-sia
+cd /home/tim/terraform-provider-cyberarksia
 go build -v
 go install
 # Provider ready for use
@@ -204,14 +204,14 @@ go install
 
 # Test policy resource
 cd /tmp/sia-test
-cp ~/terraform-provider-cyberark-sia/examples/testing/crud-test-policy.tf .
+cp ~/terraform-provider-cyberarksia/examples/testing/crud-test-policy.tf .
 terraform init
 terraform apply  # Test CREATE
 terraform apply  # Test UPDATE (after modifying resource)
 terraform destroy  # Test DELETE
 
 # Test principal assignment
-cp ~/terraform-provider-cyberark-sia/examples/testing/crud-test-principal-assignment.tf .
+cp ~/terraform-provider-cyberarksia/examples/testing/crud-test-principal-assignment.tf .
 terraform init
 # Update variables with your test values
 terraform apply

@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/models"
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/validators"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/models"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/validators"
 	dbmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/workspaces/db/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"

@@ -137,7 +137,7 @@ Added `provider "cyberarksia" {}` blocks to all test configurations.
 === RUN   TestAccPrincipalDataSource_Role
 --- PASS: TestAccPrincipalDataSource_Role (10.99s)
 PASS
-ok  	github.com/aaearon/terraform-provider-cyberark-sia/internal/provider	74.345s
+ok  	github.com/aaearon/terraform-provider-cyberarksia/internal/provider	74.345s
 ```
 
 **Coverage**:

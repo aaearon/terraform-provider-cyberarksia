@@ -1,6 +1,6 @@
 # Terraform Provider Refactoring Implementation Plan
 
-**Project**: terraform-provider-cyberark-sia
+**Project**: terraform-provider-cyberarksia
 **Goal**: Eliminate code duplication, improve maintainability, and enhance LLM-friendliness
 **Status**: ✅ **PHASE 1 & 2 COMPLETE** (2025-10-29)
 **Actual Impact**: 410 LOC eliminated, 35% file size reduction achieved
@@ -215,7 +215,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/models"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/models"
 	uapsiadbmodels "github.com/cyberark/ark-sdk-golang/pkg/services/uap/sia/db/models"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -631,7 +631,7 @@ func parseRDSIAMUserAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkU
 
 **Validation**:
 ```bash
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 go build ./internal/provider/profile_factory.go
 # Should compile without errors
 ```
@@ -797,7 +797,7 @@ SetProfileOnInstanceTarget(target, authMethod, profile)
 
 **Commands**:
 ```bash
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 
 # Build to check compilation
 go build -v
@@ -946,7 +946,7 @@ if err != nil {
 
 **After**:
 ```go
-import "github.com/aaearon/terraform-provider-cyberark-sia/internal/provider/helpers"
+import "github.com/aaearon/terraform-provider-cyberarksia/internal/provider/helpers"
 
 // Convert string to int for database fetch
 databaseIDInt, ok := helpers.ConvertDatabaseIDToInt(databaseID, &resp.Diagnostics, path.Root("database_workspace_id"))
@@ -974,7 +974,7 @@ func parseCompositeID(id string) (policyID, dbID string, err error) {
 
 **After**:
 ```go
-import "github.com/aaearon/terraform-provider-cyberark-sia/internal/provider/helpers"
+import "github.com/aaearon/terraform-provider-cyberarksia/internal/provider/helpers"
 
 // Remove local functions - use helpers package
 // Replace buildCompositeID(policyID, dbID) with helpers.BuildCompositeID(policyID, dbID)
@@ -997,7 +997,7 @@ import "github.com/aaearon/terraform-provider-cyberark-sia/internal/provider/hel
 
 **Commands**:
 ```bash
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 
 # Build helpers package
 go build ./internal/provider/helpers/...
@@ -1022,7 +1022,7 @@ go test ./... -v
 
 **Commands**:
 ```bash
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 
 # Create new directory structure
 mkdir -p docs/development
@@ -1098,7 +1098,7 @@ rm docs/testing-framework.md
 
 **Content**:
 ```markdown
-# Contributing to terraform-provider-cyberark-sia
+# Contributing to terraform-provider-cyberarksia
 
 ## Development Setup
 

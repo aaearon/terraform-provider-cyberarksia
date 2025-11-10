@@ -5,7 +5,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
 	"github.com/cyberark/ark-sdk-golang/pkg/services/identity"
 	"github.com/cyberark/ark-sdk-golang/pkg/services/sia"
 	"github.com/cyberark/ark-sdk-golang/pkg/services/uap"

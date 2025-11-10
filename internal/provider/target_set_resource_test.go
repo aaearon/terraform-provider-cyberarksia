@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
 	targetsetmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/workspaces/targetsets/models"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"

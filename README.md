@@ -34,8 +34,8 @@ A Terraform provider for managing CyberArk Secure Infrastructure Access (SIA) re
 ### From Source
 
 ```bash
-git clone https://github.com/aaearon/terraform-provider-cyberark-sia
-cd terraform-provider-cyberark-sia
+git clone https://github.com/aaearon/terraform-provider-cyberarksia
+cd terraform-provider-cyberarksia
 go build -v
 ```
 
@@ -323,7 +323,7 @@ For comprehensive CRUD testing, see [TESTING.md](TESTING.md) and [examples/testi
 ## Project Structure
 
 ```
-terraform-provider-cyberark-sia/
+terraform-provider-cyberarksia/
 ├── internal/
 │   ├── client/          # ARK SDK wrappers, retry logic, error handling
 │   ├── provider/        # Terraform provider implementation
@@ -366,5 +366,5 @@ The provider implements custom OAuth2 authentication flows for CyberArk Identity
 ## Support
 
 For issues, questions, or contributions:
-- [GitHub Issues](https://github.com/aaearon/terraform-provider-cyberark-sia/issues)
+- [GitHub Issues](https://github.com/aaearon/terraform-provider-cyberarksia/issues)
 - [Specifications](specs/) - Feature planning and design documentation

@@ -185,7 +185,7 @@ Use this checklist before committing resource changes or releasing new provider 
 **Environment**:
 - [ ] `.env` file exists with valid `CYBERARK_USERNAME` and `CYBERARK_PASSWORD`
 - [ ] Azure CLI authenticated: `az login && az account show`
-- [ ] Provider built and installed: `cd ~/terraform-provider-cyberark-sia && make build && make install`
+- [ ] Provider built and installed: `cd ~/terraform-provider-cyberarksia && make build && make install`
 - [ ] Clean working directory: `/tmp/sia-crud-validation-$(date +%Y%m%d-%H%M%S)`
 
 **Credentials**:

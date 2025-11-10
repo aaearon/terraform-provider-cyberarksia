@@ -1,6 +1,6 @@
 # Azure PostgreSQL + CyberArk SIA Integration Test
 
-This directory contains a comprehensive end-to-end test of the `terraform-provider-cyberark-sia` using an Azure PostgreSQL Flexible Server.
+This directory contains a comprehensive end-to-end test of the `terraform-provider-cyberarksia` using an Azure PostgreSQL Flexible Server.
 
 ## Test Overview
 
@@ -157,14 +157,14 @@ psql "host=$(terraform output -raw postgres_server_fqdn) port=5432 dbname=postgr
 ### Terraform provider errors
 ```bash
 # Rebuild provider
-cd /home/tim/terraform-provider-cyberark-sia
+cd /home/tim/terraform-provider-cyberarksia
 go install
 terraform init -upgrade
 ```
 
 ## Test Results
 
-Record your test results in `/home/tim/terraform-provider-cyberark-sia/docs/testing/azure-integration-test-results.md`.
+Record your test results in `/home/tim/terraform-provider-cyberarksia/docs/testing/azure-integration-test-results.md`.
 
 ## Files
 
@@ -189,5 +189,5 @@ cd ~ && rm -rf /tmp/sia-azure-test-20251027-185657
 After successful testing, document results in the main provider repository:
 ```bash
 cp /tmp/sia-azure-test-20251027-185657/README.md \
-   /home/tim/terraform-provider-cyberark-sia/docs/testing/azure-integration-test-results.md
+   /home/tim/terraform-provider-cyberarksia/docs/testing/azure-integration-test-results.md
 ```

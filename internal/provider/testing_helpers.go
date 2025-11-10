@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
 )
 
 // getProviderDataFromEnv creates a provider data instance from environment variables

@@ -166,7 +166,7 @@ These can be reviewed if errors occur, but aren't loaded into context unless nee
 
 ```bash
 # Step 1: Setup (efficient logging)
-cd ~/terraform-provider-cyberark-sia/examples/testing/azure-postgresql-with-policy
+cd ~/terraform-provider-cyberarksia/examples/testing/azure-postgresql-with-policy
 ./setup.sh
 # Output: ~200 lines (summary only)
 # Actual Terraform output: ~10,000 lines (saved to /tmp/ log files)

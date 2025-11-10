@@ -1,4 +1,4 @@
-# terraform-provider-cyberark-sia Development Guidelines
+# terraform-provider-cyberarksia Development Guidelines
 
 **Purpose**: Quick reference for LLM-assisted development of the CyberArk SIA Terraform Provider
 
@@ -136,7 +136,7 @@ If successful, you're ready for development.
 ## Project Structure
 
 ```
-terraform-provider-cyberark-sia/
+terraform-provider-cyberarksia/
 ├── internal/
 │   ├── provider/         # Terraform provider implementation
 │   │   ├── profile_factory.go    # Authentication profile factory
@@ -272,7 +272,7 @@ dbID, err := helpers.ConvertDatabaseID(stringID)
 
 **Always Use**:
 ```go
-import "github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+import "github.com/aaearon/terraform-provider-cyberarksia/internal/client"
 
 // Wrap SDK calls with retry logic
 err := client.RetryWithBackoff(ctx, func() error {

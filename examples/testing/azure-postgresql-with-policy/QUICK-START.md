@@ -8,7 +8,7 @@ az login
 az account show
 
 # 2. Provider built
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 go build -v && go install
 
 # 3. Get principal UUIDs from SIA UI
@@ -20,7 +20,7 @@ go build -v && go install
 
 ```bash
 # 1. Navigate to test directory (in project, not /tmp!)
-cd ~/terraform-provider-cyberark-sia/examples/testing/azure-postgresql-with-policy
+cd ~/terraform-provider-cyberarksia/examples/testing/azure-postgresql-with-policy
 
 # 2. Create configuration
 cp terraform.tfvars.example terraform.tfvars
@@ -145,7 +145,7 @@ terraform plan
 ## File Structure
 
 ```
-~/terraform-provider-cyberark-sia/examples/testing/azure-postgresql-with-policy/
+~/terraform-provider-cyberarksia/examples/testing/azure-postgresql-with-policy/
 ├── main.tf                   # All resources
 ├── variables.tf              # Variable declarations
 ├── outputs.tf                # Comprehensive outputs

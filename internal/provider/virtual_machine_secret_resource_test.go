@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
 	vmsecretsmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/secrets/vm/models"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"

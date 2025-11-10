@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/models"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/models"
 	uapsiadbmodels "github.com/cyberark/ark-sdk-golang/pkg/services/uap/sia/db/models"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"

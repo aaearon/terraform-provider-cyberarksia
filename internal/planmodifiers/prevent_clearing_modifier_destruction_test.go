@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/planmodifiers"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/planmodifiers"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"

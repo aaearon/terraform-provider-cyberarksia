@@ -1,6 +1,6 @@
 # Development History & Architectural Decisions
 
-**Project**: terraform-provider-cyberark-sia
+**Project**: terraform-provider-cyberarksia
 **Purpose**: Document architectural decisions, lessons learned, and implementation insights across all development phases
 **Organization**: Topical (not chronological) for easier reference
 

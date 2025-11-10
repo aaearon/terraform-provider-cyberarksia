@@ -23,7 +23,7 @@ This directory contains **canonical testing templates** for the CyberArk SIA Ter
 # Copy templates to working directory
 mkdir -p /tmp/sia-crud-validation
 cd /tmp/sia-crud-validation
-cp ~/terraform-provider-cyberark-sia/examples/testing/crud-test-*.tf .
+cp ~/terraform-provider-cyberarksia/examples/testing/crud-test-*.tf .
 
 # Follow TESTING-GUIDE.md for complete workflow
 ```

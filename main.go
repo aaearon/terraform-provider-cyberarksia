@@ -6,7 +6,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/provider"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 

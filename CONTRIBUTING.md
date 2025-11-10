@@ -1,4 +1,4 @@
-# Contributing to terraform-provider-cyberark-sia
+# Contributing to terraform-provider-cyberarksia
 
 Thank you for your interest in contributing! This guide will help you get started.
 
@@ -15,8 +15,8 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ```bash
 # Clone repository
-git clone https://github.com/aaearon/terraform-provider-cyberark-sia
-cd terraform-provider-cyberark-sia
+git clone https://github.com/aaearon/terraform-provider-cyberarksia
+cd terraform-provider-cyberarksia
 
 # Build provider
 go build -v
@@ -114,7 +114,7 @@ This "shift-left" approach catches issues early and speeds up development.
 ## Project Structure
 
 ```
-terraform-provider-cyberark-sia/
+terraform-provider-cyberarksia/
 ├── internal/
 │   ├── provider/         # Terraform resource implementations
 │   │   ├── profile_factory.go    # Authentication profile factory
@@ -292,7 +292,7 @@ tflog.Info(ctx, "Operation succeeded", map[string]interface{}{
 Use shared helpers from `internal/provider/helpers/`:
 
 ```go
-import "github.com/aaearon/terraform-provider-cyberark-sia/internal/provider/helpers"
+import "github.com/aaearon/terraform-provider-cyberarksia/internal/provider/helpers"
 
 // ID conversion
 databaseIDInt, ok := helpers.ConvertDatabaseIDToInt(databaseID, &resp.Diagnostics, path.Root("database_workspace_id"))

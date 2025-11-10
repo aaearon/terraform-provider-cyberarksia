@@ -265,7 +265,7 @@ Subscriptions are restricted from provisioning in location 'eastus'
 
 4. **Provider Built**:
    ```bash
-   cd ~/terraform-provider-cyberark-sia
+   cd ~/terraform-provider-cyberarksia
    go build -v && go install
    ```
 

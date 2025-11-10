@@ -3,7 +3,7 @@ package provider
 import (
 	"testing"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/provider/helpers"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/provider/helpers"
 	uapsiadbmodels "github.com/cyberark/ark-sdk-golang/pkg/services/uap/sia/db/models"
 )
 

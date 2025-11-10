@@ -1,4 +1,4 @@
-module github.com/aaearon/terraform-provider-cyberark-sia
+module github.com/aaearon/terraform-provider-cyberarksia
 
 go 1.25.3
 

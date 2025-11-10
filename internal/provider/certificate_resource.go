@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/mapvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"

@@ -35,7 +35,7 @@ mkdir -p $TEST_DIR
 cd $TEST_DIR
 
 # 2. Copy Azure PostgreSQL template
-cp -r ~/terraform-provider-cyberark-sia/examples/testing/azure-postgresql/* .
+cp -r ~/terraform-provider-cyberarksia/examples/testing/azure-postgresql/* .
 
 # 3. Export environment variables (recommended)
 export CYBERARK_USERNAME="your-username@cyberark.cloud.XXXX"
@@ -43,7 +43,7 @@ export CYBERARK_PASSWORD="<your-password-here>"
 export TF_ACC=1
 
 # Verify environment
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 make check-env
 
 # Alternative: Create terraform.tfvars (if not using environment variables)
@@ -66,7 +66,7 @@ azure_ad_directory_name   = "AzureAD-Test"
 EOF
 
 # 4. Build and install provider
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 make build && make install
 
 # 5. Initialize Terraform
@@ -744,7 +744,7 @@ If UAP/JIT/DPA is not in the response, contact CyberArk support to provision the
 
 **Solution**: Rebuild and reinstall provider:
 ```bash
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 make clean && make build && make install
 ```
 
@@ -861,7 +861,7 @@ After setup, your test directory should contain:
 
 ```bash
 # Run tests from project directory, not /tmp!
-cd ~/terraform-provider-cyberark-sia/examples/testing/azure-postgresql-with-policy
+cd ~/terraform-provider-cyberarksia/examples/testing/azure-postgresql-with-policy
 ./setup.sh   # All terraform output → /tmp/ logs (98% context savings!)
 ```
 
@@ -878,7 +878,7 @@ Templates in `examples/testing/` are canonical references. Copy to working direc
 
 ### 4. Always Rebuild After Code Changes
 ```bash
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 make build && make install
 ```
 
@@ -951,7 +951,7 @@ This configuration creates a complete testing environment including:
 
 **Quick Start**:
 ```bash
-cd ~/terraform-provider-cyberark-sia/examples/testing/azure-postgresql-with-policy
+cd ~/terraform-provider-cyberarksia/examples/testing/azure-postgresql-with-policy
 cp terraform.tfvars.example terraform.tfvars
 vim terraform.tfvars  # Fill in credentials and principal UUIDs
 ./setup.sh  # Automated setup with context-efficient logging!

@@ -241,7 +241,7 @@ for _, entity := range allEntities {
 
 **Test User**: `tim.schindler@cyberark.cloud.40562`
 **Service Account**: `timtest@cyberark.cloud.40562`
-**Credentials Location**: `/home/tim/terraform-provider-cyberark-sia/.env`
+**Credentials Location**: `/home/tim/terraform-provider-cyberarksia/.env`
 
 ---
 

@@ -1,6 +1,6 @@
 # Design Decisions & Technical Reference
 
-Key technical decisions, SDK limitations, and breaking changes for terraform-provider-cyberark-sia.
+Key technical decisions, SDK limitations, and breaking changes for terraform-provider-cyberarksia.
 
 **Last Updated**: 2025-10-29
 
