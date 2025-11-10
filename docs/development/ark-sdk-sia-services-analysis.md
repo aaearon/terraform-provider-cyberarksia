@@ -4,6 +4,10 @@
 **ARK SDK Version**: v1.5.0
 **Analysis Method**: Multi-perspective research (Claude Code + Gemini + Codex)
 
+**Purpose**: Discovery and analysis of **available but not yet implemented** SDK services for future feature planning
+
+**Related**: For usage patterns of **already implemented** resources, see [../sdk-integration.md](../sdk-integration.md)
+
 ---
 
 ## Executive Summary

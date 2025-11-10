@@ -25,7 +25,7 @@ A Terraform provider for managing CyberArk Secure Infrastructure Access (SIA) re
 ## Requirements
 
 - Terraform >= 1.0
-- Go >= 1.21 (for development)
+- Go >= 1.25 (for development)
 - CyberArk Identity Security Platform Shared Services tenant with SIA and Unified Access Policies (UAP) enabled
 - Valid CyberArk service account credentials with `DpaAdmin` role
 

@@ -2,7 +2,25 @@
 
 **ARK SDK Version**: v1.5.0
 **Package**: `github.com/cyberark/ark-sdk-golang`
-**Last Updated**: 2025-10-15 (Phase 2.5)
+**Last Updated**: 2025-11-10
+
+**Purpose**: Reference guide for using ARK SDK with **implemented** resources
+
+**Note**: This document covers database workspace and secret resources. For newer resources (target_set, virtual_machine_secret, policies), see resource-specific implementation files and specs.
+
+**Related**: For analysis of available but **not yet implemented** SDK services, see [ark-sdk-sia-services-analysis.md](development/ark-sdk-sia-services-analysis.md)
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Confirmed SDK Packages](#confirmed-sdk-packages)
+- [SIA Database Workspace CRUD Operations](#sia-database-workspace-crud-operations)
+- [SIA Database Secrets CRUD Operations](#sia-database-secrets-crud-operations)
+- [Authentication Pattern](#authentication-pattern)
+- [Data Models](#data-models)
+- [Error Handling](#error-handling)
 
 ---
 
@@ -265,31 +283,6 @@ See `internal/client/retry.go` for `RetryWithBackoff()` with exponential backoff
 **Good**: `NewArkISPAuth(true)` enables automatic token caching/refresh
 
 **Provider Responsibility**: Ensure `MaxRetries` and `RequestTimeout` wrap SDK calls, not configure SDK's internal HTTP client
-
----
-
-## Phase 3 Implementation Checklist
-
-When implementing `database_workspace` resource:
-
-1. ✅ Import `dbmodels` package
-2. ✅ Use `siaAPI.WorkspacesDB().AddDatabase()` in Create()
-3. ✅ Use `siaAPI.WorkspacesDB().GetDatabase()` in Read()
-4. ✅ Use `siaAPI.WorkspacesDB().UpdateDatabase()` in Update()
-5. ✅ Use `siaAPI.WorkspacesDB().DeleteDatabase()` in Delete()
-6. ✅ Wrap all operations with `RetryWithBackoff()`
-7. ✅ Map errors with `MapError()`
-8. ✅ Handle 404 in Read() as resource deleted (drift detection)
-
-When implementing `secret` resource:
-
-1. ✅ Import `dbsecretsmodels` package
-2. ✅ Use `siaAPI.SecretsDB().AddSecret()` in Create()
-3. ✅ Use `siaAPI.SecretsDB().GetSecret()` in Read() (metadata only!)
-4. ✅ Use `siaAPI.SecretsDB().UpdateSecret()` in Update()
-5. ✅ Use `siaAPI.SecretsDB().DeleteSecret()` in Delete()
-6. ✅ Mark `password` and `aws_secret_access_key` as Sensitive in schema
-7. ✅ **NEVER** log sensitive values (password, secrets, tokens)
 
 ---
 
