@@ -21,7 +21,7 @@ This Terraform configuration creates a comprehensive test environment for valida
 1. **Azure CLI authenticated**: `az login && az account show`
 2. **Valid Azure subscription** with PostgreSQL permissions
 3. **SIA credentials** from project root `.env` file
-4. **Provider built**: `cd ~/terraform-provider-cyberark-sia && go build -v && go install`
+4. **Provider built**: `cd ~/terraform-provider-cyberarksia && go build -v && go install`
 5. **Principal UUIDs** from SIA UI (see below)
 
 ## Getting Principal UUIDs
@@ -49,7 +49,7 @@ You need two UUIDs from the SIA UI:
 
 ### Step 1: Navigate to Test Directory
 ```bash
-cd ~/terraform-provider-cyberark-sia/examples/testing/azure-postgresql-with-policy
+cd ~/terraform-provider-cyberarksia/examples/testing/azure-postgresql-with-policy
 ```
 
 ### Step 2: Create Configuration
@@ -248,6 +248,6 @@ After testing, document results:
 
 ## See Also
 
-- [TESTING-GUIDE.md](~/terraform-provider-cyberark-sia/examples/testing/TESTING-GUIDE.md) - Canonical testing reference
-- [Phase 6 Documentation](~/terraform-provider-cyberark-sia/examples/testing/TESTING-GUIDE.md#phase-6-create---sia-database-policy-with-inline-assignments) - Policy creation with inline assignments
-- [Phase 7 Documentation](~/terraform-provider-cyberark-sia/examples/testing/TESTING-GUIDE.md#phase-7-optional-create---additional-principal-via-assignment-resource) - Separate principal assignments
+- [TESTING-GUIDE.md](~/terraform-provider-cyberarksia/examples/testing/TESTING-GUIDE.md) - Canonical testing reference
+- [Phase 6 Documentation](~/terraform-provider-cyberarksia/examples/testing/TESTING-GUIDE.md#phase-6-create---sia-database-policy-with-inline-assignments) - Policy creation with inline assignments
+- [Phase 7 Documentation](~/terraform-provider-cyberarksia/examples/testing/TESTING-GUIDE.md#phase-7-optional-create---additional-principal-via-assignment-resource) - Separate principal assignments

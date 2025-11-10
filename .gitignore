@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-terraform-provider-cyberark-sia
+terraform-provider-cyberarksia
 
 # Test binary, built with `go test -c`
 *.test
@@ -76,4 +76,4 @@ test-crud/
 test-terraform/
 
 # Ignore compiled binaries
-terraform-provider-cyberark-sia
+terraform-provider-cyberarksia

@@ -1,6 +1,6 @@
 # Lessons Learned
 
-**Project**: terraform-provider-cyberark-sia
+**Project**: terraform-provider-cyberarksia
 **Purpose**: Capture key insights and lessons from development phases
 **Last Updated**: 2025-11-10
 

@@ -342,7 +342,7 @@ func (r *vmSecretResource) ValidateConfig(ctx context.Context, req resource.Vali
 
 ### Use Standard Client Functions
 ```go
-import "github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
+import "github.com/aaearon/terraform-provider-cyberarksia/internal/client"
 
 // Wrap API calls with retry
 err := client.RetryWithBackoff(ctx, &client.RetryConfig{

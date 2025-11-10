@@ -93,7 +93,7 @@ specs/003-principal-lookup/
 ### Source Code (repository root)
 
 ```text
-terraform-provider-cyberark-sia/
+terraform-provider-cyberarksia/
 ├── internal/
 │   ├── provider/
 │   │   ├── principal_data_source.go       # NEW - Main data source implementation (~700 lines)

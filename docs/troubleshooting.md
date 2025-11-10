@@ -347,7 +347,7 @@ When opening support tickets, include:
 
 ### Support Channels
 
-- **Provider Issues**: https://github.com/aaearon/terraform-provider-cyberark-sia/issues
+- **Provider Issues**: https://github.com/aaearon/terraform-provider-cyberarksia/issues
 - **CyberArk SIA Support**: https://www.cyberark.com/customer-support/
 - **Community Forums**: CyberArk Commons
 

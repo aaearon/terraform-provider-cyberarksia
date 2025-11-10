@@ -1,6 +1,6 @@
 # Testing Guide
 
-Comprehensive testing guide for terraform-provider-cyberark-sia.
+Comprehensive testing guide for terraform-provider-cyberarksia.
 
 ## Quick Start
 
@@ -59,7 +59,7 @@ openssl req -x509 -newkey rsa:2048 -keyout key.pem -out test-cert.pem \
   -days 365 -nodes -subj "/CN=crud-test-cert/O=Testing/C=US"
 
 # 3. Copy templates from examples/testing/
-cp ~/terraform-provider-cyberark-sia/examples/testing/crud-test-*.tf .
+cp ~/terraform-provider-cyberarksia/examples/testing/crud-test-*.tf .
 
 # 4. Edit provider.tf with your credentials
 

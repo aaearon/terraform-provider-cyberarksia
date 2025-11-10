@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/models"
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/validators"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/models"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/validators"
 	uapcommonmodels "github.com/cyberark/ark-sdk-golang/pkg/services/uap/common/models"
 )
 

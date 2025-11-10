@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/models"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/models"
 	vmsecretsmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/secrets/vm/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"

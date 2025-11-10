@@ -227,7 +227,7 @@ make check-env
 **Usage**:
 ```bash
 # From project root
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 
 # Run automated CRUD test
 make test-crud DESC=policy-principal-assignment
@@ -278,7 +278,7 @@ mkdir -p /tmp/sia-crud-validation
 cd /tmp/sia-crud-validation
 
 # Copy templates from project
-cp ~/terraform-provider-cyberark-sia/examples/testing/crud-test-*.tf .
+cp ~/terraform-provider-cyberarksia/examples/testing/crud-test-*.tf .
 
 # Generate test certificate
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out test-cert.pem \
@@ -316,7 +316,7 @@ provider "cyberarksia" {
 ### 3. Build and Install Provider
 
 ```bash
-cd ~/terraform-provider-cyberark-sia
+cd ~/terraform-provider-cyberarksia
 make build
 make install
 ```

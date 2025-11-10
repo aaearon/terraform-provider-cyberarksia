@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/client"
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/planmodifiers"
-	"github.com/aaearon/terraform-provider-cyberark-sia/internal/validators"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/planmodifiers"
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/validators"
 	targetsetmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/workspaces/targetsets/models"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
