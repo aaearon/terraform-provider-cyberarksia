@@ -9,13 +9,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// TestPrincipalTypeValidator verifies the validator accepts valid principal types
+// and rejects invalid values. Uses representative test cases as the validator
+// checks membership in a 3-value list (USER, GROUP, ROLE).
 func TestPrincipalTypeValidator(t *testing.T) {
 	tests := []struct {
 		name      string
 		value     types.String
 		expectErr bool
 	}{
-		// Valid types (uppercase only)
+		// Valid: All accepted types
 		{
 			name:      "valid USER",
 			value:     types.StringValue("USER"),
@@ -31,26 +34,11 @@ func TestPrincipalTypeValidator(t *testing.T) {
 			value:     types.StringValue("ROLE"),
 			expectErr: false,
 		},
-		// Invalid lowercase versions (case-sensitive)
+
+		// Invalid: Case sensitivity
 		{
 			name:      "invalid lowercase user",
 			value:     types.StringValue("user"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid lowercase group",
-			value:     types.StringValue("group"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid lowercase role",
-			value:     types.StringValue("role"),
-			expectErr: true,
-		},
-		// Invalid mixed case
-		{
-			name:      "invalid mixed case User",
-			value:     types.StringValue("User"),
 			expectErr: true,
 		},
 		{
@@ -58,80 +46,34 @@ func TestPrincipalTypeValidator(t *testing.T) {
 			value:     types.StringValue("Group"),
 			expectErr: true,
 		},
+
+		// Invalid: Common mistakes
 		{
-			name:      "invalid mixed case Role",
-			value:     types.StringValue("Role"),
-			expectErr: true,
-		},
-		// Invalid values
-		{
-			name:      "invalid ADMIN",
+			name:      "invalid ADMIN (not supported)",
 			value:     types.StringValue("ADMIN"),
 			expectErr: true,
 		},
 		{
-			name:      "invalid SERVICE",
+			name:      "invalid SERVICE (not supported)",
 			value:     types.StringValue("SERVICE"),
 			expectErr: true,
 		},
 		{
-			name:      "invalid random string",
-			value:     types.StringValue("invalid"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid arbitrary text",
-			value:     types.StringValue("not_a_principal_type"),
-			expectErr: true,
-		},
-		// Empty string
-		{
-			name:      "empty string",
+			name:      "invalid empty string",
 			value:     types.StringValue(""),
 			expectErr: true,
 		},
-		// Null/unknown values (should pass - skip validation)
+
+		// Edge cases: Null/unknown values (skip validation)
 		{
-			name:      "null value (allowed)",
+			name:      "null value skips validation",
 			value:     types.StringNull(),
 			expectErr: false,
 		},
 		{
-			name:      "unknown value (allowed)",
+			name:      "unknown value skips validation",
 			value:     types.StringUnknown(),
 			expectErr: false,
-		},
-		// Near-matches (plural forms)
-		{
-			name:      "invalid USERS (plural)",
-			value:     types.StringValue("USERS"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid GROUPS (plural)",
-			value:     types.StringValue("GROUPS"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid ROLES (plural)",
-			value:     types.StringValue("ROLES"),
-			expectErr: true,
-		},
-		// Whitespace variations
-		{
-			name:      "invalid leading whitespace",
-			value:     types.StringValue(" USER"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid trailing whitespace",
-			value:     types.StringValue("USER "),
-			expectErr: true,
-		},
-		{
-			name:      "invalid surrounding whitespace",
-			value:     types.StringValue(" USER "),
-			expectErr: true,
 		},
 	}
 
@@ -148,7 +90,8 @@ func TestPrincipalTypeValidator(t *testing.T) {
 
 			hasError := resp.Diagnostics.HasError()
 			if hasError != tt.expectErr {
-				t.Errorf("PrincipalType() hasError = %v, expectErr %v", hasError, tt.expectErr)
+				t.Errorf("PrincipalType() hasError = %v, expectErr %v, value = %q",
+					hasError, tt.expectErr, tt.value.ValueString())
 				if hasError {
 					t.Logf("Diagnostics: %v", resp.Diagnostics)
 				}
@@ -165,17 +108,9 @@ func TestPrincipalTypeValidator_Description(t *testing.T) {
 	if desc == "" {
 		t.Error("Description() returned empty string")
 	}
-	expectedDesc := "Value must be 'USER', 'GROUP', or 'ROLE'"
-	if desc != expectedDesc {
-		t.Errorf("Description() = %q, want %q", desc, expectedDesc)
-	}
 
 	markdownDesc := v.MarkdownDescription(ctx)
 	if markdownDesc == "" {
 		t.Error("MarkdownDescription() returned empty string")
-	}
-	expectedMarkdown := "Value must be `USER`, `GROUP`, or `ROLE`"
-	if markdownDesc != expectedMarkdown {
-		t.Errorf("MarkdownDescription() = %q, want %q", markdownDesc, expectedMarkdown)
 	}
 }

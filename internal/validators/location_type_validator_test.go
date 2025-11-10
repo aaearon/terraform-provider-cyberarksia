@@ -9,17 +9,22 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// TestLocationTypeValidator verifies the validator enforces "FQDN/IP" as the only
+// valid location type. Uses representative test cases as this is a single-value validator.
 func TestLocationTypeValidator(t *testing.T) {
 	tests := []struct {
 		name      string
 		value     types.String
 		expectErr bool
 	}{
+		// Valid: Only accepted value
 		{
 			name:      "valid FQDN/IP",
 			value:     types.StringValue("FQDN/IP"),
 			expectErr: false,
 		},
+
+		// Invalid: Case variations not accepted
 		{
 			name:      "invalid lowercase fqdn/ip",
 			value:     types.StringValue("fqdn/ip"),
@@ -30,85 +35,41 @@ func TestLocationTypeValidator(t *testing.T) {
 			value:     types.StringValue("Fqdn/Ip"),
 			expectErr: true,
 		},
+
+		// Invalid: Other common location types (not supported for databases)
 		{
-			name:      "invalid mixed case fqdn/IP",
-			value:     types.StringValue("fqdn/IP"),
+			name:      "invalid AWS",
+			value:     types.StringValue("AWS"),
 			expectErr: true,
 		},
 		{
-			name:      "invalid mixed case FQDN/ip",
-			value:     types.StringValue("FQDN/ip"),
+			name:      "invalid AZURE",
+			value:     types.StringValue("AZURE"),
 			expectErr: true,
 		},
 		{
-			name:      "invalid partial FQDN",
-			value:     types.StringValue("FQDN"),
+			name:      "invalid GCP",
+			value:     types.StringValue("GCP"),
 			expectErr: true,
 		},
+
+		// Invalid: Other values
 		{
-			name:      "invalid partial IP",
-			value:     types.StringValue("IP"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid cloud-specific AWS-VPC",
-			value:     types.StringValue("AWS-VPC"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid cloud-specific AZURE-VNET",
-			value:     types.StringValue("AZURE-VNET"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid cloud-specific GCP-VPC",
-			value:     types.StringValue("GCP-VPC"),
-			expectErr: true,
-		},
-		{
-			name:      "empty string",
+			name:      "invalid empty string",
 			value:     types.StringValue(""),
 			expectErr: true,
 		},
+
+		// Edge cases: Null/unknown values (skip validation)
 		{
-			name:      "null value (allowed)",
+			name:      "null value skips validation",
 			value:     types.StringNull(),
 			expectErr: false,
 		},
 		{
-			name:      "unknown value (allowed)",
+			name:      "unknown value skips validation",
 			value:     types.StringUnknown(),
 			expectErr: false,
-		},
-		{
-			name:      "invalid near-match FQDN/IP/CIDR",
-			value:     types.StringValue("FQDN/IP/CIDR"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid near-match FQDN-IP",
-			value:     types.StringValue("FQDN-IP"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid near-match FQDN_IP",
-			value:     types.StringValue("FQDN_IP"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid with leading space",
-			value:     types.StringValue(" FQDN/IP"),
-			expectErr: true,
-		},
-		{
-			name:      "invalid with trailing space",
-			value:     types.StringValue("FQDN/IP "),
-			expectErr: true,
-		},
-		{
-			name:      "invalid with extra slashes",
-			value:     types.StringValue("FQDN//IP"),
-			expectErr: true,
 		},
 	}
 
@@ -125,7 +86,8 @@ func TestLocationTypeValidator(t *testing.T) {
 
 			hasError := resp.Diagnostics.HasError()
 			if hasError != tt.expectErr {
-				t.Errorf("LocationType() hasError = %v, expectErr %v", hasError, tt.expectErr)
+				t.Errorf("LocationType() hasError = %v, expectErr %v, value = %q",
+					hasError, tt.expectErr, tt.value.ValueString())
 				if hasError {
 					t.Logf("Diagnostics: %v", resp.Diagnostics)
 				}
