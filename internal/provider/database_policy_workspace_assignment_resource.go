@@ -74,7 +74,9 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Schema(ctx context.Context, 
 				Validators: []validator.String{
 					validators.AuthenticationMethod(),
 				},
-				// Note: Updates to authentication_method are supported
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Composite identifier in the format `policy-id:database-id`.",
@@ -512,122 +514,16 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Read(ctx context.Context, re
 	LogOperationSuccess(ctx, "read", "policy_workspace_assignment", data.ID.ValueString())
 }
 
+// Update is not supported - all attributes are immutable (ForceNew).
+// Any change to workspace assignment attributes will trigger resource replacement.
+// This method exists to satisfy the resource.Resource interface but should never be called
+// because all attributes have RequiresReplace plan modifiers.
 func (r *DatabasePolicyWorkspaceAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data models.DatabasePolicyWorkspaceAssignmentModel
-
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured Provider",
-			"Provider was not configured. "+
-				"Please ensure provider configuration is complete before using resources.",
-		)
-		return
-	}
-
-	LogOperationStart(ctx, "update", "policy_workspace_assignment")
-
-	// Step 1: Parse composite ID
-	policyID, databaseID, err := helpers.ParsePolicyDatabaseID(data.ID.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Invalid Resource ID",
-			fmt.Sprintf("Failed to parse resource ID: %s", err.Error()),
-		)
-		return
-	}
-
-	// Step 2: Fetch policy (READ-MODIFY-WRITE pattern)
-	tflog.Debug(ctx, "Fetching policy for update", map[string]interface{}{
-		"policy_id": policyID,
-	})
-
-	policy, err := r.providerData.UAPClient.Db().Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
-		PolicyID: policyID,
-	})
-	if err != nil {
-		resp.Diagnostics.Append(client.MapError(err, "fetch policy"))
-		return
-	}
-
-	// Step 3: Find database by InstanceID
-	target, workspaceType, found := findDatabaseInPolicyWithType(policy, databaseID)
-	if !found {
-		resp.Diagnostics.AddError(
-			"Database Not Found in Policy",
-			fmt.Sprintf("Database %s not found in policy %s. The resource may have been deleted outside Terraform.", databaseID, policyID),
-		)
-		return
-	}
-
-	// Step 4: Update authentication method and profile in place (PRESERVE OTHER DATABASES)
-	authMethod := data.AuthenticationMethod.ValueString()
-	target.AuthenticationMethod = authMethod
-
-	// Build and set updated profile using factory
-	profile := BuildAuthenticationProfile(ctx, authMethod, &data, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Set profile on instance target (clears other profiles automatically)
-	if err := SetProfileOnInstanceTarget(target, authMethod, profile); err != nil {
-		resp.Diagnostics.AddError("Profile Configuration Error", err.Error())
-		return
-	}
-
-	// Update the target in the policy's targets map
-	targets := policy.Targets[workspaceType]
-	for i := range targets.Instances {
-		if targets.Instances[i].InstanceID == databaseID {
-			targets.Instances[i] = *target
-			break
-		}
-	}
-	policy.Targets[workspaceType] = targets
-
-	tflog.Debug(ctx, "Updated database assignment in policy", map[string]interface{}{
-		"policy_id":   policyID,
-		"database_id": databaseID,
-		"auth_method": authMethod,
-	})
-
-	// Step 5: Write policy back with modified workspace type
-	// CRITICAL: API only accepts ONE workspace type in Targets per update
-	// Send full policy structure (metadata, principals, conditions) but ONLY the workspace type we modified
-	updatePolicy := &uapsiadbmodels.ArkUAPSIADBAccessPolicy{
-		ArkUAPSIACommonAccessPolicy: policy.ArkUAPSIACommonAccessPolicy,
-		Targets: map[string]uapsiadbmodels.ArkUAPSIADBTargets{
-			workspaceType: policy.Targets[workspaceType], // ONLY the workspace type we're modifying
-		},
-	}
-
-	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		_, updateErr := r.providerData.UAPClient.Db().UpdatePolicy(updatePolicy)
-		return updateErr
-	})
-
-	if err != nil {
-		resp.Diagnostics.Append(client.MapError(err, "update policy"))
-		return
-	}
-
-	// Update timestamp
-	data.LastModified = types.StringValue(time.Now().UTC().Format(time.RFC3339))
-
-	// Save updated state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-
-	LogOperationSuccess(ctx, "update", "policy_workspace_assignment", data.ID.ValueString())
+	resp.Diagnostics.AddError(
+		"Update Not Supported",
+		"This resource does not support updates. All attributes are immutable and changes require resource replacement. "+
+			"This error should not occur under normal circumstances as all attributes have ForceNew modifiers.",
+	)
 }
 
 func (r *DatabasePolicyWorkspaceAssignmentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

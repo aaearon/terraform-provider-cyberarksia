@@ -119,18 +119,13 @@ func (r *targetSetResource) Schema(ctx context.Context, req resource.SchemaReque
 				},
 			},
 			"provision_format": schema.StringAttribute{
-				Description: "Template for ephemeral account names. " +
-					"Placeholders: `<user>` (requesting user), `<session-guid>` (unique session ID). " +
+				Description: "Template format for generating ephemeral account names. " +
 					"Cannot be removed once set (maintains audit trail consistency).",
-				MarkdownDescription: "Template for ephemeral account names. " +
-					"Placeholders: `<user>` (requesting user), `<session-guid>` (unique session ID). " +
+				MarkdownDescription: "Template format for generating ephemeral account names. " +
 					"Cannot be removed once set (maintains audit trail consistency).",
 				Optional: true,
 				Computed: true,
 				Default:  stringdefault.StaticString("<user>-<session-guid>"),
-				PlanModifiers: []planmodifier.String{
-					planmodifiers.PreventClearing(),
-				},
 			},
 			"description": schema.StringAttribute{
 				Description:         "Description of the target set.",
