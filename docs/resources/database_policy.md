@@ -3,15 +3,21 @@
 page_title: "cyberarksia_database_policy Resource - cyberarksia"
 subcategory: ""
 description: |-
-  Manages a CyberArk SIA database access policy including metadata and access conditions. This resource manages policy-level configuration only. Use cyberarksia_database_policy_principal_assignment to assign principals (users/groups/roles) and cyberarksia_database_policy_assignment to assign database workspaces.
+  Manages a CyberArk SIA database access policy including metadata and access conditions. This resource manages policy-level configuration only. Use cyberarksia_database_policy_principal_assignment to assign principals (users/groups/roles) and cyberarksia_database_policy_workspace_assignment to assign database workspaces.
   Pattern: Follows the modular assignment pattern for distributed team workflows - security teams manage policies and principals, application teams manage database assignments independently.
+  Constraints: This resource requires at least 1 principal block and 1 target_database block. Additional principals and targets can be managed via separate assignment resources. The provider validates constraints by checking both inline and externally-managed assignments during planning.
+  Important: When removing inline principals or targets, the provider queries the API to ensure the constraint won't be violated. If you need to remove the last inline item, either add another via assignment resources first, or delete the entire policy resource (which automatically cascades to all assignments).
 ---
 
 # cyberarksia_database_policy (Resource)
 
-Manages a CyberArk SIA database access policy including metadata and access conditions. This resource manages policy-level configuration only. Use `cyberarksia_database_policy_principal_assignment` to assign principals (users/groups/roles) and `cyberarksia_database_policy_assignment` to assign database workspaces.
+Manages a CyberArk SIA database access policy including metadata and access conditions. This resource manages policy-level configuration only. Use `cyberarksia_database_policy_principal_assignment` to assign principals (users/groups/roles) and `cyberarksia_database_policy_workspace_assignment` to assign database workspaces.
 
 **Pattern**: Follows the modular assignment pattern for distributed team workflows - security teams manage policies and principals, application teams manage database assignments independently.
+
+**Constraints**: This resource requires at least 1 `principal` block and 1 `target_database` block. Additional principals and targets can be managed via separate assignment resources. The provider validates constraints by checking both inline and externally-managed assignments during planning.
+
+**Important**: When removing inline principals or targets, the provider queries the API to ensure the constraint won't be violated. If you need to remove the last inline item, either add another via assignment resources first, or delete the entire policy resource (which automatically cascades to all assignments).
 
 
 

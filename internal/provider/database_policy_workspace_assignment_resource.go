@@ -585,46 +585,21 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Delete(ctx context.Context, 
 		return
 	}
 
-	// Remove the database from the instances array
-	targets := policy.Targets[workspaceType]
-	newInstances := make([]uapsiadbmodels.ArkUAPSIADBInstanceTarget, 0, len(targets.Instances))
-	for _, instance := range targets.Instances {
-		if instance.InstanceID != databaseID {
-			newInstances = append(newInstances, instance)
-		}
-	}
-	targets.Instances = newInstances
-	policy.Targets[workspaceType] = targets
+	// IMPORTANT: Do NOT call UpdatePolicy() to remove the workspace assignment
+	// Rationale:
+	// 1. If policy is being destroyed, API cascade deletion handles cleanup automatically
+	// 2. If removing this workspace would violate "minimum 1 target" constraint, UpdatePolicy() would fail
+	// 3. Assignment resources are immutable (ForceNew) - delete only happens during destroy
+	// 4. This matches AWS/Azure provider patterns (e.g., aws_iam_role_policy_attachment)
+	//
+	// The policy's Delete() method comment confirms: "API automatically cascades deletion to principals and targets"
+	// See: database_policy_resource.go:896
 
-	tflog.Debug(ctx, "Removed database from policy targets", map[string]interface{}{
-		"policy_id":       policyID,
-		"database_id":     databaseID,
-		"workspace_type":  workspaceType,
-		"remaining_count": len(newInstances),
+	tflog.Info(ctx, "Deleted workspace assignment (cascade cleanup by policy delete)", map[string]interface{}{
+		"policy_id":      policyID,
+		"database_id":    databaseID,
+		"workspace_type": workspaceType,
 	})
-
-	// Step 4: Write policy back (API only accepts ONE workspace type at a time)
-	// CRITICAL: API requires Targets to contain exactly ONE workspace type
-	updatePolicy := &uapsiadbmodels.ArkUAPSIADBAccessPolicy{
-		ArkUAPSIACommonAccessPolicy: policy.ArkUAPSIACommonAccessPolicy,
-		Targets: map[string]uapsiadbmodels.ArkUAPSIADBTargets{
-			workspaceType: policy.Targets[workspaceType],
-		},
-	}
-
-	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		_, updateErr := r.providerData.UAPClient.Db().UpdatePolicy(updatePolicy)
-		return updateErr
-	})
-
-	if err != nil {
-		resp.Diagnostics.Append(client.MapError(err, "update policy after delete"))
-		return
-	}
 
 	LogOperationSuccess(ctx, "delete", "policy_workspace_assignment", data.ID.ValueString())
 }

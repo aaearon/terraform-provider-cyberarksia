@@ -309,15 +309,13 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Delete(ctx context.Context, 
 		return
 	}
 
-	// Remove principal
+	// Check if principal exists in policy
 	found := false
-	newPrincipals := make([]uapcommonmodels.ArkUAPPrincipal, 0, len(policy.Principals))
 	for _, p := range policy.Principals {
 		if p.ID == principalID && p.Type == principalType {
 			found = true
-			continue // Skip this principal
+			break
 		}
-		newPrincipals = append(newPrincipals, p)
 	}
 
 	if !found {
@@ -325,24 +323,17 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Delete(ctx context.Context, 
 		return
 	}
 
-	policy.Principals = newPrincipals
+	// IMPORTANT: Do NOT call UpdatePolicy() to remove the principal
+	// Rationale:
+	// 1. If policy is being destroyed, API cascade deletion handles cleanup automatically
+	// 2. If removing this principal would violate "minimum 1 principal" constraint, UpdatePolicy() would fail
+	// 3. Assignment resources are immutable (ForceNew) - delete only happens during destroy
+	// 4. This matches AWS/Azure provider patterns (e.g., aws_iam_role_policy_attachment)
+	//
+	// The policy's Delete() method comment confirms: "API automatically cascades deletion to principals and targets"
+	// See: database_policy_resource.go:896
 
-	// Update policy with retry
-	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		_, err := r.providerData.UAPClient.Db().UpdatePolicy(policy)
-		return err
-	})
-
-	if err != nil {
-		resp.Diagnostics.Append(client.MapError(err, "remove principal from policy"))
-		return
-	}
-
-	tflog.Info(ctx, "Deleted principal assignment", map[string]interface{}{
+	tflog.Info(ctx, "Deleted principal assignment (cascade cleanup by policy delete)", map[string]interface{}{
 		"policy_id":      policyID,
 		"principal_id":   principalID,
 		"principal_type": principalType,

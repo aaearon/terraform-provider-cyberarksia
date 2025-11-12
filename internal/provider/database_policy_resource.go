@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
@@ -33,6 +34,7 @@ import (
 var _ resource.Resource = &DatabasePolicyResource{}
 var _ resource.ResourceWithImportState = &DatabasePolicyResource{}
 var _ resource.ResourceWithValidateConfig = &DatabasePolicyResource{}
+var _ resource.ResourceWithModifyPlan = &DatabasePolicyResource{}
 
 func NewDatabasePolicyResource() resource.Resource {
 	return &DatabasePolicyResource{}
@@ -51,9 +53,15 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages a CyberArk SIA database access policy including metadata and access conditions. " +
 			"This resource manages policy-level configuration only. Use `cyberarksia_database_policy_principal_assignment` " +
-			"to assign principals (users/groups/roles) and `cyberarksia_database_policy_assignment` to assign database workspaces.\n\n" +
+			"to assign principals (users/groups/roles) and `cyberarksia_database_policy_workspace_assignment` to assign database workspaces.\n\n" +
 			"**Pattern**: Follows the modular assignment pattern for distributed team workflows - security teams manage policies " +
-			"and principals, application teams manage database assignments independently.",
+			"and principals, application teams manage database assignments independently.\n\n" +
+			"**Constraints**: This resource requires at least 1 `principal` block and 1 `target_database` block. " +
+			"Additional principals and targets can be managed via separate assignment resources. " +
+			"The provider validates constraints by checking both inline and externally-managed assignments during planning.\n\n" +
+			"**Important**: When removing inline principals or targets, the provider queries the API to ensure the constraint " +
+			"won't be violated. If you need to remove the last inline item, either add another via assignment resources first, " +
+			"or delete the entire policy resource (which automatically cascades to all assignments).",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -508,6 +516,137 @@ func (r *DatabasePolicyResource) ValidateConfig(ctx context.Context, req resourc
 				"Invalid Access Window Configuration",
 				"Both from_hour and to_hour must be specified together, or both must be omitted. "+
 					"When both are omitted, access is allowed all day (00:00-23:59).",
+			)
+		}
+	}
+}
+
+// ModifyPlan implements plan-time validation with API awareness to prevent removing
+// the last principal or target from a policy. This method queries the API to count
+// both inline and externally-managed assignments (via separate assignment resources),
+// ensuring accurate validation without false positives.
+func (r *DatabasePolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Skip if resource being destroyed (plan is null)
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	// Skip if resource being created (state is null)
+	if req.State.Raw.IsNull() {
+		return
+	}
+
+	// Skip if plan not fully known (computed values, data source failures)
+	if !req.Plan.Raw.IsFullyKnown() {
+		return
+	}
+
+	// Get plan and state models
+	var plan, state models.DatabasePolicyModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Only validate if inline items are being REDUCED
+	principalsReducing := len(plan.Principal) < len(state.Principal)
+	targetsReducing := len(plan.TargetDatabase) < len(state.TargetDatabase)
+
+	if !principalsReducing && !targetsReducing {
+		return // No risk of constraint violation
+	}
+
+	// Fetch actual policy from API to get TOTAL counts (inline + external assignments)
+	policyID := state.PolicyID.ValueString()
+
+	tflog.Debug(ctx, "ModifyPlan: Fetching policy to validate constraints", map[string]interface{}{
+		"policy_id":           policyID,
+		"principals_reducing": principalsReducing,
+		"targets_reducing":    targetsReducing,
+	})
+
+	actualPolicy, err := r.providerData.UAPClient.Db().Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
+		PolicyID: policyID,
+	})
+	if err != nil {
+		// If can't fetch policy, skip validation (Update will handle it)
+		tflog.Warn(ctx, "ModifyPlan: Could not fetch policy for validation, skipping", map[string]interface{}{
+			"policy_id": policyID,
+			"error":     err.Error(),
+		})
+		return
+	}
+
+	// Validate principals constraint
+	if principalsReducing {
+		totalPrincipals := len(actualPolicy.Principals)
+		inlinePrincipals := len(state.Principal)
+		externalPrincipals := totalPrincipals - inlinePrincipals
+		principalsAfterChange := len(plan.Principal) + externalPrincipals
+
+		tflog.Debug(ctx, "ModifyPlan: Principal count analysis", map[string]interface{}{
+			"total_principals":    totalPrincipals,
+			"inline_principals":   inlinePrincipals,
+			"external_principals": externalPrincipals,
+			"principals_after":    principalsAfterChange,
+		})
+
+		if principalsAfterChange < 1 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("principal"),
+				"Cannot Remove Last Principal",
+				fmt.Sprintf(
+					"This change would remove the last principal from the policy.\n\n"+
+						"Current state:\n"+
+						"  • Inline principals (in this resource): %d\n"+
+						"  • External principals (via cyberarksia_database_policy_principal_assignment): %d\n"+
+						"  • Total principals: %d\n\n"+
+						"After this change: %d principal(s) remaining\n\n"+
+						"CyberArk SIA policies require at least 1 principal.\n\n"+
+						"To resolve:\n"+
+						"  1. Add another principal via cyberarksia_database_policy_principal_assignment first\n"+
+						"  2. Delete the entire policy resource instead: terraform destroy cyberarksia_database_policy.comprehensive_test",
+					inlinePrincipals, externalPrincipals, totalPrincipals, principalsAfterChange,
+				),
+			)
+		}
+	}
+
+	// Validate targets constraint
+	if targetsReducing {
+		totalTargets := 0
+		for _, targets := range actualPolicy.Targets {
+			totalTargets += len(targets.Instances)
+		}
+		inlineTargets := len(state.TargetDatabase)
+		externalTargets := totalTargets - inlineTargets
+		targetsAfterChange := len(plan.TargetDatabase) + externalTargets
+
+		tflog.Debug(ctx, "ModifyPlan: Target count analysis", map[string]interface{}{
+			"total_targets":    totalTargets,
+			"inline_targets":   inlineTargets,
+			"external_targets": externalTargets,
+			"targets_after":    targetsAfterChange,
+		})
+
+		if targetsAfterChange < 1 {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("target_database"),
+				"Cannot Remove Last Target Database",
+				fmt.Sprintf(
+					"This change would remove the last target database from the policy.\n\n"+
+						"Current state:\n"+
+						"  • Inline targets (in this resource): %d\n"+
+						"  • External targets (via cyberarksia_database_policy_workspace_assignment): %d\n"+
+						"  • Total targets: %d\n\n"+
+						"After this change: %d target(s) remaining\n\n"+
+						"CyberArk SIA policies require at least 1 target database.\n\n"+
+						"To resolve:\n"+
+						"  1. Add another target via cyberarksia_database_policy_workspace_assignment first\n"+
+						"  2. Delete the entire policy resource instead: terraform destroy cyberarksia_database_policy.comprehensive_test",
+					inlineTargets, externalTargets, totalTargets, targetsAfterChange,
+				),
 			)
 		}
 	}
