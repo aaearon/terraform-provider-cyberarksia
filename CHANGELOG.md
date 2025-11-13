@@ -145,17 +145,10 @@ resource "cyberarksia_database_secret" "rds_iam" {
   - Resource implementation
   - Examples and documentation
   - Test files
-- **database_policy**: Added intelligent plan-time validation for minimum principal/target constraints. The provider now queries the API during planning to count both inline and externally-managed assignments, preventing removal of the last principal/target only when truly invalid. This provides accurate validation without false positives while catching errors before apply.
-- **database_policy**: Improved error messages now show current inline vs external assignment counts with actionable resolution steps
-
-### Added
-- **database_policy**: ModifyPlan method with API-aware validation that distinguishes between inline and external assignments
-- Detailed error messages during `terraform plan` for constraint violations, showing breakdown of inline and external counts
 
 ### Fixed
-- **database_policy_principal_assignment**: Delete() no longer calls UpdatePolicy(), preventing "minimum 1 item" API errors during destroy operations. The resource now relies on cascade deletion when the policy is destroyed.
-- **database_policy_workspace_assignment**: Delete() no longer calls UpdatePolicy(), preventing "minimum 1 item" API errors during destroy operations. The resource now relies on cascade deletion when the policy is destroyed.
-- **database_policy**: Fixed cryptic "List should have at least 1 item after validation" errors during terraform destroy by implementing proper plan-time validation
+- **database_policy_workspace_assignment**: Improved error messages when API rejects deletion due to constraint violations (≥1 target required). The Delete() method now translates cryptic API errors like "List should have at least 1 item" into clear, actionable guidance for users.
+- **database_policy_principal_assignment**: Improved error messages when API rejects deletion due to constraint violations (≥1 principal required). Provides clear resolution steps when attempting to remove the last principal from a policy.
 
 ## [0.2.0] - 2025-11-01
 

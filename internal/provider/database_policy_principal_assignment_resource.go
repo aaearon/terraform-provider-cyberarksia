@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -319,21 +320,56 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Delete(ctx context.Context, 
 	}
 
 	if !found {
-		// Already removed
+		// Already removed - idempotent success
+		tflog.Info(ctx, "Principal not found in policy - considering delete successful")
 		return
 	}
 
-	// IMPORTANT: Do NOT call UpdatePolicy() to remove the principal
-	// Rationale:
-	// 1. If policy is being destroyed, API cascade deletion handles cleanup automatically
-	// 2. If removing this principal would violate "minimum 1 principal" constraint, UpdatePolicy() would fail
-	// 3. Assignment resources are immutable (ForceNew) - delete only happens during destroy
-	// 4. This matches AWS/Azure provider patterns (e.g., aws_iam_role_policy_attachment)
-	//
-	// The policy's Delete() method comment confirms: "API automatically cascades deletion to principals and targets"
-	// See: database_policy_resource.go:896
+	// Remove principal from policy
+	newPrincipals := make([]uapcommonmodels.ArkUAPPrincipal, 0, len(policy.Principals))
+	for _, p := range policy.Principals {
+		if p.ID != principalID || p.Type != principalType {
+			newPrincipals = append(newPrincipals, p)
+		}
+	}
 
-	tflog.Info(ctx, "Deleted principal assignment (cascade cleanup by policy delete)", map[string]interface{}{
+	// Update policy with modified principals (let API validate ≥1 constraint)
+	policy.Principals = newPrincipals
+
+	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+		MaxRetries: client.DefaultMaxRetries,
+		BaseDelay:  client.BaseDelay,
+		MaxDelay:   client.MaxDelay,
+	}, func() error {
+		_, updateErr := r.providerData.UAPClient.Db().UpdatePolicy(policy)
+		return updateErr
+	})
+
+	if err != nil {
+		// Handle 404 as success - policy was deleted between check and update (race condition)
+		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+			tflog.Info(ctx, "Policy deleted during assignment removal - considering delete successful")
+			return
+		}
+
+		// Check if API rejected due to constraint violation (must have ≥1 principal)
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "at least 1 item") || strings.Contains(errMsg, "minimum") || strings.Contains(errMsg, "principals") {
+			resp.Diagnostics.AddError(
+				"Cannot Remove Last Principal",
+				fmt.Sprintf("Policy %s requires at least one principal assignment. "+
+					"This error occurs because removing this assignment would leave the policy with no principals. "+
+					"To resolve: either delete the policy itself, or add another principal before removing this one.\n\n"+
+					"API Error: %s", policyID, errMsg),
+			)
+			return
+		}
+
+		resp.Diagnostics.Append(client.MapError(err, "update policy while removing principal assignment"))
+		return
+	}
+
+	tflog.Info(ctx, "Successfully removed principal assignment from policy", map[string]interface{}{
 		"policy_id":      policyID,
 		"principal_id":   principalID,
 		"principal_type": principalType,

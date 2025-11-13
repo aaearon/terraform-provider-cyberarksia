@@ -556,11 +556,8 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Delete(ctx context.Context, 
 		return
 	}
 
-	// Step 2: Fetch policy (READ-MODIFY-WRITE pattern)
-	tflog.Debug(ctx, "Fetching policy for delete", map[string]interface{}{
-		"policy_id": policyID,
-	})
-
+	// Step 2: Fetch policy to check if it exists (READ-MODIFY-WRITE pattern)
+	// Fetch current policy state
 	policy, err := r.providerData.UAPClient.Db().Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
 		PolicyID: policyID,
 	})
@@ -568,34 +565,77 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Delete(ctx context.Context, 
 		// If policy not found, resource is already gone - success
 		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
 			tflog.Info(ctx, "Policy not found - considering delete successful")
+			LogOperationSuccess(ctx, "delete", "policy_workspace_assignment", data.ID.ValueString())
 			return
 		}
-		resp.Diagnostics.Append(client.MapError(err, "fetch policy"))
+		resp.Diagnostics.Append(client.MapError(err, "fetch policy before workspace assignment delete"))
 		return
 	}
 
-	// Step 3: Find and remove ONLY our database from targets (PRESERVE OTHER DATABASES)
+	// Find database in policy targets
 	_, workspaceType, found := findDatabaseInPolicyWithType(policy, databaseID)
 	if !found {
 		// Database not in policy - already deleted, consider success
-		tflog.Info(ctx, "Database not found in policy - considering delete successful", map[string]interface{}{
-			"policy_id":   policyID,
-			"database_id": databaseID,
-		})
+		tflog.Info(ctx, "Database not found in policy - considering delete successful")
+		LogOperationSuccess(ctx, "delete", "policy_workspace_assignment", data.ID.ValueString())
 		return
 	}
 
-	// IMPORTANT: Do NOT call UpdatePolicy() to remove the workspace assignment
-	// Rationale:
-	// 1. If policy is being destroyed, API cascade deletion handles cleanup automatically
-	// 2. If removing this workspace would violate "minimum 1 target" constraint, UpdatePolicy() would fail
-	// 3. Assignment resources are immutable (ForceNew) - delete only happens during destroy
-	// 4. This matches AWS/Azure provider patterns (e.g., aws_iam_role_policy_attachment)
-	//
-	// The policy's Delete() method comment confirms: "API automatically cascades deletion to principals and targets"
-	// See: database_policy_resource.go:896
+	// Remove database from targets array
+	targets := policy.Targets[workspaceType]
+	newInstances := make([]uapsiadbmodels.ArkUAPSIADBInstanceTarget, 0, len(targets.Instances))
+	for _, instance := range targets.Instances {
+		if instance.InstanceID != databaseID {
+			newInstances = append(newInstances, instance)
+		}
+	}
 
-	tflog.Info(ctx, "Deleted workspace assignment (cascade cleanup by policy delete)", map[string]interface{}{
+	// Update policy targets (API requires ONE workspace type per call)
+	targets.Instances = newInstances
+	policy.Targets[workspaceType] = targets
+
+	updatePolicy := &uapsiadbmodels.ArkUAPSIADBAccessPolicy{
+		ArkUAPSIACommonAccessPolicy: policy.ArkUAPSIACommonAccessPolicy,
+		Targets: map[string]uapsiadbmodels.ArkUAPSIADBTargets{
+			workspaceType: policy.Targets[workspaceType],
+		},
+	}
+
+	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+		MaxRetries: client.DefaultMaxRetries,
+		BaseDelay:  client.BaseDelay,
+		MaxDelay:   client.MaxDelay,
+	}, func() error {
+		_, updateErr := r.providerData.UAPClient.Db().UpdatePolicy(updatePolicy)
+		return updateErr
+	})
+
+	if err != nil {
+		// Handle 404 as success - policy was deleted between check and update (race condition)
+		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+			tflog.Info(ctx, "Policy deleted during assignment removal - considering delete successful")
+			LogOperationSuccess(ctx, "delete", "policy_workspace_assignment", data.ID.ValueString())
+			return
+		}
+
+		// Check if API rejected due to constraint violation (must have ≥1 target)
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "at least 1 item") || strings.Contains(errMsg, "minimum") || strings.Contains(errMsg, "instances") {
+			resp.Diagnostics.AddError(
+				"Cannot Remove Last Target Database",
+				fmt.Sprintf("Policy %s requires at least one database target assignment. "+
+					"This error occurs because removing this assignment would leave the policy with no targets. "+
+					"To resolve: either delete the policy itself, or add another database target before removing this one.\n\n"+
+					"API Error: %s", policyID, errMsg),
+			)
+			return
+		}
+
+		resp.Diagnostics.Append(client.MapError(err, "update policy while removing workspace assignment"))
+		return
+	}
+
+	tflog.Info(ctx, "Successfully removed workspace assignment from policy", map[string]interface{}{
 		"policy_id":      policyID,
 		"database_id":    databaseID,
 		"workspace_type": workspaceType,
