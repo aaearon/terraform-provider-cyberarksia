@@ -374,7 +374,7 @@ func MapCertificateError(err error, operation string) diag.Diagnostic {
 			fmt.Sprintf("Certificate validation failed.\n\n"+
 				"Error: %s\n\n"+
 				"Recommended actions:\n"+
-				"1. Verify cert_body contains valid PEM or DER encoded certificate\n"+
+				"1. Verify cert_body contains valid PEM encoded certificate\n"+
 				"2. Ensure certificate does not contain private key material\n"+
 				"3. Check certificate is not expired or corrupted", errorMsg),
 		)

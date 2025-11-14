@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/cyberark/ark-sdk-golang/pkg/common"
 	"github.com/cyberark/ark-sdk-golang/pkg/common/isp"
@@ -149,7 +148,7 @@ type CertificateMetadata struct {
 // All fields use snake_case matching API contract (✅ VALIDATED via API testing).
 //
 // Required Fields:
-//   - CertBody: PEM or DER encoded certificate content
+//   - CertBody: PEM encoded certificate content
 //
 // Optional Fields:
 //   - CertName, CertDescription, CertType, DomainName, Labels
@@ -268,38 +267,6 @@ func ValidatePEMCertificate(pemData string) error {
 
 	// Basic sanity check: cert object was created successfully
 	_ = cert // Use cert variable to avoid unused error
-
-	return nil
-}
-
-// ValidateDERCertificate validates DER-encoded certificate content.
-// DER is binary ASN.1 format (typically base64-encoded in API requests).
-//
-// Validation Steps:
-//  1. Attempt X.509 parse directly (DER is raw ASN.1)
-//  2. Verify no private key material
-//  3. ❌ NO EXPIRATION CHECK (deferred to API)
-//
-// Parameters:
-//   - derData: DER-encoded certificate bytes (decoded from base64 if needed)
-//
-// Returns:
-//   - error: Validation failure
-//   - nil: Certificate is valid
-func ValidateDERCertificate(derData []byte) error {
-	// 1. X.509 parse (DER is raw ASN.1, no PEM wrapper)
-	cert, err := x509.ParseCertificate(derData)
-	if err != nil {
-		return fmt.Errorf("failed to parse DER certificate: %w", err)
-	}
-
-	// 2. Basic sanity checks
-	if cert.NotBefore.After(cert.NotAfter) {
-		return fmt.Errorf("certificate has invalid validity period: NotBefore (%s) is after NotAfter (%s)",
-			cert.NotBefore.Format(time.RFC3339), cert.NotAfter.Format(time.RFC3339))
-	}
-
-	// 3. ❌ SKIP expiration check (defer to SIA API - Issue #13)
 
 	return nil
 }
