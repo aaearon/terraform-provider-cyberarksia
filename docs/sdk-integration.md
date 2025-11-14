@@ -260,6 +260,103 @@ See `internal/client/retry.go` for `RetryWithBackoff()` with exponential backoff
 
 ---
 
+## Policy Assignment Deletion Pattern
+
+### Overview
+Database policy assignment resources use a unique deletion pattern that differs from standard resource deletion. Instead of calling a Delete API endpoint, they use **Read-Modify-Write with API-enforced constraints**.
+
+### Why This Pattern?
+**CyberArk SIA API Constraint**: Policies must have ≥1 principal AND ≥1 target at all times.
+
+**Problem with Client-Side Validation**:
+- Race conditions during concurrent deletes (last-write-wins)
+- Blocks valid destroy flows (e.g., policy deletion after assignments)
+- Duplicates API's constraint logic
+
+**Solution**: Let the API enforce constraints atomically.
+
+### Implementation Pattern
+
+**Affected Resources**:
+- `cyberarksia_database_policy_workspace_assignment`
+- `cyberarksia_database_policy_principal_assignment`
+
+**Delete() Method Flow**:
+```go
+// 1. Fetch current policy state
+policy, err := siaAPI.Db().Policy(&models.ArkUAPGetPolicyRequest{PolicyID: policyID})
+if err != nil {
+    // Handle 404 as success (policy already deleted)
+    if isNotFound(err) {
+        return // Success
+    }
+    return err
+}
+
+// 2. Find assignment in policy
+found := findAssignmentInPolicy(policy, assignmentID)
+if !found {
+    return // Already deleted - idempotent success
+}
+
+// 3. Remove assignment from local array
+newAssignments := removeAssignment(policy.Assignments, assignmentID)
+
+// 4. Update policy (let API validate ≥1 constraint)
+policy.Assignments = newAssignments
+_, err = siaAPI.Db().UpdatePolicy(policy)
+
+// 5. Translate API constraint errors to helpful messages
+if err != nil {
+    if isConstraintError(err) {
+        return helpful_error_with_resolution_steps(err)
+    }
+    return err
+}
+```
+
+### Error Message Translation
+
+**API Error** (cryptic):
+```
+failed to update database policy - [400]
+[{"code":"INVALID_INPUT","message":"List should have at least 1 item after validation, not 0"}]
+```
+
+**Translated Error** (clear, actionable):
+```
+Error: Cannot Remove Last Target Database
+
+Policy abc123 requires at least one database target assignment.
+This error occurs because removing this assignment would leave the
+policy with no targets.
+
+To resolve: either delete the policy itself, or add another database
+target before removing this one.
+
+API Error: [original error details]
+```
+
+### Implementation Examples
+
+**Workspace Assignment**: `internal/provider/database_policy_workspace_assignment_resource.go:560-636`
+**Principal Assignment**: `internal/provider/database_policy_principal_assignment_resource.go:301-370`
+
+### Benefits of This Approach
+
+✅ **No race conditions** - API handles atomicity, not read-modify-write with separate locks
+✅ **No blocking valid flows** - Terraform dependency graph works correctly
+✅ **Simpler code** - ~50 lines removed vs. client-side pre-validation
+✅ **Better error messages** - Clear guidance when constraints violated
+✅ **Avoids DELETE panic bug** - Uses UpdatePolicy(), not DeletePolicy()
+
+### Related Documentation
+
+- **DELETE Panic Bug**: See [ark-sdk-sia-services-analysis.md](development/ark-sdk-sia-services-analysis.md#priority-1-delete-panic-bug) - Policy assignments avoid this bug by using UpdatePolicy
+- **CHANGELOG**: [CHANGELOG.md](/CHANGELOG.md) - v0.3.0 (Unreleased) documents this improvement
+
+---
+
 ## SDK Limitations and Workarounds
 
 ### 1. No Context Support in Authenticate()
@@ -313,3 +410,4 @@ See `internal/client/retry.go` for `RetryWithBackoff()` with exponential backoff
 
 - **2025-10-15 (Phase 2.5)**: Initial version based on Phase 2 research and Context7 examples
 - **2025-10-15 (Phase 3 Cleanup)**: Validated database workspace field mappings against ARK SDK v1.5.0, removed non-existent fields, documented actual SDK requirements
+- **2025-11-14**: Added Policy Assignment Deletion Pattern section documenting simplified approach (let API validate constraints, translate errors to helpful messages)

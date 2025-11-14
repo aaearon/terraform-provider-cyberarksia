@@ -651,6 +651,14 @@ err := siaAPI.WorkspacesDB().DeleteDatabase(databaseID)
 
 **Long-term Solution**: Remove workaround when ARK SDK v1.6.0+ fixes nil body handling
 
+**Note on Policy Assignments**: Database policy assignment resources (`cyberarksia_database_policy_workspace_assignment`, `cyberarksia_database_policy_principal_assignment`) do NOT hit this bug because they use a different deletion pattern:
+- They call `UpdatePolicy()` (Read-Modify-Write pattern), not `DeletePolicy()`
+- Delete operation: Fetch policy → Remove assignment from array → Update policy via API
+- API validates constraints (≥1 principal, ≥1 target) during UpdatePolicy call
+- If constraint violated, API returns clear error that we translate to helpful message
+- This approach also avoids race conditions and blocking valid destroy flows
+- See: `internal/provider/database_policy_workspace_assignment_resource.go:560-636`
+
 **Discovery Credit**: Claude (existing knowledge), confirmed impact on new services
 
 ---
