@@ -83,7 +83,7 @@ resource "cyberarksia_target_set" "critical_database" {
 
 - `description` (String) Description of the target set.
 - `enable_certificate_validation` (Boolean) Whether to enable TLS/SSL certificate validation for connections to target servers.
-- `provision_format` (String) Template for ephemeral account names. Placeholders: `<user>` (requesting user), `<session-guid>` (unique session ID). Cannot be removed once set (maintains audit trail consistency).
+- `provision_format` (String) Template format for generating ephemeral account names. Cannot be removed once set (maintains audit trail consistency).
 
 ### Read-Only
 

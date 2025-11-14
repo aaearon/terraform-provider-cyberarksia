@@ -146,8 +146,9 @@ resource "cyberarksia_database_secret" "rds_iam" {
   - Examples and documentation
   - Test files
 
-### Added
-- Future changes will be documented here
+### Fixed
+- **database_policy_workspace_assignment**: Improved error messages when API rejects deletion due to constraint violations (≥1 target required). The Delete() method now translates cryptic API errors like "List should have at least 1 item" into clear, actionable guidance for users.
+- **database_policy_principal_assignment**: Improved error messages when API rejects deletion due to constraint violations (≥1 principal required). Provides clear resolution steps when attempting to remove the last principal from a policy.
 
 ## [0.2.0] - 2025-11-01
 

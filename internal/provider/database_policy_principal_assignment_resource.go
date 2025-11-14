@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -85,14 +86,23 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Schema(ctx context.Context, 
 					stringvalidator.LengthAtLeast(1),
 					stringvalidator.LengthAtMost(256),
 				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"source_directory_name": schema.StringAttribute{
 				MarkdownDescription: "Source identity directory name (max 50 characters). **Required** for USER and GROUP types. Examples: `AzureAD`, `LDAP`, `Okta`.",
 				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"source_directory_id": schema.StringAttribute{
 				MarkdownDescription: "Source identity directory ID. **Required** for USER and GROUP types.",
 				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"last_modified": schema.StringAttribute{
 				MarkdownDescription: "Timestamp of the last modification.",
@@ -255,85 +265,16 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Read(ctx context.Context, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// Update is not supported - all attributes are immutable (ForceNew).
+// Any change to principal assignment attributes will trigger resource replacement.
+// This method exists to satisfy the resource.Resource interface but should never be called
+// because all attributes have RequiresReplace plan modifiers.
 func (r *DatabasePolicyPrincipalAssignmentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data models.PolicyPrincipalAssignmentModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if r.providerData == nil {
-		resp.Diagnostics.AddError(
-			"Unconfigured Provider",
-			"Provider was not configured. "+
-				"Please ensure provider configuration is complete before using resources.",
-		)
-		return
-	}
-
-	// Validate conditional requirements
-	if err := validatePrincipalDirectory(data.PrincipalType.ValueString(), data.SourceDirectoryName.ValueString(), data.SourceDirectoryID.ValueString()); err != nil {
-		resp.Diagnostics.AddError("Validation Error", err.Error())
-		return
-	}
-
-	policyID := data.PolicyID.ValueString()
-	principalID := data.PrincipalID.ValueString()
-	principalType := data.PrincipalType.ValueString()
-
-	// Read-modify-write: Fetch policy
-	policy, err := r.providerData.UAPClient.Db().Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
-		PolicyID: policyID,
-	})
-	if err != nil {
-		resp.Diagnostics.Append(client.MapError(err, "fetch policy for update"))
-		return
-	}
-
-	// Find and update principal
-	found := false
-	for i, p := range policy.Principals {
-		if p.ID == principalID && p.Type == principalType {
-			policy.Principals[i] = data.ToSDKPrincipal()
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		resp.Diagnostics.AddError(
-			"Principal Not Found",
-			fmt.Sprintf("Principal %s (type: %s) not found in policy %s", principalID, principalType, policyID),
-		)
-		return
-	}
-
-	// Update policy with retry
-	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		_, err := r.providerData.UAPClient.Db().UpdatePolicy(policy)
-		return err
-	})
-
-	if err != nil {
-		resp.Diagnostics.Append(client.MapError(err, "update principal assignment"))
-		return
-	}
-
-	// Update state
-	data.FromSDKPrincipal(policyID, data.ToSDKPrincipal())
-
-	tflog.Info(ctx, "Updated principal assignment", map[string]interface{}{
-		"policy_id":      policyID,
-		"principal_id":   principalID,
-		"principal_type": principalType,
-	})
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.AddError(
+		"Update Not Supported",
+		"This resource does not support updates. All attributes are immutable and changes require resource replacement. "+
+			"This error should not occur under normal circumstances as all attributes have ForceNew modifiers.",
+	)
 }
 
 func (r *DatabasePolicyPrincipalAssignmentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -369,40 +310,66 @@ func (r *DatabasePolicyPrincipalAssignmentResource) Delete(ctx context.Context, 
 		return
 	}
 
-	// Remove principal
+	// Check if principal exists in policy
 	found := false
-	newPrincipals := make([]uapcommonmodels.ArkUAPPrincipal, 0, len(policy.Principals))
 	for _, p := range policy.Principals {
 		if p.ID == principalID && p.Type == principalType {
 			found = true
-			continue // Skip this principal
+			break
 		}
-		newPrincipals = append(newPrincipals, p)
 	}
 
 	if !found {
-		// Already removed
+		// Already removed - idempotent success
+		tflog.Info(ctx, "Principal not found in policy - considering delete successful")
 		return
 	}
 
+	// Remove principal from policy
+	newPrincipals := make([]uapcommonmodels.ArkUAPPrincipal, 0, len(policy.Principals))
+	for _, p := range policy.Principals {
+		if p.ID != principalID || p.Type != principalType {
+			newPrincipals = append(newPrincipals, p)
+		}
+	}
+
+	// Update policy with modified principals (let API validate ≥1 constraint)
 	policy.Principals = newPrincipals
 
-	// Update policy with retry
 	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
 		BaseDelay:  client.BaseDelay,
 		MaxDelay:   client.MaxDelay,
 	}, func() error {
-		_, err := r.providerData.UAPClient.Db().UpdatePolicy(policy)
-		return err
+		_, updateErr := r.providerData.UAPClient.Db().UpdatePolicy(policy)
+		return updateErr
 	})
 
 	if err != nil {
-		resp.Diagnostics.Append(client.MapError(err, "remove principal from policy"))
+		// Handle 404 as success - policy was deleted between check and update (race condition)
+		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+			tflog.Info(ctx, "Policy deleted during assignment removal - considering delete successful")
+			return
+		}
+
+		// Check if API rejected due to constraint violation (must have ≥1 principal)
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "at least 1 item") || strings.Contains(errMsg, "minimum") || strings.Contains(errMsg, "principals") {
+			resp.Diagnostics.AddError(
+				"Cannot Remove Last Principal",
+				fmt.Sprintf("Policy %s requires at least one principal assignment. "+
+					"This error occurs because removing this assignment would leave the policy with no principals. "+
+					"To resolve: either delete the policy itself, or add another principal before removing this one.\n\n"+
+					"API Error: %s", policyID, errMsg),
+			)
+			return
+		}
+
+		resp.Diagnostics.Append(client.MapError(err, "update policy while removing principal assignment"))
 		return
 	}
 
-	tflog.Info(ctx, "Deleted principal assignment", map[string]interface{}{
+	tflog.Info(ctx, "Successfully removed principal assignment from policy", map[string]interface{}{
 		"policy_id":      policyID,
 		"principal_id":   principalID,
 		"principal_type": principalType,
