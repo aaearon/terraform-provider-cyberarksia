@@ -16,19 +16,24 @@ This document provides a comprehensive analysis of all Secure Infrastructure Acc
 
 **Key Findings**:
 - **9 SIA services** verified in ARK SDK v1.5.0 ✅ **Confirmed by CyberArk's official `ark` CLI**
-- **4 services currently implemented** (Database workspaces, secrets, certificates, policies)
-- **5 services available for implementation** (VM infrastructure: secrets, workspaces, policies; SSH CA; Connectors)
+- **8 resources + 2 data sources currently implemented** (10 total Terraform components):
+  - Resources: Database workspaces, database secrets, VM secrets, target sets, certificates, database policies, database policy principal assignments, database policy workspace assignments
+  - Data sources: Database policies, principals
+- **2 services available for implementation** (VM policies + assignments; SSH CA)
 - **3 CLI-only services excluded** (end-user tools, not infrastructure management)
 - **Critical SDK bugs REPRODUCED IN CYBERARK'S PRODUCTION CLI**:
-  - DELETE panic bug ✅ **Production CLI crashes**: `ark exec sia secrets vm delete-secret` panics with nil pointer dereference. Ironically, delete succeeds before crash.
+  - DELETE panic bug ✅ **Production CLI crashes**: `ark exec sia secrets vm delete-secret` panics with nil pointer dereference during HTTP request construction. **Resource is NOT deleted** (panic occurs before API call).
   - VM filtering bug ✅ **Production CLI broken**: `list-secrets-by --secret-types X` returns `[]` for all filters. Filtering completely non-functional.
   - Serialization quirks ✅ **Verified**: Manual camel/snake conversions in VM policies
 - **⚠️ Note**: 3 services initially identified by Gemini (K8s clusters, Accounts, Platforms) do not exist in SDK v1.5.0
 
-**Recommended Priority**:
-1. **Phase 1** (High): VM infrastructure (secrets, workspaces, policies) - Natural extension of DB resources
-2. **Phase 2** (Medium): SSH CA - Certificate-based authentication
-3. **Phase 3** (Optional): Data sources for automation (connector scripts, kubeconfig, SSO tokens)
+**Implementation Status** (as of 2025-11-14):
+1. **Phase 1** (40% Complete): VM Secrets ✅, Target Sets ✅ implemented. Remaining: VM Policies + assignments
+2. **Phase 2** (Planned): Complete VM policies and assignments - Full VM infrastructure story
+3. **Phase 3** (Planned): SSH CA - Certificate-based authentication
+4. **Phase 4** (Optional): Data sources for automation (connector scripts, kubeconfig, SSO tokens)
+
+**⚠️ Note**: Recent provider changes include resource renames (`cyberarksia_secret` → `cyberarksia_database_secret`, `database_policy_database_assignment` → `database_policy_workspace_assignment`). See [CHANGELOG.md](/CHANGELOG.md) for migration guide.
 
 ---
 
@@ -132,7 +137,7 @@ These services are **already available** in the Terraform provider (v0.1.0):
 - Sensitive data protection
 - Secret lifecycle management
 
-**Implementation File**: `internal/provider/secret_resource.go`
+**Implementation File**: `internal/provider/database_secret_resource.go`
 
 ---
 
@@ -159,7 +164,7 @@ These services are **already available** in the Terraform provider (v0.1.0):
 **Resources**:
 - `cyberarksia_database_policy`
 - `cyberarksia_database_policy_principal_assignment`
-- `cyberarksia_policy_workspace_assignment`
+- `cyberarksia_database_policy_workspace_assignment`
 
 **SDK Service**: `ArkUAPSIADBService`
 - **API Accessor**: `Db()`
@@ -181,26 +186,25 @@ These services are **already available** in the Terraform provider (v0.1.0):
 
 ---
 
-### 5. Principal Lookup (`uap`)
+### 5. Principal Lookup (`identity`)
 
 **Data Source**: `cyberarksia_principal`
 
-**SDK Service**: Uses UAP services
-- **Location**: `pkg/services/uap/`
+**SDK Services**: Uses Identity services
+- **Location**: `pkg/services/identity/directories/` and `pkg/services/identity/users/`
+- **Methods**: `UserByName()` (fast path) and `ListDirectoriesEntities()` (fallback)
 
 **Purpose**: Look up users, groups, and roles by name (eliminates need for manual UUID entry)
 
 **Implementation File**: `internal/provider/principal_data_source.go`
 
+**Implementation Notes**: Uses hybrid two-phase lookup strategy for performance optimization
+
 ---
 
-## Available Services (Not Yet Implemented)
+### 6. VM Secrets (`secrets/vm`) ✅ **IMPLEMENTED**
 
-These services are **available in ARK SDK v1.5.0** and suitable for Terraform implementation:
-
-### 6. VM Secrets (`secrets/vm`) 🔥 **HIGH PRIORITY**
-
-**Proposed Resource**: `cyberarksia_vm_secret`
+**Resource**: `cyberarksia_virtual_machine_secret`
 
 **SDK Service**: `ArkSIASecretsVMService`
 - **API Accessor**: `SecretsVM()`
@@ -222,34 +226,28 @@ These services are **available in ARK SDK v1.5.0** and suitable for Terraform im
 ```go
 AddSecret(secret *models.ArkSIAVMAddSecret) (*models.ArkSIAVMSecret, error)
 ChangeSecret(secret *models.ArkSIAVMChangeSecret) (*models.ArkSIAVMSecret, error)
-DeleteSecret(secret *models.ArkSIAVMDeleteSecret) error  // ⚠️ DELETE bug applies
+DeleteSecret(secret *models.ArkSIAVMDeleteSecret) error  // Uses DeleteVMSecretDirect workaround
 Secret(secret *models.ArkSIAVMGetSecret) (*models.ArkSIAVMSecret, error)
 ListSecrets() ([]*models.ArkSIAVMSecret, error)
-ListSecretsBy(filter *models.ArkSIAVMSecretsFilter) ([]*models.ArkSIAVMSecret, error)
+ListSecretsBy(filter *models.ArkSIAVMSecretsFilter) ([]*models.ArkSIAVMSecret, error)  // Client-side filtering used
 SecretsStats() (*models.ArkSIAVMSecretsStats, error)
 ```
 
-**Dependencies**: None (standalone)
+**Key Features**:
+- Two authentication types (ProvisionerUser, PCloudAccount)
+- Sensitive data protection
+- Secret lifecycle management
+- Client-side filtering workaround for SDK bug
 
-**Implementation Notes**:
-- Nearly identical pattern to `cyberarksia_database_secret`
-- ⚠️ **SDK Bug**: DELETE panic applies - need workaround in `delete_workarounds.go`
-- ⚠️ **SDK Bug**: `ListSecretsBy()` filtering broken (sends nil body) - use client-side filtering
-- Two authentication methods similar to database secrets
-- Sensitive data handling required
+**Implementation File**: `internal/provider/virtual_machine_secret_resource.go`
 
-**Complexity**: Medium (bug workarounds + sensitive data)
-
-**Value**: High (extends provider to VM/server management)
-
-**Discovery Credit**: Claude (primary), validated by Gemini and Codex
-**CLI Validation**: ✅ Confirmed via `ark exec sia secrets vm` (all 7 operations present)
+**Implemented**: 2025-11-XX (commit 0fabb1c)
 
 ---
 
-### 7. Target Sets (`workspaces/targetsets`) 🔥 **HIGH PRIORITY**
+### 7. Target Sets (`workspaces/targetsets`) ✅ **IMPLEMENTED**
 
-**Proposed Resource**: `cyberarksia_target_set` or `cyberarksia_vm_workspace`
+**Resource**: `cyberarksia_target_set`
 
 **SDK Service**: `ArkSIAWorkspacesTargetSetsService`
 - **API Accessor**: `WorkspacesTargetSets()`
@@ -266,14 +264,16 @@ SecretsStats() (*models.ArkSIAVMSecretsStats, error)
 
 **Key Fields**:
 - `Name` - Target set identifier (⚠️ also serves as ID, not numeric like databases)
+- `Type` - Matching strategy: "Domain", "Suffix", or "Target"
 - `SecretType` - Type of secret (ProvisionerUser, PCloudAccount)
 - `SecretID` - Reference to VM secret
+- `ProvisionFormat` - Optional provision format string
 
 **CRUD Operations**:
 ```go
 AddTargetSet(targetSet *models.ArkSIAAddTargetSet) (*models.ArkSIATargetSet, error)
-UpdateTargetSet(targetSet *models.ArkSIAUpdateTargetSet) (*models.ArkSIATargetSet, error)
-DeleteTargetSet(targetSet *models.ArkSIADeleteTargetSet) error  // ⚠️ DELETE bug applies
+UpdateTargetSet(targetSet *models.ArkSIAUpdateTargetSet) (*models.ArkSIATargetSet, error)  // Uses UpdateTargetSetDirect workaround
+DeleteTargetSet(targetSet *models.ArkSIADeleteTargetSet) error  // Uses DeleteTargetSetDirect workaround
 TargetSet(targetSet *models.ArkSIAGetTargetSet) (*models.ArkSIATargetSet, error)
 ListTargetSets() ([]*models.ArkSIATargetSet, error)
 ListTargetSetsBy(filter *models.ArkSIATargetSetsFilter) ([]*models.ArkSIATargetSet, error)
@@ -282,25 +282,27 @@ BulkDeleteTargetSets(targetSets *models.ArkSIABulkDeleteTargetSets) (*models.Ark
 TargetSetsStats() (*models.ArkSIATargetSetsStats, error)
 ```
 
-**Dependencies**: VM Secrets (references `secret_id`)
+**Key Features**:
+- Three matching strategies (Domain, Suffix, Target)
+- Name used as immutable identifier
+- Integration with VM secrets
+- Bulk operations support
 
 **Implementation Notes**:
-- VM equivalent of database workspaces
 - ⚠️ **SDK Quirk**: Uses `Name` as identifier (string, not numeric ID)
-  - API returns `name` field; SDK maps it to `id`
-  - Terraform must treat target set names as immutable (ForceNew on name change)
-- ⚠️ **SDK Bug**: DELETE panic applies - need workaround
-- Bulk operations available (useful for import scenarios)
-- Similar schema patterns to database workspaces
+- API returns `name` field; SDK maps it to `id`
+- Terraform treats target set names as immutable (ForceNew on name change)
+- Uses workarounds for DELETE and UPDATE operations
 
-**Complexity**: Medium (name-as-ID quirk + DELETE workaround)
+**Implementation File**: `internal/provider/target_set_resource.go`
 
-**Value**: High (completes VM infrastructure story)
-
-**Discovery Credit**: Claude (primary), validated by Gemini and Codex
-**CLI Validation**: ✅ Confirmed via `ark exec sia workspaces target-sets` (all 9 operations present)
+**Implemented**: 2025-11-XX (commit e309c9a)
 
 ---
+
+## Available Services (Not Yet Implemented)
+
+These services are **available in ARK SDK v1.5.0** and suitable for Terraform implementation:
 
 ### 8. VM Access Policies (`uap/sia/vm`) 🔥 **HIGH PRIORITY**
 
@@ -636,8 +638,8 @@ $ ark exec sia workspaces target-sets list-target-sets --raw | grep "claude-test
 **Critical Finding**: Panic occurs in `NewRequestWithContext()` during HTTP request construction, **BEFORE** any network I/O. The HTTP DELETE request is never sent to the API, so resources remain unchanged.
 
 **Current Workaround**:
-- File: `internal/client/delete_workarounds.go`
-- Functions: `DeleteDatabaseWorkspaceDirect()`, `DeleteSecretDirect()`, `DeletePolicyDirect()`
+- File: `internal/client/sdk_workarounds.go`
+- Functions: `DeleteDatabaseWorkspaceDirect()`, `DeleteSecretDirect()`, `DeleteDatabasePolicyDirect()`
 - Pattern: Bypass SDK methods, call API directly with empty map `map[string]string{}` instead of `nil`
 
 **Required Action for New Resources**:
@@ -853,46 +855,44 @@ resource "cyberarksia_target_set" "example" {
 
 ## Implementation Roadmap
 
-### Phase 1: VM Infrastructure (Highest Priority)
+### Phase 1: VM Infrastructure (Partially Complete ✅)
 
 **Goal**: Extend provider to VM/server management (mirrors existing DB resources)
 
-**Resources to Implement**:
-1. `cyberarksia_vm_secret` (VM credentials)
-2. `cyberarksia_target_set` or `cyberarksia_vm_workspace` (VM workspaces)
-3. `cyberarksia_vm_policy` (VM access policies)
-4. `cyberarksia_vm_policy_principal_assignment` (WHO gets access)
-5. `cyberarksia_vm_policy_target_assignment` (WHAT they access)
+**Resources**:
+1. ✅ `cyberarksia_virtual_machine_secret` (VM credentials) - **COMPLETED** (commit 0fabb1c)
+2. ✅ `cyberarksia_target_set` (VM workspaces) - **COMPLETED** (commit e309c9a)
+3. 🚧 `cyberarksia_vm_policy` (VM access policies) - **IN PROGRESS**
+4. 🚧 `cyberarksia_vm_policy_principal_assignment` (WHO gets access) - **PLANNED**
+5. 🚧 `cyberarksia_vm_policy_target_assignment` (WHAT they access) - **PLANNED**
 
 **Dependencies**:
 ```
-VM Secrets → Target Sets → VM Policies → Assignments
+✅ VM Secrets → ✅ Target Sets → 🚧 VM Policies → 🚧 Assignments
 ```
 
-**Effort Estimate**: Medium (4-6 weeks)
-- Can reuse patterns from database resources
-- DELETE workarounds required
-- VM filtering bug workaround needed
-- Target set name-as-ID pattern
+**Progress**: 2 of 5 resources completed (40%)
+
+**Remaining Effort**: Low-Medium (2-4 weeks)
+- Can reuse patterns from database policy resources
 - Serialization quirks in VM policies
+- Read-Modify-Write pattern for assignments
 
-**Value**: High
-- Natural extension of existing capabilities
-- Completes VM infrastructure story
-- Large user demand (VM management is common)
+**Completed Implementation Notes**:
+- ✅ DELETE workarounds implemented (`sdk_workarounds.go`)
+  - `DeleteVMSecretDirect()` - Bypasses nil body panic
+  - `DeleteTargetSetDirect()` - Bypasses nil body panic
+  - `UpdateTargetSetDirect()` - Bypasses omitempty serialization issues
+  - `ChangeVMSecretDirect()` - Fixes POST→PUT bug
+- ✅ Target sets use string name as ID (ForceNew pattern implemented)
+- ✅ Full CRUD validation completed
 
-**Testing Requirements**:
-- Full CRUD validation per `examples/testing/TESTING-GUIDE.md`
-- Acceptance tests with real SIA API
-- Client-side filtering tests for VM secrets
-- Name immutability tests for target sets
-- Drift detection tests for VM policies (serialization stability)
+**Note**: Client-side filtering not needed for VM secrets resource (uses single-secret reads only, not list operations)
 
-**Critical Implementation Notes**:
-- ⚠️ ALL resources need DELETE workarounds (`delete_workarounds.go`)
-- ⚠️ VM secrets require client-side filtering (SDK bug)
-- ⚠️ Target sets use string name as ID (ForceNew pattern)
-- ⚠️ VM policies need set/hash functions (serialization quirks)
+**Next Steps**:
+- Complete VM policy resource implementation
+- Add policy assignment resources (principal and target)
+- Verify serialization stability with set/hash functions
 
 ---
 
@@ -976,10 +976,10 @@ VM Secrets → Target Sets → VM Policies → Assignments
 ### Pattern Reuse Opportunities
 
 **VM Secrets ← Database Secrets**:
-- Clone `secret_resource.go` structure
+- Similar structure to `database_secret_resource.go`
 - Reuse sensitive data handling patterns
-- Add client-side filtering for VM secrets
-- Implement DELETE workaround
+- Client-side filtering not needed (resource only reads single secrets)
+- DELETE workaround implemented in sdk_workarounds.go
 
 **Target Sets ← Database Workspaces**:
 - Similar schema patterns
@@ -1202,26 +1202,27 @@ if err != nil {
 
 ## Conclusion
 
-The ARK SDK v1.5.0 provides **5 unimplemented services** ready for Terraform implementation, with **3 high-priority additions** (VM secrets, target sets, VM policies) that would significantly expand provider capabilities.
+The ARK SDK v1.5.0 analysis identified 9 SIA services. The Terraform provider currently implements **8 resources and 2 data sources** (10 total components) covering database management, VM/server management, access policies, and principal lookup. **2 services remain available** for implementation: VM policies + assignments (high priority) and SSH CA (medium priority).
 
 **Key Takeaways**:
-1. **VM infrastructure is ready**: Natural extension with established patterns
+1. **Phase 1 progress**: VM Secrets and Target Sets implemented (40% complete). VM Policies + assignments remaining.
 2. **Validation is critical**: Multi-perspective research identified 3 hallucinated services (K8s clusters, Accounts, Platforms)
-3. **SDK bugs are manageable**: Workarounds exist, plan for future fixes
+3. **SDK bugs are manageable**: Workarounds implemented in sdk_workarounds.go
 4. **Clear implementation path**: Phase-based roadmap focused on verified services
-5. **11 total services verified**: 4 implemented, 3 high-priority, 1 medium-priority, 3 CLI-only
+5. **Provider scope**: 8 resources + 2 data sources currently implemented across database and VM management. 2 services available for future implementation (VM policies, SSH CA). 3 CLI-only services excluded.
 
 **Next Steps**:
-1. Validate Phase 1 priority with stakeholders
-2. Create implementation specs using SpecKit
-3. Enhance delete workarounds for VM services
-4. Begin VM secrets implementation (highest ROI)
+1. Complete VM policy resource implementation (Phase 1 remaining work)
+2. Add VM policy assignment resources (principal and target assignments)
+3. Create implementation specs using SpecKit for Phase 2 (SSH CA)
+4. Validate Phase 2/3 priorities with stakeholders
 
 ---
 
-**Document Version**: 1.7 (Production Validated + CLI Bug Documented)
-**Last Updated**: 2025-11-02
+**Document Version**: 1.8 (Implementation Status Updated)
+**Last Updated**: 2025-11-14
 **Research Methodology**: Multi-perspective (Claude + Gemini + Codex) with SDK source code validation + **CyberArk ark CLI production testing**
+**Implementation Update**: VM Secrets and Target Sets implemented and moved to "Currently Implemented" section
 **ARK SDK Version Analyzed**: v1.5.0
 **Validation Status**:
 - ✅ All services confirmed against CyberArk's official `ark` CLI at `/home/tim/go/bin/ark`
@@ -1239,12 +1240,23 @@ The ARK SDK v1.5.0 provides **5 unimplemented services** ready for Terraform imp
 
 ## Appendix: Service Summary Table
 
-### Verified Services Available for Implementation
+### Currently Implemented Services
+
+| Service | Type | Status | Complexity | SDK Location | DELETE Bug | Notes |
+|---------|------|--------|------------|--------------|------------|-------|
+| Database Workspaces | Resource | ✅ Implemented | Medium | `sia/workspaces/db/` | ✅ Workaround | 60+ database engines, DeleteDatabaseWorkspaceDirect |
+| Database Secrets | Resource | ✅ Implemented | Low-Medium | `sia/secrets/db/` | ✅ Workaround | Username/password, AWS IAM, DeleteSecretDirect |
+| VM Secrets | Resource | ✅ Implemented | Medium | `sia/secrets/vm/` | ✅ Workaround | ProvisionerUser/PCloudAccount, DeleteVMSecretDirect, ChangeVMSecretDirect |
+| Target Sets | Resource | ✅ Implemented | Medium | `sia/workspaces/targetsets/` | ✅ Workaround | Name-as-ID pattern, DeleteTargetSetDirect, UpdateTargetSetDirect |
+| Certificates | Resource | ✅ Implemented | Low | `certificates` (custom client) | N/A | TLS/mTLS certificates |
+| Database Policies | Resource | ✅ Implemented | High | `uap/sia/db/` | ✅ Workaround | Access policies with time conditions, DeleteDatabasePolicyDirect |
+| Policy Assignments | Resource | ✅ Implemented | Medium | `uap/sia/db/` | N/A | Principal & workspace assignments (Read-Modify-Write pattern) |
+| Principal Lookup | Data Source | ✅ Implemented | Low | `identity/directories/`, `identity/users/` | N/A | Lookup users/groups/roles by name (hybrid lookup) |
+
+### Services Available for Implementation
 
 | Service | Type | Priority | Complexity | SDK Location | DELETE Bug | Notes |
 |---------|------|----------|------------|--------------|------------|-------|
-| VM Secrets | Resource | High | Medium | `sia/secrets/vm/` | ⚠️ Yes | Filtering bug workaround needed |
-| Target Sets | Resource | High | Medium | `sia/workspaces/targetsets/` | ⚠️ Yes | Name-as-ID pattern |
 | VM Policies | Resource | High | Med-High | `uap/sia/vm/` | ❓ TBD | Serialization quirks, verify delete |
 | SSH CA | Resource | Medium | Medium | `sia/sshca/` | ❓ TBD | Lifecycle mgmt, verify delete |
 | SSH CA Public Key | Data Source | Medium | Low | `sia/sshca/` | N/A | Key retrieval |
@@ -1262,6 +1274,7 @@ The ARK SDK v1.5.0 provides **5 unimplemented services** ready for Terraform imp
 | SSO Settings (`sia.NewSSO` for settings) | Gemini | Only token generation exists, no settings management |
 
 **Legend**:
+- ✅ Workaround: DELETE bug workaround implemented in sdk_workarounds.go
 - ⚠️ Yes: DELETE panic bug confirmed, workaround required
 - ❓ TBD: Needs verification (likely affected)
 - N/A: Not applicable (data sources, no delete operation)
