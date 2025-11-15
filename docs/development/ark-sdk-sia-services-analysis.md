@@ -100,203 +100,39 @@ These services were validated against the SDK source code at `/home/tim/go/pkg/m
 
 ## Currently Implemented Services
 
-These services are **already available** in the Terraform provider (v0.1.0):
+These services are **already available** in the Terraform provider (v0.1.0).
 
-### 1. Database Workspaces (`workspaces/db`)
+**For detailed CRUD operations, schemas, and implementation patterns**, see the [SDK Integration Reference](../sdk-integration.md).
 
-**Resource**: `cyberarksia_database_workspace`
+### Quick Reference Table
 
-**SDK Service**: `ArkSIAWorkspacesDBService`
-- **API Accessor**: `WorkspacesDB()`
-- **Location**: `pkg/services/sia/workspaces/db/`
+| Service | Resource/Data Source | SDK Service | Purpose | Implementation File |
+|---------|---------------------|-------------|---------|---------------------|
+| **Database Workspaces** | `cyberarksia_database_workspace` | `WorkspacesDB()` | Database target configurations (60+ engines) | `database_workspace_resource.go` |
+| **Database Secrets** | `cyberarksia_database_secret` | `SecretsDB()` | Database credentials (username/password, AWS IAM) | `database_secret_resource.go` |
+| **Certificates** | `cyberarksia_certificate` | Custom Client | TLS/mTLS certificates for database connections | `certificate_resource.go` |
+| **Database Policies** | `cyberarksia_database_policy` | `Db()` (UAP) | Access policies with time-based conditions | `database_policy_resource.go` |
+| **Policy Principal Assignments** | `cyberarksia_database_policy_principal_assignment` | `Db()` (UAP) | Assign users/groups/roles to policies (WHO) | `database_policy_principal_assignment_resource.go` |
+| **Policy Workspace Assignments** | `cyberarksia_database_policy_workspace_assignment` | `Db()` (UAP) | Assign database workspaces to policies (WHAT) | `database_policy_workspace_assignment_resource.go` |
+| **Principal Lookup** | `cyberarksia_principal` (data source) | Identity services | Look up users/groups/roles by name | `principal_data_source.go` |
+| **VM Secrets** ✅ | `cyberarksia_virtual_machine_secret` | `SecretsVM()` | VM credentials (ProvisionerUser, PCloudAccount) | `virtual_machine_secret_resource.go` |
+| **Target Sets** ✅ | `cyberarksia_target_set` | `WorkspacesTargetSets()` | VM/server target groupings with credentials | `target_set_resource.go` |
 
-**Purpose**: Manage database target configurations with 60+ supported database engines (PostgreSQL, MySQL, Oracle, SQL Server, MongoDB, etc.)
+### Implementation Notes (High-Level)
 
-**Key Features**:
-- Database connection details (host, port, database name)
-- Authentication profile management (6 auth methods)
-- Cloud provider metadata (AWS, Azure, GCP)
-- Certificate references for TLS/mTLS
+**Database Resources**:
+- Full CRUD operations documented in [SDK Integration: Database Workspaces](../sdk-integration.md#sia-database-workspace-crud-operations)
+- Secrets documented in [SDK Integration: Database Secrets](../sdk-integration.md#sia-database-secrets-crud-operations)
+- Policies documented in [SDK Integration: Policy Assignment Deletion Pattern](../sdk-integration.md#policy-assignment-deletion-pattern)
 
-**Implementation File**: `internal/provider/database_workspace_resource.go`
+**VM Resources** (Recently Implemented):
+- VM Secrets: Full CRUD with DELETE workaround (`DeleteVMSecretDirect`), client-side filtering
+  - Details: [SDK Integration: VM Secrets](../sdk-integration.md#sia-vm-secrets-crud-operations)
+- Target Sets: Name-as-ID pattern, DELETE and UPDATE workarounds
+  - Details: [SDK Integration: Target Sets](../sdk-integration.md#sia-target-sets-crud-operations)
 
----
-
-### 2. Database Secrets (`secrets/db`)
-
-**Resource**: `cyberarksia_database_secret`
-
-**SDK Service**: `ArkSIASecretsDBService`
-- **API Accessor**: `SecretsDB()`
-- **Location**: `pkg/services/sia/secrets/db/`
-
-**Purpose**: Manage strong account credentials for database access (username/password, AWS IAM)
-
-**Key Features**:
-- Multiple authentication types (username/password, AWS IAM)
-- Sensitive data protection
-- Secret lifecycle management
-
-**Implementation File**: `internal/provider/database_secret_resource.go`
-
----
-
-### 3. Certificates (`certificates`)
-
-**Resource**: `cyberarksia_certificate`
-
-**SDK Service**: Custom `CertificatesClient`
-- **Location**: `internal/client/certificates.go`
-
-**Purpose**: Manage TLS/mTLS certificates for secure database connections
-
-**Key Features**:
-- PEM-format certificate management
-- Certificate lifecycle (create, read, update, delete)
-- Integration with database workspaces
-
-**Implementation File**: `internal/provider/certificate_resource.go`
-
----
-
-### 4. Database Access Policies (`uap/sia/db`)
-
-**Resources**:
-- `cyberarksia_database_policy`
-- `cyberarksia_database_policy_principal_assignment`
-- `cyberarksia_database_policy_workspace_assignment`
-
-**SDK Service**: `ArkUAPSIADBService`
-- **API Accessor**: `Db()`
-- **Location**: `pkg/services/uap/sia/db/`
-
-**Purpose**: Define access policies for database targets with time-based conditions
-
-**Key Features**:
-- Policy metadata (name, description, status)
-- Principal assignments (WHO gets access: users, groups, roles)
-- Database assignments (WHAT they access: database workspaces)
-- Time-based conditions (days of week, hours)
-- Composite ID pattern for assignments
-
-**Implementation Files**:
-- `internal/provider/database_policy_resource.go`
-- `internal/provider/database_policy_principal_assignment_resource.go`
-- `internal/provider/database_policy_workspace_assignment_resource.go`
-
----
-
-### 5. Principal Lookup (`identity`)
-
-**Data Source**: `cyberarksia_principal`
-
-**SDK Services**: Uses Identity services
-- **Location**: `pkg/services/identity/directories/` and `pkg/services/identity/users/`
-- **Methods**: `UserByName()` (fast path) and `ListDirectoriesEntities()` (fallback)
-
-**Purpose**: Look up users, groups, and roles by name (eliminates need for manual UUID entry)
-
-**Implementation File**: `internal/provider/principal_data_source.go`
-
-**Implementation Notes**: Uses hybrid two-phase lookup strategy for performance optimization
-
----
-
-### 6. VM Secrets (`secrets/vm`) ✅ **IMPLEMENTED**
-
-**Resource**: `cyberarksia_virtual_machine_secret`
-
-**SDK Service**: `ArkSIASecretsVMService`
-- **API Accessor**: `SecretsVM()`
-- **Location**: `pkg/services/sia/secrets/vm/`
-
-**Purpose**: Manage VM/server credentials for privileged access
-
-**Schemas** (`pkg/services/sia/secrets/vm/models/`):
-- `ArkSIAVMSecret` - Complete VM secret structure
-- `ArkSIAVMAddSecret` - Create VM credential
-- `ArkSIAVMChangeSecret` - Update VM credential
-- `ArkSIAVMSecretsFilter` - Query filters
-
-**Secret Types**:
-- `ProvisionerUser` - Username/password for VM provisioning
-- `PCloudAccount` - Reference to CyberArk PAM vault account (safe + account name)
-
-**CRUD Operations**:
-```go
-AddSecret(secret *models.ArkSIAVMAddSecret) (*models.ArkSIAVMSecret, error)
-ChangeSecret(secret *models.ArkSIAVMChangeSecret) (*models.ArkSIAVMSecret, error)
-DeleteSecret(secret *models.ArkSIAVMDeleteSecret) error  // Uses DeleteVMSecretDirect workaround
-Secret(secret *models.ArkSIAVMGetSecret) (*models.ArkSIAVMSecret, error)
-ListSecrets() ([]*models.ArkSIAVMSecret, error)
-ListSecretsBy(filter *models.ArkSIAVMSecretsFilter) ([]*models.ArkSIAVMSecret, error)  // Client-side filtering used
-SecretsStats() (*models.ArkSIAVMSecretsStats, error)
-```
-
-**Key Features**:
-- Two authentication types (ProvisionerUser, PCloudAccount)
-- Sensitive data protection
-- Secret lifecycle management
-- Client-side filtering workaround for SDK bug
-
-**Implementation File**: `internal/provider/virtual_machine_secret_resource.go`
-
-**Implemented**: 2025-11-XX (commit 0fabb1c)
-
----
-
-### 7. Target Sets (`workspaces/targetsets`) ✅ **IMPLEMENTED**
-
-**Resource**: `cyberarksia_target_set`
-
-**SDK Service**: `ArkSIAWorkspacesTargetSetsService`
-- **API Accessor**: `WorkspacesTargetSets()`
-- **Location**: `pkg/services/sia/workspaces/targetsets/`
-
-**Purpose**: Logical groupings of VM/server targets with associated credentials (VM equivalent of database workspaces)
-
-**Schemas** (`pkg/services/sia/workspaces/targetsets/models/`):
-- `ArkSIATargetSet` - Target set definition
-- `ArkSIAAddTargetSet` - Create target set
-- `ArkSIAUpdateTargetSet` - Update target set
-- `ArkSIABulkAddTargetSets` - Bulk create
-- `ArkSIABulkDeleteTargetSets` - Bulk delete
-
-**Key Fields**:
-- `Name` - Target set identifier (⚠️ also serves as ID, not numeric like databases)
-- `Type` - Matching strategy: "Domain", "Suffix", or "Target"
-- `SecretType` - Type of secret (ProvisionerUser, PCloudAccount)
-- `SecretID` - Reference to VM secret
-- `ProvisionFormat` - Optional provision format string
-
-**CRUD Operations**:
-```go
-AddTargetSet(targetSet *models.ArkSIAAddTargetSet) (*models.ArkSIATargetSet, error)
-UpdateTargetSet(targetSet *models.ArkSIAUpdateTargetSet) (*models.ArkSIATargetSet, error)  // Uses UpdateTargetSetDirect workaround
-DeleteTargetSet(targetSet *models.ArkSIADeleteTargetSet) error  // Uses DeleteTargetSetDirect workaround
-TargetSet(targetSet *models.ArkSIAGetTargetSet) (*models.ArkSIATargetSet, error)
-ListTargetSets() ([]*models.ArkSIATargetSet, error)
-ListTargetSetsBy(filter *models.ArkSIATargetSetsFilter) ([]*models.ArkSIATargetSet, error)
-BulkAddTargetSets(targetSets *models.ArkSIABulkAddTargetSets) (*models.ArkSIABulkTargetSetResponse, error)
-BulkDeleteTargetSets(targetSets *models.ArkSIABulkDeleteTargetSets) (*models.ArkSIABulkTargetSetResponse, error)
-TargetSetsStats() (*models.ArkSIATargetSetsStats, error)
-```
-
-**Key Features**:
-- Three matching strategies (Domain, Suffix, Target)
-- Name used as immutable identifier
-- Integration with VM secrets
-- Bulk operations support
-
-**Implementation Notes**:
-- ⚠️ **SDK Quirk**: Uses `Name` as identifier (string, not numeric ID)
-- API returns `name` field; SDK maps it to `id`
-- Terraform treats target set names as immutable (ForceNew on name change)
-- Uses workarounds for DELETE and UPDATE operations
-
-**Implementation File**: `internal/provider/target_set_resource.go`
-
-**Implemented**: 2025-11-XX (commit e309c9a)
+**Critical SDK Workarounds**:
+All DELETE operations use workarounds from `internal/client/sdk_workarounds.go` to avoid nil pointer panic bug. See [SDK Integration: SDK Limitations](../sdk-integration.md#sdk-limitations-and-workarounds) for complete workaround reference
 
 ---
 

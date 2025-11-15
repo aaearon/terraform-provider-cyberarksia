@@ -350,7 +350,7 @@ targetSets, err := siaAPI.WorkspacesTargetSets().ListTargetSetsBy(
 )
 ```
 
-**Note**: Unlike VM secrets, target set filtering works correctly via the API.
+**Note**: Target set filtering uses client-side regex matching. The SDK fetches all target sets from the API, then filters locally using Go regex. This is a design choice (not a bug like VM secrets' broken filtering), and works correctly for typical use cases.
 
 ---
 
