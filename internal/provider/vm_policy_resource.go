@@ -522,19 +522,25 @@ func (r *VMPolicyResource) ValidateConfig(ctx context.Context, req resource.Vali
 		return
 	}
 
-	// Validate exactly ONE location type
+	// Validate exactly ONE location type and that it matches location_type attribute
 	locationTypeCount := 0
+	var configuredTargetType string
+
 	if !config.FQDNIPTargets.IsNull() {
 		locationTypeCount++
+		configuredTargetType = "FQDN/IP"
 	}
 	if !config.AWSTargets.IsNull() {
 		locationTypeCount++
+		configuredTargetType = "AWS"
 	}
 	if !config.AzureTargets.IsNull() {
 		locationTypeCount++
+		configuredTargetType = "Azure"
 	}
 	if !config.GCPTargets.IsNull() {
 		locationTypeCount++
+		configuredTargetType = "GCP"
 	}
 
 	if locationTypeCount != 1 {
@@ -542,6 +548,19 @@ func (r *VMPolicyResource) ValidateConfig(ctx context.Context, req resource.Vali
 			"Invalid Location Type Configuration",
 			"Exactly one location type must be specified: fqdn_ip_targets, aws_targets, azure_targets, or gcp_targets",
 		)
+	}
+
+	// Verify location_type attribute matches the configured targets block
+	if locationTypeCount == 1 && !config.LocationType.IsNull() {
+		declaredType := config.LocationType.ValueString()
+		if declaredType != configuredTargetType {
+			resp.Diagnostics.AddError(
+				"Location Type Mismatch",
+				fmt.Sprintf("The location_type attribute is set to %q but %s targets are configured. "+
+					"Please ensure location_type matches the configured targets block.",
+					declaredType, configuredTargetType),
+			)
+		}
 	}
 
 	// Validate at least one connection profile (SSH or RDP)
