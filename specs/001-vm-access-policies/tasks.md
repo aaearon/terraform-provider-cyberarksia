@@ -89,13 +89,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Create assignment resource structure in `internal/provider/vm_policy_principal_assignment_resource.go` (type VMPolicyPrincipalAssignmentResource, Metadata method)
-- [ ] T030 [US2] Implement Schema method with composite ID attributes (policy_id, principal_id, principal_name, principal_type, source_directory fields all ForceNew per data-model.md §6)
-- [ ] T031 [US2] Implement Create method with Read-Modify-Write and duplicate detection (read policy, check for duplicate principal ID+Type, append, update per research.md §4.3)
-- [ ] T032 [US2] Implement Read method to verify assignment exists (parse composite ID, read policy, find principal in array, RemoveResource if not found)
-- [ ] T033 [US2] Implement Update method as ForceNew (all attributes require replacement)
-- [ ] T034 [US2] Implement Delete method with Read-Modify-Write (read policy, remove principal from array, update policy)
-- [ ] T035 [US2] Implement ImportState method with composite ID parsing (use ParseVMPolicyPrincipalID helper per research.md §5.4)
+- [x] T029 [US2] Create assignment resource structure in `internal/provider/vm_policy_principal_assignment_resource.go` (type VMPolicyPrincipalAssignmentResource, Metadata method)
+- [x] T030 [US2] Implement Schema method with composite ID attributes (policy_id, principal_id, principal_name, principal_type, source_directory fields all ForceNew per data-model.md §6)
+- [x] T031 [US2] Implement Create method with Read-Modify-Write and duplicate detection (read policy, check for duplicate principal ID+Type, append, update per research.md §4.3)
+- [x] T032 [US2] Implement Read method to verify assignment exists (parse composite ID, read policy, find principal in array, RemoveResource if not found)
+- [x] T033 [US2] Implement Update method as ForceNew (all attributes require replacement)
+- [x] T034 [US2] Implement Delete method with Read-Modify-Write (read policy, remove principal from array, update policy)
+- [x] T035 [US2] Implement ImportState method with composite ID parsing (use ParseVMPolicyPrincipalID helper per research.md §5.4)
 
 ### Testing for User Story 2
 
@@ -120,9 +120,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T041 [US3] Add aws_targets block to schema in `internal/provider/vm_policy_resource.go` (regions, tags with key/value structure, vpc_ids, account_ids per data-model.md §4.2)
-- [ ] T042 [US3] Extend buildSDKTargets helper to handle AWSResource mapping
-- [ ] T043 [US3] Extend mapSDKPolicyToState helper to handle AWSResource deserialization
+- [x] T041 [US3] Add aws_targets block to schema in `internal/provider/vm_policy_resource.go` (regions, tags with key/value structure, vpc_ids, account_ids per data-model.md §4.2)
+- [x] T042 [US3] Extend buildSDKTargets helper to handle AWSResource mapping
+- [x] T043 [US3] Extend mapSDKPolicyToState helper to handle AWSResource deserialization
 
 ### Testing for User Story 3
 
@@ -173,10 +173,10 @@
 
 ### Implementation for User Story 5
 
-- [ ] T056 [P] [US5] Add azure_targets block to schema (regions, tags, resource_groups, vnet_ids, subscriptions per data-model.md §4.4)
-- [ ] T057 [P] [US5] Add gcp_targets block to schema (regions, labels NOT tags, vpc_ids, projects per data-model.md §4.3)
-- [ ] T058 [US5] Extend buildSDKTargets helper to handle AzureResource and GCPResource mapping
-- [ ] T059 [US5] Extend mapSDKPolicyToState helper to handle Azure and GCP deserialization
+- [x] T056 [P] [US5] Add azure_targets block to schema (regions, tags, resource_groups, vnet_ids, subscriptions per data-model.md §4.4)
+- [x] T057 [P] [US5] Add gcp_targets block to schema (regions, labels NOT tags, vpc_ids, projects per data-model.md §4.3)
+- [x] T058 [US5] Extend buildSDKTargets helper to handle AzureResource and GCPResource mapping
+- [x] T059 [US5] Extend mapSDKPolicyToState helper to handle Azure and GCP deserialization
 
 ### Testing for User Story 5
 
@@ -234,12 +234,12 @@
 
 **Purpose**: Documentation, provider registration, validation, and final polish
 
-- [ ] T072 Register VM policy resource in `internal/provider/provider.go` (add to Resources method)
-- [ ] T073 Register principal assignment resource in `internal/provider/provider.go`
+- [x] T072 Register VM policy resource in `internal/provider/provider.go` (add to Resources method)
+- [x] T073 Register principal assignment resource in `internal/provider/provider.go`
 - [ ] T074 [P] Create complete policy example in `examples/resources/cyberarksia_vm_policy/complete.tf` (all features: AWS + RDP + time windows + multiple principals)
 - [ ] T075 [P] Update `examples/testing/TESTING-GUIDE.md` with VM policy CRUD validation scenarios
 - [ ] T076 Run `tfplugindocs generate` to create resource documentation
-- [ ] T077 [P] Update `CLAUDE.md` resource table with cyberarksia_vm_policy and cyberarksia_vm_policy_principal_assignment
+- [x] T077 [P] Update `CLAUDE.md` resource table with cyberarksia_vm_policy and cyberarksia_vm_policy_principal_assignment
 - [ ] T078 [P] Create implementation summary in `docs/development/vm-policy-implementation.md`
 - [ ] T079 Run `make validate` (format, lint, security checks)
 - [ ] T080 Run full acceptance test suite: `TF_ACC=1 go test ./internal/provider -v -run TestAccVMPolicy`
