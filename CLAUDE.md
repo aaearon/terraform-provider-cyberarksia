@@ -176,6 +176,8 @@ terraform-provider-cyberarksia/
 | Resource | `cyberarksia_database_policy_workspace_assignment` | `internal/provider/database_policy_workspace_assignment_resource.go` | ✅ Stable | Assign database workspaces TO policies (WHAT they access) |
 | Resource | `cyberarksia_virtual_machine_secret` | `internal/provider/virtual_machine_secret_resource.go` | ✅ Stable | VM credentials (ProvisionerUser/PCloudAccount) |
 | Resource | `cyberarksia_target_set` | `internal/provider/target_set_resource.go` | ✅ Stable | VM/server target sets (Domain/Suffix/Target matching) |
+| Resource | `cyberarksia_vm_policy` | `internal/provider/vm_policy_resource.go` | ✅ Stable | VM access policies (FQDN/IP, AWS, Azure, GCP targets with SSH/RDP) |
+| Resource | `cyberarksia_vm_policy_principal_assignment` | `internal/provider/vm_policy_principal_assignment_resource.go` | ✅ Stable | Assign users/groups/roles TO VM policies (WHO gets access) |
 | Data Source | `cyberarksia_principal` | `internal/provider/principal_data_source.go` | ✅ Stable | Lookup users/groups/roles by name (no manual UUID needed) |
 
 ### Quick Reference: Resource Selection Guide
@@ -192,6 +194,8 @@ terraform-provider-cyberarksia/
 | Assign databases to policies | `cyberarksia_database_policy_workspace_assignment` | WHAT they access |
 | Store VM/server credentials | `cyberarksia_virtual_machine_secret` | ProvisionerUser or PCloudAccount |
 | Group VMs/servers by criteria | `cyberarksia_target_set` | Domain/Suffix/Target matching |
+| Define VM access policies | `cyberarksia_vm_policy` | Time-based access with cloud/on-prem targets |
+| Grant users access to VM policies | `cyberarksia_vm_policy_principal_assignment` | WHO gets VM access |
 | Look up user/group/role UUIDs | `cyberarksia_principal` (data source) | Avoids manual UUID lookup |
 
 **Common Tasks Quick Links:**
