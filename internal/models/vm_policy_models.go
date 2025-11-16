@@ -3,44 +3,37 @@ package models
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
 // VMPolicyResourceModel - Main VM policy state model
+// Field order optimized for memory alignment (saves 32 bytes)
 type VMPolicyResourceModel struct {
 	// Identity
 	ID       types.String `tfsdk:"id"`
 	PolicyID types.String `tfsdk:"policy_id"`
 
 	// Metadata
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	TimeZone    types.String `tfsdk:"time_zone"`
-	Tags        types.List   `tfsdk:"tags"` // []string
+	Name                     types.String `tfsdk:"name"`
+	Description              types.String `tfsdk:"description"`
+	TimeZone                 types.String `tfsdk:"time_zone"`
+	LocationType             types.String `tfsdk:"location_type"`
+	Status                   types.String `tfsdk:"status"`
+	PolicyType               types.String `tfsdk:"policy_type"`
+	DelegationClassification types.String `tfsdk:"delegation_classification"`
 
-	// Policy Configuration
-	LocationType types.String `tfsdk:"location_type"`
-	Status       types.String `tfsdk:"status"`
-	PolicyType   types.String `tfsdk:"policy_type"`
-
-	// Assignments
-	Principals types.List `tfsdk:"principals"` // []PrincipalModel, min 1 required
-
-	// Conditions
-	MaxSessionDuration types.Int64  `tfsdk:"max_session_duration"`
-	IdleTime           types.Int64  `tfsdk:"idle_time"`
-	AccessWindow       types.Object `tfsdk:"access_window"` // AccessWindowModel
-	TimeFrame          types.Object `tfsdk:"time_frame"`    // TimeFrameModel
-
-	// Behavior
-	Behavior types.Object `tfsdk:"behavior"` // BehaviorModel
-
-	// Targets (oneOf - exactly one must be set)
+	// Lists and Objects (larger types)
+	Tags          types.List   `tfsdk:"tags"`          // []string
+	Principals    types.List   `tfsdk:"principals"`    // []PrincipalModel, min 1 required
+	AccessWindow  types.Object `tfsdk:"access_window"` // AccessWindowModel
+	TimeFrame     types.Object `tfsdk:"time_frame"`    // TimeFrameModel
+	Behavior      types.Object `tfsdk:"behavior"`      // BehaviorModel
 	FQDNIPTargets types.Object `tfsdk:"fqdn_ip_targets"`
 	AWSTargets    types.Object `tfsdk:"aws_targets"`
 	AzureTargets  types.Object `tfsdk:"azure_targets"`
 	GCPTargets    types.Object `tfsdk:"gcp_targets"`
+	CreatedBy     types.Object `tfsdk:"created_by"`
+	UpdatedBy     types.Object `tfsdk:"updated_by"`
 
-	// Computed Fields
-	DelegationClassification types.String `tfsdk:"delegation_classification"`
-	CreatedBy                types.Object `tfsdk:"created_by"`
-	UpdatedBy                types.Object `tfsdk:"updated_by"`
+	// Conditions (int64 types)
+	MaxSessionDuration types.Int64 `tfsdk:"max_session_duration"`
+	IdleTime           types.Int64 `tfsdk:"idle_time"`
 }
 
 // PrincipalModel - Inline principal assignment

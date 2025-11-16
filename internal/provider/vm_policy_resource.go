@@ -75,6 +75,7 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Policy name (1-200 characters, unique). **ForceNew**: Changing creates new policy.",
+				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.LengthBetween(1, 200),
 				},
@@ -92,12 +93,14 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 			"status": schema.StringAttribute{
 				MarkdownDescription: "Policy status. Valid values: `Active`, `Suspended`. " +
 					"**Note**: `Expired`, `Validating`, `Error`, and `Warning` are server-managed statuses.",
+				Required: true,
 				Validators: []validator.String{
 					validators.PolicyStatus(),
 				},
 			},
 			"location_type": schema.StringAttribute{
 				MarkdownDescription: "Location type. Valid: `AWS`, `Azure`, `GCP`, `FQDN/IP`. **ForceNew**: Changing requires new policy.",
+				Required:            true,
 				Validators: []validator.String{
 					validators.VMLocationType(),
 				},
@@ -167,18 +170,21 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 					Attributes: map[string]schema.Attribute{
 						"principal_id": schema.StringAttribute{
 							MarkdownDescription: "Principal identifier (UUID format).",
+							Required:            true,
 							Validators: []validator.String{
 								validators.UUID(),
 							},
 						},
 						"principal_name": schema.StringAttribute{
 							MarkdownDescription: "Principal name (1-512 chars).",
+							Required:            true,
 							Validators: []validator.String{
 								stringvalidator.LengthBetween(1, 512),
 							},
 						},
 						"principal_type": schema.StringAttribute{
 							MarkdownDescription: "Principal type. Valid: `USER`, `GROUP`, `ROLE`.",
+							Required:            true,
 							Validators: []validator.String{
 								validators.PrincipalType(),
 							},
@@ -239,6 +245,7 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 						Attributes: map[string]schema.Attribute{
 							"username": schema.StringAttribute{
 								MarkdownDescription: "SSH username. Required if ssh block present.",
+								Required:            true,
 								Validators: []validator.String{
 									stringvalidator.LengthAtLeast(1),
 								},
@@ -295,12 +302,14 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 							Attributes: map[string]schema.Attribute{
 								"operator": schema.StringAttribute{
 									MarkdownDescription: "FQDN operator. Valid: `EXACTLY`, `WILDCARD`, `PREFIX`, `SUFFIX`, `CONTAINS`.",
+									Required:            true,
 									Validators: []validator.String{
 										validators.FQDNOperator(),
 									},
 								},
 								"computername_pattern": schema.StringAttribute{
 									MarkdownDescription: "Computername pattern (max 300 chars).",
+									Required:            true,
 									Validators: []validator.String{
 										stringvalidator.LengthAtMost(300),
 									},
@@ -321,12 +330,14 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 							Attributes: map[string]schema.Attribute{
 								"operator": schema.StringAttribute{
 									MarkdownDescription: "IP operator. Valid: `EXACTLY`, `WILDCARD`.",
+									Required:            true,
 									Validators: []validator.String{
 										validators.IPOperator(),
 									},
 								},
 								"ip_addresses": schema.ListAttribute{
 									MarkdownDescription: "IP addresses (max 1000 items).",
+									Required:            true,
 									ElementType:         types.StringType,
 									Validators: []validator.List{
 										listvalidator.SizeAtMost(1000),
@@ -334,6 +345,7 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 								},
 								"logical_name": schema.StringAttribute{
 									MarkdownDescription: "Logical name for IP rule (1-256 chars).",
+									Required:            true,
 									Validators: []validator.String{
 										stringvalidator.LengthBetween(1, 256),
 									},
@@ -627,7 +639,14 @@ func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	// Type assert VMService to *vm.ArkUAPSIAVMService
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	// Build SDK policy model
 	policy := &uapsiavmmodels.ArkUAPSIAVMAccessPolicy{}
@@ -681,7 +700,7 @@ func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	// Map SDK response to state
-	state := mapSDKPolicyToState(ctx, created, plan, &resp.Diagnostics)
+	state := mapSDKPolicyToState(ctx, created, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -712,7 +731,14 @@ func (r *VMPolicyResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	// Type assert VMService to *vm.ArkUAPSIAVMService
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	policyID := state.PolicyID.ValueString()
 
@@ -742,7 +768,7 @@ func (r *VMPolicyResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	// Map SDK response to state
-	newState := mapSDKPolicyToState(ctx, policy, state, &resp.Diagnostics)
+	newState := mapSDKPolicyToState(ctx, policy, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -772,7 +798,14 @@ func (r *VMPolicyResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	// Type assert VMService to *vm.ArkUAPSIAVMService
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	policyID := state.PolicyID.ValueString()
 
@@ -873,7 +906,7 @@ func (r *VMPolicyResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	// Map updated policy to state
-	newState := mapSDKPolicyToState(ctx, updated, plan, &resp.Diagnostics)
+	newState := mapSDKPolicyToState(ctx, updated, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -903,7 +936,14 @@ func (r *VMPolicyResource) Delete(ctx context.Context, req resource.DeleteReques
 	}
 
 	// Type assert VMService to *vm.ArkUAPSIAVMService
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	policyID := state.PolicyID.ValueString()
 
@@ -940,7 +980,14 @@ func (r *VMPolicyResource) ImportState(ctx context.Context, req resource.ImportS
 	policyID := req.ID
 
 	// Type assert VMService to *vm.ArkUAPSIAVMService
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	// Fetch policy from API with retry logic
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
@@ -961,9 +1008,8 @@ func (r *VMPolicyResource) ImportState(ctx context.Context, req resource.ImportS
 		return
 	}
 
-	// Convert to state model (use empty plan as base)
-	var emptyPlan models.VMPolicyResourceModel
-	state := mapSDKPolicyToState(ctx, policy, emptyPlan, &resp.Diagnostics)
+	// Convert to state model
+	state := mapSDKPolicyToState(ctx, policy, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -1438,7 +1484,7 @@ func buildSDKConditions(plan models.VMPolicyResourceModel) uapcommondels.ArkUAPS
 			}
 		}
 
-		conditions.ArkUAPConditions.AccessWindow = uapcommonmodels.ArkUAPTimeCondition{
+		conditions.AccessWindow = uapcommonmodels.ArkUAPTimeCondition{
 			DaysOfTheWeek: daysOfWeek,
 			FromHour:      accessWindow.FromHour.ValueString(),
 			ToHour:        accessWindow.ToHour.ValueString(),
@@ -1449,7 +1495,7 @@ func buildSDKConditions(plan models.VMPolicyResourceModel) uapcommondels.ArkUAPS
 }
 
 // mapSDKPolicyToState converts SDK policy response to Terraform state
-func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy, planState models.VMPolicyResourceModel, diags *diag.Diagnostics) models.VMPolicyResourceModel {
+func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy, diags *diag.Diagnostics) models.VMPolicyResourceModel {
 	state := models.VMPolicyResourceModel{}
 
 	// Identity
@@ -1532,7 +1578,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 	state.IdleTime = types.Int64Value(int64(sdkPolicy.Conditions.IdleTime))
 
 	// Access window
-	if (sdkPolicy.Conditions.AccessWindow.DaysOfTheWeek != nil && len(sdkPolicy.Conditions.AccessWindow.DaysOfTheWeek) > 0) ||
+	if len(sdkPolicy.Conditions.AccessWindow.DaysOfTheWeek) > 0 ||
 		sdkPolicy.Conditions.AccessWindow.FromHour != "" || sdkPolicy.Conditions.AccessWindow.ToHour != "" {
 
 		var daysInt64 []int64

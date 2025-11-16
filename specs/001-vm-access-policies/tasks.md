@@ -74,8 +74,8 @@
 
 ### Examples for User Story 1
 
-- [ ] T027 [P] [US1] Create basic FQDN/IP policy example in `examples/resources/cyberarksia_vm_policy/resource.tf`
-- [ ] T028 [P] [US1] Create CRUD validation template in `examples/testing/crud-test-vm-policy.tf`
+- [x] T027 [P] [US1] Create basic FQDN/IP policy example in `examples/resources/cyberarksia_vm_policy/resource.tf`
+- [x] T028 [P] [US1] Create CRUD validation template in `examples/testing/crud-test-vm-policy.tf`
 
 **Checkpoint**: User Story 1 should be fully functional - can create, read, update, delete FQDN/IP policies with SSH via Terraform
 
@@ -106,7 +106,7 @@
 
 ### Examples for User Story 2
 
-- [ ] T040 [P] [US2] Create principal assignment example in `examples/resources/cyberarksia_vm_policy_principal_assignment/resource.tf`
+- [x] T040 [P] [US2] Create principal assignment example in `examples/resources/cyberarksia_vm_policy_principal_assignment/resource.tf`
 
 **Checkpoint**: User Stories 1 AND 2 should both work - can manage policies and dynamically add/remove principals independently
 
@@ -132,7 +132,7 @@
 
 ### Examples for User Story 3
 
-- [ ] T047 [P] [US3] Create AWS cloud policy example in `examples/resources/cyberarksia_vm_policy/aws_policy.tf`
+- [x] T047 [P] [US3] Create AWS cloud policy example in `examples/resources/cyberarksia_vm_policy/aws_policy.tf`
 
 **Checkpoint**: All P1 and P2 AWS stories functional - can manage both FQDN/IP and AWS policies
 
@@ -159,7 +159,7 @@
 
 ### Examples for User Story 4
 
-- [ ] T055 [P] [US4] Create RDP connection behavior example in `examples/resources/cyberarksia_vm_policy/rdp_policy.tf`
+- [x] T055 [P] [US4] Create RDP connection behavior example in `examples/resources/cyberarksia_vm_policy/rdp_policy.tf`
 
 **Checkpoint**: Connection behavior fully configurable - SSH and RDP both supported
 
@@ -185,8 +185,8 @@
 
 ### Examples for User Story 5
 
-- [ ] T062 [P] [US5] Create Azure policy example in `examples/resources/cyberarksia_vm_policy/azure_policy.tf`
-- [ ] T063 [P] [US5] Create GCP policy example in `examples/resources/cyberarksia_vm_policy/gcp_policy.tf`
+- [x] T062 [P] [US5] Create Azure policy example in `examples/resources/cyberarksia_vm_policy/azure_policy.tf`
+- [x] T063 [P] [US5] Create GCP policy example in `examples/resources/cyberarksia_vm_policy/gcp_policy.tf`
 
 **Checkpoint**: Multi-cloud support complete - AWS, Azure, GCP all supported
 
@@ -236,12 +236,12 @@
 
 - [x] T072 Register VM policy resource in `internal/provider/provider.go` (add to Resources method)
 - [x] T073 Register principal assignment resource in `internal/provider/provider.go`
-- [ ] T074 [P] Create complete policy example in `examples/resources/cyberarksia_vm_policy/complete.tf` (all features: AWS + RDP + time windows + multiple principals)
+- [x] T074 [P] Create complete policy example in `examples/resources/cyberarksia_vm_policy/complete.tf` (all features: AWS + RDP + time windows + multiple principals)
 - [ ] T075 [P] Update `examples/testing/TESTING-GUIDE.md` with VM policy CRUD validation scenarios
-- [ ] T076 Run `tfplugindocs generate` to create resource documentation
+- [x] T076 Run `tfplugindocs generate` to create resource documentation
 - [x] T077 [P] Update `CLAUDE.md` resource table with cyberarksia_vm_policy and cyberarksia_vm_policy_principal_assignment
-- [ ] T078 [P] Create implementation summary in `docs/development/vm-policy-implementation.md`
-- [ ] T079 Run `make validate` (format, lint, security checks)
+- [x] T078 [P] Create implementation summary in `docs/development/vm-policy-implementation.md`
+- [x] T079 Run `make validate` (format, lint, security checks)
 - [ ] T080 Run full acceptance test suite: `TF_ACC=1 go test ./internal/provider -v -run TestAccVMPolicy`
 - [ ] T081 Verify quickstart.md walkthrough produces working resources
 

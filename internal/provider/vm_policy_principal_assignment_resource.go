@@ -162,7 +162,14 @@ func (r *VMPolicyPrincipalAssignmentResource) Create(ctx context.Context, req re
 		return
 	}
 
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	// Read-modify-write: Fetch existing policy
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
@@ -263,7 +270,14 @@ func (r *VMPolicyPrincipalAssignmentResource) Read(ctx context.Context, req reso
 		return
 	}
 
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	// Fetch policy with retry
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
@@ -365,7 +379,14 @@ func (r *VMPolicyPrincipalAssignmentResource) Delete(ctx context.Context, req re
 		return
 	}
 
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	// Read-modify-write: Fetch policy with retry
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
@@ -471,7 +492,14 @@ func (r *VMPolicyPrincipalAssignmentResource) ImportState(ctx context.Context, r
 		return
 	}
 
-	vmService := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Invalid VMService Type",
+			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
+		)
+		return
+	}
 
 	// Fetch policy with retry
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
