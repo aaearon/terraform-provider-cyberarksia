@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
@@ -157,6 +158,34 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 			"delegation_classification": schema.StringAttribute{
 				MarkdownDescription: "Delegation classification (server-computed).",
 				Computed:            true,
+			},
+			"created_by": schema.SingleNestedAttribute{
+				MarkdownDescription: "Policy creator metadata (computed).",
+				Computed:            true,
+				Attributes: map[string]schema.Attribute{
+					"name": schema.StringAttribute{
+						MarkdownDescription: "Creator username.",
+						Computed:            true,
+					},
+					"timestamp": schema.StringAttribute{
+						MarkdownDescription: "Creation timestamp.",
+						Computed:            true,
+					},
+				},
+			},
+			"updated_by": schema.SingleNestedAttribute{
+				MarkdownDescription: "Policy updater metadata (computed).",
+				Computed:            true,
+				Attributes: map[string]schema.Attribute{
+					"name": schema.StringAttribute{
+						MarkdownDescription: "Last updater username.",
+						Computed:            true,
+					},
+					"timestamp": schema.StringAttribute{
+						MarkdownDescription: "Last update timestamp.",
+						Computed:            true,
+					},
+				},
 			},
 		},
 
@@ -477,34 +506,6 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 					},
 				},
 			},
-
-			"created_by": schema.SingleNestedBlock{
-				MarkdownDescription: "Policy creator metadata (computed).",
-				Attributes: map[string]schema.Attribute{
-					"name": schema.StringAttribute{
-						MarkdownDescription: "Creator username.",
-						Computed:            true,
-					},
-					"timestamp": schema.StringAttribute{
-						MarkdownDescription: "Creation timestamp.",
-						Computed:            true,
-					},
-				},
-			},
-
-			"updated_by": schema.SingleNestedBlock{
-				MarkdownDescription: "Policy updater metadata (computed).",
-				Attributes: map[string]schema.Attribute{
-					"name": schema.StringAttribute{
-						MarkdownDescription: "Last updater username.",
-						Computed:            true,
-					},
-					"timestamp": schema.StringAttribute{
-						MarkdownDescription: "Last update timestamp.",
-						Computed:            true,
-					},
-				},
-			},
 		},
 	}
 }
@@ -651,6 +652,9 @@ func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateReques
 	// Build SDK policy model
 	policy := &uapsiavmmodels.ArkUAPSIAVMAccessPolicy{}
 
+	// Set delegation classification (required, server validates)
+	policy.DelegationClassification = "Unrestricted"
+
 	// Build metadata
 	metadata := buildSDKMetadata(plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -699,19 +703,46 @@ func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	// Map SDK response to state
-	state := mapSDKPolicyToState(ctx, created, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
+	// Set only the ID fields from API response
+	// Don't call mapSDKPolicyToState() here - it tries to populate computed metadata fields
+	// (created_by, updated_by) which causes "unknown value" errors during CREATE.
+	// Terraform will automatically call Read() after Create() to populate all fields.
+	plan.ID = types.StringValue(created.Metadata.PolicyID)
+	plan.PolicyID = types.StringValue(created.Metadata.PolicyID)
+
+	// Set computed fields that must be known after apply
+	plan.DelegationClassification = types.StringValue(created.DelegationClassification)
+
+	// Set tags (Optional+Computed) - use empty list if not provided
+	if len(created.Metadata.PolicyTags) > 0 {
+		tagsList, diagsTags := types.ListValueFrom(ctx, types.StringType, created.Metadata.PolicyTags)
+		if diagsTags.HasError() {
+			resp.Diagnostics.Append(diagsTags...)
+		} else {
+			plan.Tags = tagsList
+		}
+	} else {
+		plan.Tags = types.ListNull(types.StringType)
 	}
 
+	// Explicitly set computed metadata fields to null to avoid "unknown value" errors
+	// These will be populated by the automatic Read() call after Create()
+	plan.CreatedBy = types.ObjectNull(map[string]attr.Type{
+		"name":      types.StringType,
+		"timestamp": types.StringType,
+	})
+	plan.UpdatedBy = types.ObjectNull(map[string]attr.Type{
+		"name":      types.StringType,
+		"timestamp": types.StringType,
+	})
+
 	tflog.Info(ctx, "Created VM policy", map[string]interface{}{
-		"policy_id":   state.PolicyID.ValueString(),
-		"policy_name": state.Name.ValueString(),
+		"policy_id":   plan.PolicyID.ValueString(),
+		"policy_name": plan.Name.ValueString(),
 		"principals":  len(plan.Principals.Elements()),
 	})
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *VMPolicyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -927,7 +958,7 @@ func (r *VMPolicyResource) Delete(ctx context.Context, req resource.DeleteReques
 		return
 	}
 
-	if r.providerData == nil || r.providerData.VMService == nil {
+	if r.providerData == nil || r.providerData.AuthContext == nil {
 		resp.Diagnostics.AddError(
 			"Unconfigured Provider",
 			"Provider was not configured. Please ensure provider configuration is complete before using resources.",
@@ -935,27 +966,15 @@ func (r *VMPolicyResource) Delete(ctx context.Context, req resource.DeleteReques
 		return
 	}
 
-	// Type assert VMService to *vm.ArkUAPSIAVMService
-	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Invalid VMService Type",
-			fmt.Sprintf("Expected *vm.ArkUAPSIAVMService, got: %T. Please report this issue to the provider developers.", r.providerData.VMService),
-		)
-		return
-	}
-
 	policyID := state.PolicyID.ValueString()
 
-	// Delete policy using SDK method directly (NO workaround needed for VM policies)
+	// Delete policy using workaround (ARK SDK v1.5.0 nil body bug)
 	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
 		BaseDelay:  client.BaseDelay,
 		MaxDelay:   client.MaxDelay,
 	}, func() error {
-		return vmService.DeletePolicy(&uapcommonmodels.ArkUAPDeletePolicyRequest{
-			PolicyID: policyID,
-		})
+		return client.DeleteDatabasePolicyDirect(ctx, r.providerData.AuthContext, policyID)
 	})
 
 	if err != nil {
@@ -1504,7 +1523,12 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 	// Metadata
 	state.Name = types.StringValue(sdkPolicy.Metadata.Name)
-	state.Description = types.StringValue(sdkPolicy.Metadata.Description)
+	// Normalize empty description to null
+	if sdkPolicy.Metadata.Description != "" {
+		state.Description = types.StringValue(sdkPolicy.Metadata.Description)
+	} else {
+		state.Description = types.StringNull()
+	}
 	state.TimeZone = types.StringValue(sdkPolicy.Metadata.TimeZone)
 	state.LocationType = types.StringValue(sdkPolicy.Metadata.PolicyEntitlement.LocationType)
 	state.Status = types.StringValue(sdkPolicy.Metadata.Status.Status)
@@ -1585,10 +1609,22 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		for _, d := range sdkPolicy.Conditions.AccessWindow.DaysOfTheWeek {
 			daysInt64 = append(daysInt64, int64(d))
 		}
+		// Sort days to ensure consistent ordering (API may return unsorted)
+		sort.Slice(daysInt64, func(i, j int) bool { return daysInt64[i] < daysInt64[j] })
 
 		daysList, diagsDays := types.ListValueFrom(ctx, types.Int64Type, daysInt64)
 		if diagsDays.HasError() {
 			diags.Append(diagsDays...)
+		}
+
+		// Normalize empty from_hour/to_hour to null
+		fromHour := types.StringNull()
+		if sdkPolicy.Conditions.AccessWindow.FromHour != "" {
+			fromHour = types.StringValue(sdkPolicy.Conditions.AccessWindow.FromHour)
+		}
+		toHour := types.StringNull()
+		if sdkPolicy.Conditions.AccessWindow.ToHour != "" {
+			toHour = types.StringValue(sdkPolicy.Conditions.AccessWindow.ToHour)
 		}
 
 		accessWindowObj, diagsAW := types.ObjectValueFrom(ctx, map[string]attr.Type{
@@ -1597,8 +1633,8 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			"to_hour":          types.StringType,
 		}, models.VMAccessWindowModel{
 			DaysOfTheWeek: daysList,
-			FromHour:      types.StringValue(sdkPolicy.Conditions.AccessWindow.FromHour),
-			ToHour:        types.StringValue(sdkPolicy.Conditions.AccessWindow.ToHour),
+			FromHour:      fromHour,
+			ToHour:        toHour,
 		})
 		if diagsAW.HasError() {
 			diags.Append(diagsAW...)
@@ -1700,14 +1736,31 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		}
 	} else {
 		behaviorModel.RDP = types.ObjectNull(map[string]attr.Type{
-			"local_ephemeral_user":  types.ObjectType{},
-			"domain_ephemeral_user": types.ObjectType{},
+			"local_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{
+				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"enable_ephemeral_user_reconnect": types.BoolType,
+			}},
+			"domain_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{
+				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"assign_domain_groups":            types.ListType{ElemType: types.StringType},
+				"enable_ephemeral_user_reconnect": types.BoolType,
+			}},
 		})
 	}
 
 	behaviorObj, diagsBehavior := types.ObjectValueFrom(ctx, map[string]attr.Type{
 		"ssh": types.ObjectType{AttrTypes: map[string]attr.Type{"username": types.StringType}},
-		"rdp": types.ObjectType{AttrTypes: map[string]attr.Type{"local_ephemeral_user": types.ObjectType{}, "domain_ephemeral_user": types.ObjectType{}}},
+		"rdp": types.ObjectType{AttrTypes: map[string]attr.Type{
+			"local_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{
+				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"enable_ephemeral_user_reconnect": types.BoolType,
+			}},
+			"domain_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{
+				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"assign_domain_groups":            types.ListType{ElemType: types.StringType},
+				"enable_ephemeral_user_reconnect": types.BoolType,
+			}},
+		}},
 	}, behaviorModel)
 	if diagsBehavior.HasError() {
 		diags.Append(diagsBehavior...)
@@ -1723,10 +1776,15 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		if len(sdkPolicy.Targets.FQDNIPResource.FQDNRules) > 0 {
 			fqdnRuleModels := make([]models.FQDNRuleModel, len(sdkPolicy.Targets.FQDNIPResource.FQDNRules))
 			for i, rule := range sdkPolicy.Targets.FQDNIPResource.FQDNRules {
+				// Normalize empty domain string to null
+				domain := types.StringNull()
+				if rule.Domain != "" {
+					domain = types.StringValue(rule.Domain)
+				}
 				fqdnRuleModels[i] = models.FQDNRuleModel{
 					Operator:            types.StringValue(rule.Operator),
 					ComputernamePattern: types.StringValue(rule.ComputernamePattern),
-					Domain:              types.StringValue(rule.Domain),
+					Domain:              domain,
 				}
 			}
 			fqdnRulesList, diagsFQDNRules := types.ListValueFrom(ctx, types.ObjectType{
@@ -1769,6 +1827,15 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			} else {
 				fqdnIPTargets.IPRules = ipRulesList
 			}
+		} else {
+			// Initialize empty list when no IP rules
+			fqdnIPTargets.IPRules = types.ListNull(types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"operator":     types.StringType,
+					"ip_addresses": types.ListType{ElemType: types.StringType},
+					"logical_name": types.StringType,
+				},
+			})
 		}
 
 		fqdnIPTargetsObj, diagsFQDNIP := types.ObjectValueFrom(ctx, map[string]attr.Type{
@@ -2064,6 +2131,11 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		} else {
 			state.CreatedBy = createdByObj
 		}
+	} else {
+		state.CreatedBy = types.ObjectNull(map[string]attr.Type{
+			"name":      types.StringType,
+			"timestamp": types.StringType,
+		})
 	}
 
 	if sdkPolicy.Metadata.UpdatedOn.User != "" {
@@ -2079,6 +2151,11 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		} else {
 			state.UpdatedBy = updatedByObj
 		}
+	} else {
+		state.UpdatedBy = types.ObjectNull(map[string]attr.Type{
+			"name":      types.StringType,
+			"timestamp": types.StringType,
+		})
 	}
 
 	return state

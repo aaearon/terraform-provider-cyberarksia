@@ -122,11 +122,11 @@ output "delegation_classification" {
 
 ### Read-Only
 
-- `created_by` (Block, Read-only) Policy creator metadata (computed). (see [below for nested schema](#nestedblock--created_by))
+- `created_by` (Attributes) Policy creator metadata (computed). (see [below for nested schema](#nestedatt--created_by))
 - `delegation_classification` (String) Delegation classification (server-computed).
 - `id` (String) Policy identifier (same as policy_id).
 - `policy_id` (String) Unique policy identifier (UUID, API-generated).
-- `updated_by` (Block, Read-only) Policy updater metadata (computed). (see [below for nested schema](#nestedblock--updated_by))
+- `updated_by` (Attributes) Policy updater metadata (computed). (see [below for nested schema](#nestedatt--updated_by))
 
 <a id="nestedblock--access_window"></a>
 ### Nested Schema for `access_window`
@@ -309,7 +309,7 @@ Optional:
 - `to_time` (String) End time (ISO 8601 format, e.g., `2024-12-31T23:59:59Z`).
 
 
-<a id="nestedblock--created_by"></a>
+<a id="nestedatt--created_by"></a>
 ### Nested Schema for `created_by`
 
 Read-Only:
@@ -318,7 +318,7 @@ Read-Only:
 - `timestamp` (String) Creation timestamp.
 
 
-<a id="nestedblock--updated_by"></a>
+<a id="nestedatt--updated_by"></a>
 ### Nested Schema for `updated_by`
 
 Read-Only:

@@ -6,9 +6,88 @@
 
 ---
 
+## Session 2 Progress (2025-11-16 16:30-17:15)
+
+### ✅ Bugs Fixed
+1. **DelegationClassification required**: Added `policy.DelegationClassification = "Unrestricted"` in Create method (line 663)
+2. **Type mismatch errors**:
+   - Fixed `ip_rule` empty list initialization (line 1775-1784)
+   - Fixed `behavior.rdp` object types with proper attribute definitions (lines 1705-1715, 1718-1730)
+3. **Delete panic**: Updated Delete method to use `DeleteDatabasePolicyDirect` workaround (line 959)
+4. **Test config**: Created `vm_policy_resource_test.go` with 5 User Story 1 tests
+
+### 🔍 Key Discoveries (from tenant inspection)
+- **`access_window` is REQUIRED** by API (not optional as schema suggests)
+- `from_hour`/`to_hour` ARE valid but optional within `access_window` (for time-based restrictions)
+- `days_of_the_week` is the only required field in `access_window`
+- Policies successfully created with empty `targets` and `behavior` objects
+- No `idle_time` returned in API responses (server-computed default)
+
+### 🔧 Remaining Issues (Plan/State Consistency)
+
+**Test Status**: Policy creates and deletes successfully, but 3 Terraform consistency errors:
+
+1. **`.created_by: was absent, but now present`**
+   - Computed field appears after CREATE
+   - Fix: Ensure schema marks as Computed + handle in plan modifier
+
+2. **`.updated_by: was absent, but now present`**
+   - Computed field appears after CREATE
+   - Fix: Same as created_by
+
+3. **`.fqdn_ip_targets.fqdn_rule[0].domain: was null, but now cty.StringVal("")`**
+   - Optional field returns empty string instead of null
+   - Fix: Normalize empty strings to null in Read method (mapSDKPolicyToState)
+
+### 📝 Test File Created
+- `internal/provider/vm_policy_resource_test.go` (467 lines)
+- Tests: T022 (basic), T023 (SSH+time window), T024 (drift), T025 (ForceNew), T026 (validation)
+- All configs use correct principal data source attributes
+- Test names use timestamp for uniqueness
+
+---
+
+## 🚀 START HERE - Next Session Instructions
+
+### Priority 1: Fix Plan/State Consistency (30 minutes)
+
+**Current Status**: VM policies create/delete successfully, but 3 Terraform validation errors prevent test from passing.
+
+**Fix 1 - Computed Fields**: In `vm_policy_resource.go` line ~1804 (mapSDKPolicyToState):
+```go
+// Explicitly handle nil for computed fields not present in plan:
+if sdkPolicy.Metadata.CreatedBy.User != "" {
+    state.CreatedBy = &models.ChangeInfoModel{...}
+} else {
+    state.CreatedBy = nil
+}
+// Same for UpdatedBy
+```
+
+**Fix 2 - Empty String Normalization**: In `vm_policy_resource.go` line ~1735 (FQDN mapping):
+```go
+domain := types.StringNull()
+if rule.Domain != "" {
+    domain = types.StringValue(rule.Domain)
+}
+```
+
+**Test Command**:
+```bash
+export CYBERARK_USERNAME=timtest@cyberark.cloud.40562
+export CYBERARK_PASSWORD='nvk*phv*hfd3ATR2rfc'
+export TF_ACC=1
+go test ./internal/provider -v -run TestAccVMPolicy_basic -timeout 10m
+```
+
+### Priority 2: Complete User Story 1 Tests (1.5 hours)
+After fixes pass, run remaining T023-T026 tests.
+
+---
+
 ## Current State
 
-### ✅ Completed (43/81 tasks)
+### ✅ Completed (45/81 tasks)
 
 **Implementation:**
 - ✅ Two resources fully implemented with CRUD lifecycle
@@ -83,7 +162,7 @@ export TF_LOG_PATH=./tf-test.log
 go test ./internal/provider -v -run TestAccProvider_Configure -timeout 2m
 ```
 
-### Step 2: Implement User Story 1 Acceptance Tests (T022-T026) - Priority: HIGH
+### Step 3: Complete User Story 1 Tests - Priority: HIGH
 
 **Context:**
 - User Story 1: Basic FQDN/IP policies with SSH connection behavior
