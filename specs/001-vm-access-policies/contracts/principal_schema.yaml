@@ -1,0 +1,348 @@
+# Principal Schema Specification
+# Used in both inline principals (vm_policy resource) and assignments (vm_policy_principal_assignment resource)
+
+# ARK SDK Version: v1.5.0
+# OpenAPI Schema: components.schemas.Principal
+# SDK Model: github.com/cyberark/ark-sdk-golang/pkg/services/uap/common/models.ArkUAPPrincipal
+
+---
+
+Principal:
+  type: object
+  required:
+    - principal_id
+    - principal_name
+    - principal_type
+  properties:
+    principal_id:
+      type: string
+      format: uuid
+      maxLength: 40
+      description: "Unique principal identifier (UUID format). This is the identity ID from CyberArk Identity."
+      examples:
+        - "abc-123-uuid"
+        - "c2c7bcc6-9560-44e0-8dff-5be221cd37ee"
+      terraform_attribute: "principal_id"
+      sdk_field: "ID"
+
+    principal_name:
+      type: string
+      minLength: 1
+      maxLength: 512
+      pattern: '[\w.\-+]+'
+      description: "Principal name. For USER principals, typically in email format. For GROUP and ROLE principals, may be display name or identifier."
+      examples:
+        - "user@example.com"
+        - "admin@cyberark.cloud.12345"
+        - "DevOps-Team"
+        - "Database Administrators"
+      terraform_attribute: "principal_name"
+      sdk_field: "Name"
+
+    principal_type:
+      type: string
+      enum:
+        - USER
+        - GROUP
+        - ROLE
+      description: "Principal type. Determines whether source directory fields are required."
+      terraform_attribute: "principal_type"
+      sdk_field: "Type"
+
+    source_directory_name:
+      type: string
+      maxLength: 50
+      pattern: '\w+'
+      description: "Source directory name (REQUIRED for USER/GROUP, optional for ROLE). Name of the identity directory service."
+      examples:
+        - "CyberArk"
+        - "AzureAD"
+        - "LDAP"
+        - "Okta"
+      conditionalRequired:
+        condition: principal_type IN [USER, GROUP]
+        message: "source_directory_name is required when principal_type is USER or GROUP"
+      terraform_attribute: "source_directory_name"
+      sdk_field: "SourceDirectoryName"
+
+    source_directory_id:
+      type: string
+      description: "Source directory ID (REQUIRED for USER/GROUP, optional for ROLE). Unique identifier of the identity directory service."
+      examples:
+        - "dir-456"
+        - "AAD_12345"
+      conditionalRequired:
+        condition: principal_type IN [USER, GROUP]
+        message: "source_directory_id is required when principal_type is USER or GROUP"
+      terraform_attribute: "source_directory_id"
+      sdk_field: "SourceDirectoryID"
+
+---
+
+# Composite ID Format for Principal Assignments
+
+CompositeID:
+  format: "policy-id:principal-id:principal-type"
+  description: "Three-part composite ID used for vm_policy_principal_assignment resource. Includes principal_type to handle duplicate principal IDs across types."
+
+  components:
+    - name: policy_id
+      description: "UUID of the VM access policy"
+      example: "a1b2c3d4-5678-90ab-cdef-1234567890ab"
+
+    - name: principal_id
+      description: "UUID of the principal"
+      example: "e5f6a7b8-9012-34cd-ef56-7890abcdef12"
+
+    - name: principal_type
+      description: "Principal type (USER, GROUP, or ROLE)"
+      example: "USER"
+
+  examples:
+    - id: "a1b2c3d4-5678-90ab-cdef-1234567890ab:e5f6a7b8-9012-34cd-ef56-7890abcdef12:USER"
+      description: "User principal assignment"
+
+    - id: "policy-abc123:principal-def456:GROUP"
+      description: "Group principal assignment"
+
+    - id: "550e8400-e29b-41d4-a716-446655440000:6ba7b810-9dad-11d1-80b4-00c04fd430c8:ROLE"
+      description: "Role principal assignment"
+
+  parsing:
+    parts: 3
+    separator: ":"
+    function_name: "ParseVMPolicyPrincipalID"
+    function_signature: "ParseVMPolicyPrincipalID(id string) (policyID, principalID, principalType string, err error)"
+    location: "internal/provider/helpers/composite_ids.go"
+
+  building:
+    function_name: "BuildVMPolicyPrincipalID"
+    function_signature: "BuildVMPolicyPrincipalID(policyID, principalID, principalType string) string"
+    location: "internal/provider/helpers/composite_ids.go"
+
+---
+
+# Validation Rules
+
+Validation:
+  schema_level:
+    - field: principal_id
+      validators:
+        - stringvalidator.LengthAtMost(40)
+        - validators.UUID()  # Custom UUID validator
+
+    - field: principal_name
+      validators:
+        - stringvalidator.LengthBetween(1, 512)
+        - stringvalidator.RegexMatches(regexp.MustCompile(`[\w.\-+]+`), "must match pattern")
+
+    - field: principal_type
+      validators:
+        - validators.PrincipalType()  # Custom enum validator: USER, GROUP, ROLE
+
+    - field: source_directory_name
+      validators:
+        - stringvalidator.LengthAtMost(50)
+        - stringvalidator.RegexMatches(regexp.MustCompile(`\w+`), "must match pattern")
+
+  runtime:
+    - name: "Conditional Source Directory Validation"
+      description: "source_directory_name and source_directory_id are required when principal_type is USER or GROUP"
+      implementation: "ValidateConfig method"
+      pseudocode: |
+        if principalType == "USER" || principalType == "GROUP" {
+            if sourceDirectoryName == "" {
+                return error("source_directory_name is required for USER/GROUP principals")
+            }
+            if sourceDirectoryID == "" {
+                return error("source_directory_id is required for USER/GROUP principals")
+            }
+        }
+
+    - name: "Duplicate Principal Detection"
+      description: "Prevent duplicate principal assignments (same ID + Type)"
+      implementation: "vm_policy_principal_assignment Create() method"
+      pseudocode: |
+        for each principal in existingPolicy.Principals {
+            if principal.ID == newPrincipalID && principal.Type == newPrincipalType {
+                return error("Principal already assigned to policy")
+            }
+        }
+
+  server_side:
+    - constraint: "Principal uniqueness"
+      error_code: 400
+      error_message: "duplicate roles, groups or user names"
+      terraform_handling: "Duplicate detection in assignment resource prevents this"
+
+---
+
+# Usage Patterns
+
+InlineUsage:
+  resource: "cyberarksia_vm_policy"
+  attribute: "principal"
+  description: "Define initial principals at policy creation (minimum 1 required)"
+  example_hcl: |
+    resource "cyberarksia_vm_policy" "example" {
+      name          = "Production Access"
+      location_type = "FQDN/IP"
+      status        = "Active"
+
+      # REQUIRED - At least one principal at creation
+      principal {
+        principal_id              = data.cyberarksia_principal.admin.id
+        principal_name            = data.cyberarksia_principal.admin.name
+        principal_type            = "USER"
+        source_directory_name     = "CyberArk"
+        source_directory_id       = "abc-123"
+      }
+
+      # OPTIONAL - Additional inline principals
+      principal {
+        principal_id              = data.cyberarksia_principal.ops_team.id
+        principal_name            = data.cyberarksia_principal.ops_team.name
+        principal_type            = "GROUP"
+        source_directory_name     = "AzureAD"
+        source_directory_id       = "AAD_456"
+      }
+
+      # ... rest of policy config ...
+    }
+
+AssignmentUsage:
+  resource: "cyberarksia_vm_policy_principal_assignment"
+  description: "Add additional principals to existing policies beyond initial inline principals"
+  example_hcl: |
+    # Assign additional user to existing policy
+    resource "cyberarksia_vm_policy_principal_assignment" "dev_user" {
+      policy_id             = cyberarksia_vm_policy.example.id
+      principal_id          = data.cyberarksia_principal.dev.id
+      principal_name        = data.cyberarksia_principal.dev.name
+      principal_type        = "USER"
+      source_directory_name = "CyberArk"
+      source_directory_id   = "abc-123"
+    }
+
+    # Assign role (no source directory required)
+    resource "cyberarksia_vm_policy_principal_assignment" "db_admin_role" {
+      policy_id      = cyberarksia_vm_policy.example.id
+      principal_id   = data.cyberarksia_principal.db_admin.id
+      principal_name = data.cyberarksia_principal.db_admin.name
+      principal_type = "ROLE"
+      # source_directory_name and source_directory_id are optional for ROLE
+    }
+
+PrincipalLookup:
+  data_source: "cyberarksia_principal"
+  description: "Look up principal UUID by name (avoids manual UUID entry)"
+  example_hcl: |
+    # Lookup user by name
+    data "cyberarksia_principal" "admin" {
+      name = "admin@example.com"
+      type = "USER"
+    }
+
+    # Lookup group by name
+    data "cyberarksia_principal" "ops_team" {
+      name = "DevOps-Team"
+      type = "GROUP"
+    }
+
+    # Lookup role by name
+    data "cyberarksia_principal" "db_admin" {
+      name = "Database Administrators"
+      type = "ROLE"
+    }
+
+    # Use in policy
+    resource "cyberarksia_vm_policy" "example" {
+      principal {
+        principal_id   = data.cyberarksia_principal.admin.id      # UUID from lookup
+        principal_name = data.cyberarksia_principal.admin.name    # Name from lookup
+        principal_type = "USER"
+        source_directory_name = data.cyberarksia_principal.admin.source_directory_name
+        source_directory_id   = data.cyberarksia_principal.admin.source_directory_id
+      }
+    }
+
+---
+
+# SDK Integration
+
+SDKConversion:
+  terraform_to_sdk:
+    function: "buildSDKPrincipals"
+    input: "[]PrincipalModel (Terraform state model)"
+    output: "[]uapcommonmodels.ArkUAPPrincipal (SDK model)"
+    code: |
+      func buildSDKPrincipals(tfPrincipals []PrincipalModel) []uapcommonmodels.ArkUAPPrincipal {
+          sdkPrincipals := make([]uapcommonmodels.ArkUAPPrincipal, len(tfPrincipals))
+          for i, p := range tfPrincipals {
+              sdkPrincipals[i] = uapcommonmodels.ArkUAPPrincipal{
+                  ID:                  p.PrincipalID.ValueString(),
+                  Name:                p.PrincipalName.ValueString(),
+                  Type:                p.PrincipalType.ValueString(),
+                  SourceDirectoryName: p.SourceDirectoryName.ValueString(),
+                  SourceDirectoryID:   p.SourceDirectoryID.ValueString(),
+              }
+          }
+          return sdkPrincipals
+      }
+
+  sdk_to_terraform:
+    function: "mapSDKPrincipalsToTerraform"
+    input: "[]uapcommonmodels.ArkUAPPrincipal (SDK model)"
+    output: "types.List (Terraform state model)"
+    code: |
+      func mapSDKPrincipalsToTerraform(ctx context.Context, sdkPrincipals []uapcommonmodels.ArkUAPPrincipal) types.List {
+          principalModels := make([]PrincipalModel, len(sdkPrincipals))
+          for i, p := range sdkPrincipals {
+              principalModels[i] = PrincipalModel{
+                  PrincipalID:           types.StringValue(p.ID),
+                  PrincipalName:         types.StringValue(p.Name),
+                  PrincipalType:         types.StringValue(p.Type),
+                  SourceDirectoryName:   types.StringValue(p.SourceDirectoryName),
+                  SourceDirectoryID:     types.StringValue(p.SourceDirectoryID),
+              }
+          }
+
+          principalList, _ := types.ListValueFrom(ctx, types.ObjectType{
+              AttrTypes: principalAttrTypes,
+          }, principalModels)
+
+          return principalList
+      }
+
+---
+
+# Testing Scenarios
+
+Tests:
+  - scenario: "Create policy with single inline principal (minimum viable)"
+    validation: "Policy created, principal appears in state"
+
+  - scenario: "Create policy with multiple inline principals"
+    validation: "All inline principals appear in state"
+
+  - scenario: "Add additional principal via assignment resource"
+    validation: "Both inline and assigned principals appear in policy principals list"
+
+  - scenario: "Update policy preserves assigned principals"
+    validation: "Inline principals updated, assigned principals unchanged"
+
+  - scenario: "Duplicate principal detection"
+    validation: "Assignment fails with clear error when principal already assigned"
+
+  - scenario: "Remove inline principal updates policy correctly"
+    validation: "Inline principal removed, assigned principals preserved"
+
+  - scenario: "Delete assignment resource"
+    validation: "Assigned principal removed, inline principals unchanged"
+
+  - scenario: "Import vm_policy_principal_assignment resource"
+    validation: "Composite ID parsed correctly, principal details populated from API"
+
+---
+
+**Principal Schema Complete**: This specification defines the complete principal model for VM access policies.

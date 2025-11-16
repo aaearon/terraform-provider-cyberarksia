@@ -306,9 +306,28 @@ targetSet, err := siaAPI.WorkspacesTargetSets().TargetSet(
 ```
 
 ### Update Target Set
+
+**⚠️ UPDATE (2025-11-15)**: The workaround shown below is **OPTIONAL** for Terraform providers. Dual PoC validation confirmed that the SDK's `UpdateTargetSet()` method works correctly when all fields are populated, which Terraform providers always have from state/plan. See PoC results at `/tmp/target-sets-poc/` and analysis in `docs/development/ark-sdk-sia-services-analysis.md`.
+
+**Option A: Use SDK Method Directly** (Recommended for providers):
 ```go
-// ⚠️ SDK Bug: omitempty tags cause incomplete serialization
-// Use workaround from sdk_workarounds.go
+// SDK method works when ALL fields are populated (which providers always have)
+updateReq := &targetsetmodels.ArkSIAUpdateTargetSet{
+	ID:                          state.Name.ValueString(),
+	Name:                        plan.Name.ValueString(),
+	Description:                 plan.Description.ValueString(),
+	ProvisionFormat:             plan.ProvisionFormat.ValueString(),
+	EnableCertificateValidation: plan.EnableCertificateValidation.ValueBool(),
+	SecretType:                  plan.SecretType.ValueString(),
+	SecretID:                    plan.SecretID.ValueString(),
+	Type:                        plan.Type.ValueString(),
+}
+updated, err := siaAPI.WorkspacesTargetSets().UpdateTargetSet(updateReq)
+```
+
+**Option B: Use Workaround** (Current implementation, works but more complex):
+```go
+// Workaround bypasses omitempty issues by using map
 updated, err := client.UpdateTargetSetDirect(
 	ctx,
 	providerData.AuthContext,
@@ -323,7 +342,14 @@ updated, err := client.UpdateTargetSetDirect(
 )
 ```
 
-**Workaround Rationale**: SDK's `UpdateTargetSet()` method has `omitempty` tags that cause fields to be dropped during serialization, leading to incomplete updates. The workaround accepts a map to ensure all fields are sent to the API.
+**Why Two Options?**:
+- SDK's `UpdateTargetSet()` has `omitempty` tags that drop zero-value fields
+- **Partial updates fail** (missing required fields cause API errors)
+- **Full updates work** (all fields populated = no fields dropped)
+- **Terraform providers always do full updates** (have complete state/plan)
+- Workaround was created before this was understood
+
+**Recommendation**: New code should use Option A (simpler, type-safe). Existing code works fine but could be simplified.
 
 **Note**: Target set name changes require delete + recreate in Terraform (ForceNew behavior).
 

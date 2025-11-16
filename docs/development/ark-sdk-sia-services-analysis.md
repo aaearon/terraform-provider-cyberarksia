@@ -200,6 +200,112 @@ PoliciesStats() (*models.ArkUAPPoliciesStats, error)
 **Discovery Credit**: Claude (primary), validated by Gemini and Codex
 **CLI Validation**: ✅ Confirmed via `ark exec uap vm` (all 8 operations present)
 
+#### PoC Validation Results (2025-11-16)
+
+**Validation Status**: ✅ **BASIC CRUD VALIDATED** - Happy-path scenario confirmed working
+**Validation Date**: 2025-11-16
+**Validation Scope**: ⚠️ **Single happy-path scenario only** (USER principal, FQDN/IP SUFFIX, SSH behavior)
+
+**Test Results Summary**:
+- ✅ **CREATE**: Policy created with USER principal, FQDN/IP SUFFIX rule, SSH behavior
+- ✅ **READ**: Policy retrieved, targets and behavior deserialized correctly
+- ✅ **UPDATE**: Description updated, targets/behavior preserved (read-modify-write pattern)
+- ✅ **DELETE**: DELETE workaround successful, no panic, 404 confirmed after deletion
+- ✅ **Principal UUID Lookup**: Identity API integration via `UserByName()` working
+- ✅ **Required Metadata**: status, timeZone, daysOfTheWeek, delegationClassification all identified
+
+**Critical Findings**:
+
+1. **Required Metadata Fields** ✅ (Discovered via HTTP 400 error)
+   - `TimeZone`: "GMT" (or other valid timezone)
+   - `Status.Status`: "Active"
+   - `DelegationClassification`: "Restricted" or "Unrestricted"
+   - `Conditions.AccessWindow.DaysOfTheWeek`: []int{0,1,2,3,4,5,6} (required array)
+   - `PolicyType`: "Recurring" or "OnDemand"
+   - **API Error**: `UAP1005: invalid status, timeZone, daysOfTheWeek, delegationClassification`
+
+2. **AccessWindow Type Discovery** ✅ (Compilation error revealed)
+   - **Field Type**: `uapcommonmodels.ArkUAPTimeCondition` (VALUE, not pointer)
+   - **Common Mistake**: Using `&uapcommonmodels.ArkUAPTimeCondition{...}` causes compilation error
+   - **Correct**: `AccessWindow: uapcommonmodels.ArkUAPTimeCondition{DaysOfTheWeek: [...]}`
+
+3. **LocationType Initialization** ⚠️
+   - Must be set BEFORE calling `Serialize()`
+   - Error if missing: "unsupported workspace type"
+   - Location: `pkg/services/uap/sia/vm/models/ark_uap_sia_vm_targets.go:404-417`
+
+4. **DELETE Workaround Confirmed** ✅
+   - Existing `DeleteDatabasePolicyDirect()` works for VM policies (uses same `BaseDeletePolicy`)
+   - Service: "uap", Endpoint: `/api/policies/{id}`
+   - No new workaround needed
+
+5. **Principal UUID Requirement** ✅
+   - API requires valid UUIDs (not usernames)
+   - Use Identity API: `users.UserByName(&usersmodels.ArkIdentityUserByName{Username: name})`
+   - Same pattern as database policies
+   - HTTP 500 error if username used instead of UUID
+
+6. **SDK Method Signatures Validated** ✅
+   ```go
+   AddPolicy(*uapsiavmmodels.ArkUAPSIAVMAccessPolicy) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error)
+   Policy(*uapcommonmodels.ArkUAPGetPolicyRequest) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error)
+   UpdatePolicy(*uapsiavmmodels.ArkUAPSIAVMAccessPolicy) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error)
+   DeletePolicy(*uapcommonmodels.ArkUAPDeletePolicyRequest) error // Uses BaseDeletePolicy
+   ```
+
+**Validated Patterns**:
+```go
+// Principal UUID Lookup (Identity API)
+usersService, err := users.NewArkIdentityUsersService(ispAuth)
+user, err := usersService.UserByName(&usersmodels.ArkIdentityUserByName{Username: username})
+principalUUID := user.UserID
+
+// Policy Construction with Required Fields
+policy := &uapsiavmmodels.ArkUAPSIAVMAccessPolicy{
+    ArkUAPSIACommonAccessPolicy: siacommonmodels.ArkUAPSIACommonAccessPolicy{
+        ArkUAPCommonAccessPolicy: uapcommonmodels.ArkUAPCommonAccessPolicy{
+            Metadata: uapcommonmodels.ArkUAPMetadata{
+                TimeZone: "GMT", // REQUIRED
+                PolicyEntitlement: uapcommonmodels.ArkUAPPolicyEntitlement{
+                    LocationType:   commonmodels.WorkspaceTypeFQDNIP, // REQUIRED
+                    PolicyType:     "Recurring", // REQUIRED
+                },
+                Status: uapcommonmodels.ArkUAPPolicyStatus{
+                    Status: "Active", // REQUIRED
+                },
+            },
+            DelegationClassification: "Unrestricted", // REQUIRED
+        },
+        Conditions: siacommonmodels.ArkUAPSIACommonConditions{
+            ArkUAPConditions: uapcommonmodels.ArkUAPConditions{
+                AccessWindow: uapcommonmodels.ArkUAPTimeCondition{ // VALUE, not pointer
+                    DaysOfTheWeek: []int{0, 1, 2, 3, 4, 5, 6}, // REQUIRED
+                },
+            },
+        },
+    },
+}
+
+// DELETE Workaround
+client, err := isp.FromISPAuth(ispAuth, "uap", ".", "", nil)
+response, err := client.Delete(ctx, fmt.Sprintf("/api/policies/%s", policyID), map[string]string{})
+```
+
+**Known Limitations** ⚠️ (NOT tested in PoC - require acceptance testing during implementation):
+- Multi-principal policies (GROUP/ROLE types, AD/LDAP directories)
+- IP rules, DOMAIN/TARGET operators, AWS/Azure/GCP location types
+- RDP profiles, combined SSH+RDP behaviors
+- Import/list operations for `terraform import`
+- OnDemand policy type, policy tag CRUD
+- Error scenarios (invalid UUIDs, network errors, token expiration)
+
+**Reusable Patterns** (from database policies):
+- ✅ Authentication (`internal/client/auth.go`)
+- ✅ DELETE workaround (`DeleteDatabasePolicyDirect`)
+- ✅ Error handling (`MapError`, `RetryWithBackoff`)
+- ✅ Principal lookup (via `cyberarksia_principal` data source or direct Identity API)
+- ✅ Read-modify-write for updates
+
 ---
 
 ### 9. SSH CA Management (`sshca`) ⭐ **MEDIUM PRIORITY**

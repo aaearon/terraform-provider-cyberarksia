@@ -693,3 +693,9 @@ Track critical items as GitHub Issues for better visibility and prioritization:
 ```bash
 rg "TODO|FIXME" --glob "*.go" -A 2 -B 1
 ```
+
+## Active Technologies
+- Not applicable (stateless provider, Terraform state managed externally) (001-vm-access-policies)
+
+## Recent Changes
+- 001-vm-access-policies: Added Go 1.25.0
