@@ -3,10 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -236,10 +236,14 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 			"access_window": schema.SingleNestedBlock{
 				MarkdownDescription: "Time-based access restrictions (days and hours). Optional.",
 				Attributes: map[string]schema.Attribute{
-					"days_of_the_week": schema.ListAttribute{
-						MarkdownDescription: "Days access is allowed (0=Sunday through 6=Saturday). Example: `[1,2,3,4,5]` for weekdays.",
-						Optional:            true,
+					"days_of_the_week": schema.SetAttribute{
+						MarkdownDescription: "Days access is allowed (0=Sunday through 6=Saturday). Specify days in any order - order is automatically normalized. Example: `[1, 2, 3, 4, 5]` for weekdays.",
+						Required:            true,
 						ElementType:         types.Int64Type,
+						Validators: []validator.Set{
+							setvalidator.ValueInt64sAre(int64validator.Between(0, 6)),
+							setvalidator.SizeBetween(1, 7),
+						},
 					},
 					"from_hour": schema.StringAttribute{
 						MarkdownDescription: "Start time in HH:MM format (e.g., `09:00`).",
@@ -1609,10 +1613,8 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		for _, d := range sdkPolicy.Conditions.AccessWindow.DaysOfTheWeek {
 			daysInt64 = append(daysInt64, int64(d))
 		}
-		// Sort days to ensure consistent ordering (API may return unsorted)
-		sort.Slice(daysInt64, func(i, j int) bool { return daysInt64[i] < daysInt64[j] })
 
-		daysList, diagsDays := types.ListValueFrom(ctx, types.Int64Type, daysInt64)
+		daysSet, diagsDays := types.SetValueFrom(ctx, types.Int64Type, daysInt64)
 		if diagsDays.HasError() {
 			diags.Append(diagsDays...)
 		}
@@ -1628,11 +1630,11 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		}
 
 		accessWindowObj, diagsAW := types.ObjectValueFrom(ctx, map[string]attr.Type{
-			"days_of_the_week": types.ListType{ElemType: types.Int64Type},
+			"days_of_the_week": types.SetType{ElemType: types.Int64Type},
 			"from_hour":        types.StringType,
 			"to_hour":          types.StringType,
 		}, models.VMAccessWindowModel{
-			DaysOfTheWeek: daysList,
+			DaysOfTheWeek: daysSet,
 			FromHour:      fromHour,
 			ToHour:        toHour,
 		})
@@ -1643,7 +1645,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		}
 	} else {
 		state.AccessWindow = types.ObjectNull(map[string]attr.Type{
-			"days_of_the_week": types.ListType{ElemType: types.Int64Type},
+			"days_of_the_week": types.SetType{ElemType: types.Int64Type},
 			"from_hour":        types.StringType,
 			"to_hour":          types.StringType,
 		})

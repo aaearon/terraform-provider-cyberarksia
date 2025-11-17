@@ -131,9 +131,12 @@ output "delegation_classification" {
 <a id="nestedblock--access_window"></a>
 ### Nested Schema for `access_window`
 
+Required:
+
+- `days_of_the_week` (Set of Number) Days access is allowed (0=Sunday through 6=Saturday). Specify days in any order - order is automatically normalized. Example: `[1, 2, 3, 4, 5]` for weekdays.
+
 Optional:
 
-- `days_of_the_week` (List of Number) Days access is allowed (0=Sunday through 6=Saturday). Example: `[1,2,3,4,5]` for weekdays.
 - `from_hour` (String) Start time in HH:MM format (e.g., `09:00`).
 - `to_hour` (String) End time in HH:MM format (e.g., `17:00`).
 

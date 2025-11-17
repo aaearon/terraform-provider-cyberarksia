@@ -126,9 +126,9 @@ type TagModel struct {
 	Value types.List   `tfsdk:"value"` // Optional, []string
 }
 
-// VMAccessWindowModel - Time-based access restrictions (VM-specific: uses List instead of Set)
+// VMAccessWindowModel - Time-based access restrictions
 type VMAccessWindowModel struct {
-	DaysOfTheWeek types.List   `tfsdk:"days_of_the_week"` // List of int, 0=Sunday through 6=Saturday
+	DaysOfTheWeek types.Set    `tfsdk:"days_of_the_week"` // Set of int64, 0=Sunday through 6=Saturday (unordered)
 	FromHour      types.String `tfsdk:"from_hour"`        // "HH:MM"
 	ToHour        types.String `tfsdk:"to_hour"`          // "HH:MM"
 }
