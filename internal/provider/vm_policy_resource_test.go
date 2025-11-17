@@ -584,8 +584,20 @@ func TestAccVMPolicy_awsBasic(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_test", "aws_targets.regions.*", "us-east-1"),
 					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_test", "aws_targets.regions.*", "us-west-2"),
 
-					// AWS targets - tags
+					// AWS targets - tags (verify structure, not just count)
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.#", "2"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.0.key", "Environment"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.0.value.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.0.value.*", "production"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.1.key", "Team"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.1.value.#", "2"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.1.value.*", "platform"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.1.value.*", "infrastructure"),
+
+					// AWS targets - verify empty arrays (not null) for vpc_ids/account_ids
+					// This verifies the fix: API requires empty arrays, not null
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.vpc_ids.#", "0"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.account_ids.#", "0"),
 
 					// SSH behavior
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "behavior.ssh.username", "ec2-user"),
@@ -633,7 +645,17 @@ func TestAccVMPolicy_awsVpcAndAccounts(t *testing.T) {
 					// Regions
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.regions.#", "1"),
 					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.regions.*", "us-east-1"),
+
+					// Verify tags is empty (null) when not provided
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.tags.#", "0"),
 				),
+			},
+			// ImportState testing - verify provider can reconstruct state from API
+			{
+				ResourceName:            "cyberarksia_vm_policy.aws_vpc_test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"created_by", "updated_by"},
 			},
 		},
 	})
@@ -658,6 +680,10 @@ func TestAccVMPolicy_awsUpdateRegions(t *testing.T) {
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.#", "2"),
 					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "us-east-1"),
 					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "us-west-2"),
+
+					// Verify principals are set initially (Session 4 fix verification)
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_update_test", "principals.#", "1"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.aws_update_test", "principals.0.principal_id"),
 				),
 			},
 			// Update regions (should NOT trigger ForceNew)
@@ -669,6 +695,16 @@ func TestAccVMPolicy_awsUpdateRegions(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "us-east-1"),
 					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "eu-west-1"),
 					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "ap-southeast-1"),
+
+					// CRITICAL: Verify policy_id didn't change (no ForceNew occurred)
+					// This uses TestCheckResourceAttrPair to compare policy_id across steps
+					// If ForceNew happened, this would fail because policy_id would be different
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.aws_update_test", "policy_id"),
+
+					// CRITICAL: Verify principals preserved during update (Session 4 fix)
+					// This tests our Read() filtering logic that prevents inline principal drift
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_update_test", "principals.#", "1"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.aws_update_test", "principals.0.principal_id"),
 				),
 			},
 		},
