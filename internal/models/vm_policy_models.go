@@ -97,10 +97,10 @@ type IPRuleModel struct {
 
 // AWSTargetsModel - AWS cloud target criteria
 type AWSTargetsModel struct {
-	Regions    types.List `tfsdk:"regions"`     // []string
+	Regions    types.Set  `tfsdk:"regions"`     // []string (unordered - API doesn't preserve order)
 	Tags       types.List `tfsdk:"tags"`        // []TagModel
-	VPCIDs     types.List `tfsdk:"vpc_ids"`     // []string
-	AccountIDs types.List `tfsdk:"account_ids"` // []string
+	VPCIDs     types.Set  `tfsdk:"vpc_ids"`     // []string (unordered - API doesn't preserve order)
+	AccountIDs types.Set  `tfsdk:"account_ids"` // []string (unordered - API doesn't preserve order)
 }
 
 // AzureTargetsModel - Azure cloud target criteria

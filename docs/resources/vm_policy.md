@@ -146,10 +146,10 @@ Optional:
 
 Optional:
 
-- `account_ids` (List of String) AWS account IDs. Empty means all accounts.
-- `regions` (List of String) AWS regions (e.g., us-east-1, eu-west-1). Empty means all regions.
+- `account_ids` (Set of String) AWS account IDs. Empty means all accounts. Order is not significant.
+- `regions` (Set of String) AWS regions (e.g., us-east-1, eu-west-1). Empty means all regions. Order is not significant.
 - `tags` (Block List) AWS resource tags for target matching. (see [below for nested schema](#nestedblock--aws_targets--tags))
-- `vpc_ids` (List of String) VPC IDs for target matching. Empty means all VPCs.
+- `vpc_ids` (Set of String) VPC IDs for target matching. Empty means all VPCs. Order is not significant.
 
 <a id="nestedblock--aws_targets--tags"></a>
 ### Nested Schema for `aws_targets.tags`

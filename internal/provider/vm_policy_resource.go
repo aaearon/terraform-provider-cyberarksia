@@ -411,20 +411,20 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 					},
 				},
 				Attributes: map[string]schema.Attribute{
-					"regions": schema.ListAttribute{
+					"regions": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "AWS regions (e.g., us-east-1, eu-west-1). Empty means all regions.",
+						MarkdownDescription: "AWS regions (e.g., us-east-1, eu-west-1). Empty means all regions. Order is not significant.",
 					},
-					"vpc_ids": schema.ListAttribute{
+					"vpc_ids": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "VPC IDs for target matching. Empty means all VPCs.",
+						MarkdownDescription: "VPC IDs for target matching. Empty means all VPCs. Order is not significant.",
 					},
-					"account_ids": schema.ListAttribute{
+					"account_ids": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "AWS account IDs. Empty means all accounts.",
+						MarkdownDescription: "AWS account IDs. Empty means all accounts. Order is not significant.",
 					},
 				},
 			},
@@ -1421,7 +1421,11 @@ func buildSDKTargets(ctx context.Context, plan models.VMPolicyResourceModel, dia
 			return targets
 		}
 
-		awsResource := &uapsiavmmodels.ArkUAPSIAVMAWSResource{}
+		awsResource := &uapsiavmmodels.ArkUAPSIAVMAWSResource{
+			// Initialize empty arrays - API requires these fields even if empty
+			VPCIDs:     []string{},
+			AccountIDs: []string{},
+		}
 
 		// Regions
 		if !awsTargets.Regions.IsNull() {
@@ -1458,7 +1462,7 @@ func buildSDKTargets(ctx context.Context, plan models.VMPolicyResourceModel, dia
 			}
 		}
 
-		// VPC IDs
+		// VPC IDs (override empty array if provided)
 		if !awsTargets.VPCIDs.IsNull() {
 			var vpcIDs []string
 			vpcIDsDiags := awsTargets.VPCIDs.ElementsAs(ctx, &vpcIDs, false)
@@ -1468,7 +1472,7 @@ func buildSDKTargets(ctx context.Context, plan models.VMPolicyResourceModel, dia
 			}
 		}
 
-		// Account IDs
+		// Account IDs (override empty array if provided)
 		if !awsTargets.AccountIDs.IsNull() {
 			var accountIDs []string
 			accountIDsDiags := awsTargets.AccountIDs.ElementsAs(ctx, &accountIDs, false)
@@ -2014,6 +2018,12 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		} else {
 			state.FQDNIPTargets = fqdnIPTargetsObj
 		}
+	} else {
+		// Set FQDN/IP targets to null when not present
+		state.FQDNIPTargets = types.ObjectNull(map[string]attr.Type{
+			"fqdn_rule": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "computername_pattern": types.StringType, "domain": types.StringType}}},
+			"ip_rule":   types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "ip_addresses": types.ListType{ElemType: types.StringType}, "logical_name": types.StringType}}},
+		})
 	}
 
 	// Map AWS targets if present
@@ -2023,10 +2033,10 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 		// Map regions
 		if len(sdkPolicy.Targets.AWSResource.Regions) > 0 {
-			awsTargets.Regions, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.AWSResource.Regions)
+			awsTargets.Regions, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.AWSResource.Regions)
 			diags.Append(diagsTemp...)
 		} else {
-			awsTargets.Regions = types.ListNull(types.StringType)
+			awsTargets.Regions = types.SetNull(types.StringType)
 		}
 
 		// Map tags
@@ -2061,44 +2071,44 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 		// Map VPC IDs
 		if len(sdkPolicy.Targets.AWSResource.VPCIDs) > 0 {
-			awsTargets.VPCIDs, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.AWSResource.VPCIDs)
+			awsTargets.VPCIDs, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.AWSResource.VPCIDs)
 			diags.Append(diagsTemp...)
 		} else {
-			awsTargets.VPCIDs = types.ListNull(types.StringType)
+			awsTargets.VPCIDs = types.SetNull(types.StringType)
 		}
 
 		// Map Account IDs
 		if len(sdkPolicy.Targets.AWSResource.AccountIDs) > 0 {
-			awsTargets.AccountIDs, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.AWSResource.AccountIDs)
+			awsTargets.AccountIDs, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.AWSResource.AccountIDs)
 			diags.Append(diagsTemp...)
 		} else {
-			awsTargets.AccountIDs = types.ListNull(types.StringType)
+			awsTargets.AccountIDs = types.SetNull(types.StringType)
 		}
 
 		// Convert to object
 		state.AWSTargets, diagsTemp = types.ObjectValueFrom(ctx, map[string]attr.Type{
-			"regions": types.ListType{ElemType: types.StringType},
+			"regions": types.SetType{ElemType: types.StringType},
 			"tags": types.ListType{ElemType: types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"key":   types.StringType,
 					"value": types.ListType{ElemType: types.StringType},
 				},
 			}},
-			"vpc_ids":     types.ListType{ElemType: types.StringType},
-			"account_ids": types.ListType{ElemType: types.StringType},
+			"vpc_ids":     types.SetType{ElemType: types.StringType},
+			"account_ids": types.SetType{ElemType: types.StringType},
 		}, awsTargets)
 		diags.Append(diagsTemp...)
 	} else {
 		state.AWSTargets = types.ObjectNull(map[string]attr.Type{
-			"regions": types.ListType{ElemType: types.StringType},
+			"regions": types.SetType{ElemType: types.StringType},
 			"tags": types.ListType{ElemType: types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"key":   types.StringType,
 					"value": types.ListType{ElemType: types.StringType},
 				},
 			}},
-			"vpc_ids":     types.ListType{ElemType: types.StringType},
-			"account_ids": types.ListType{ElemType: types.StringType},
+			"vpc_ids":     types.SetType{ElemType: types.StringType},
+			"account_ids": types.SetType{ElemType: types.StringType},
 		})
 	}
 

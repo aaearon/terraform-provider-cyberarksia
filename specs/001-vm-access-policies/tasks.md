@@ -126,9 +126,9 @@
 
 ### Testing for User Story 3
 
-- [ ] T044 [US3] Add acceptance test for AWS policy creation with regions and tags
-- [ ] T045 [US3] Add acceptance test for AWS policy with VPC IDs and account IDs
-- [ ] T046 [US3] Add acceptance test for AWS policy update (change regions)
+- [x] T044 [US3] Add acceptance test for AWS policy creation with regions and tags
+- [x] T045 [US3] Add acceptance test for AWS policy with VPC IDs and account IDs
+- [x] T046 [US3] Add acceptance test for AWS policy update (change regions)
 
 ### Examples for User Story 3
 

@@ -554,3 +554,303 @@ resource "cyberarksia_vm_policy" "invalid" {
   }
 }
 `
+
+// ============================================================================
+// AWS Cloud Policy Tests - User Story 3
+// ============================================================================
+
+// TestAccVMPolicy_awsBasic tests AWS policy creation with regions and tags (T044)
+func TestAccVMPolicy_awsBasic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigAWSBasic,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// Basic metadata
+					resource.TestMatchResourceAttr("cyberarksia_vm_policy.aws_test", "name",
+						regexp.MustCompile(`^test-vm-policy-aws-basic-[a-f0-9]{8}$`)),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "status", "Active"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "location_type", "AWS"),
+
+					// AWS targets - regions
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.regions.#", "2"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_test", "aws_targets.regions.*", "us-east-1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_test", "aws_targets.regions.*", "us-west-2"),
+
+					// AWS targets - tags
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "aws_targets.tags.#", "2"),
+
+					// SSH behavior
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "behavior.ssh.username", "ec2-user"),
+
+					// Session conditions
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_test", "max_session_duration", "2"),
+				),
+			},
+			// ImportState testing
+			{
+				ResourceName:            "cyberarksia_vm_policy.aws_test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"created_by", "updated_by"},
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_awsVpcAndAccounts tests AWS policy with VPC IDs and account IDs (T045)
+func TestAccVMPolicy_awsVpcAndAccounts(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigAWSVpcAndAccounts,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_vpc_test", "location_type", "AWS"),
+
+					// AWS VPC IDs
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.vpc_ids.#", "2"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.vpc_ids.*", "vpc-12345678"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.vpc_ids.*", "vpc-abcdef12"),
+
+					// AWS Account IDs
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.account_ids.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.account_ids.*", "123456789012"),
+
+					// Regions
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.regions.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_vpc_test", "aws_targets.regions.*", "us-east-1"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_awsUpdateRegions tests updating AWS regions (no ForceNew) (T046)
+func TestAccVMPolicy_awsUpdateRegions(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Create with initial regions
+			{
+				Config: testAccVMPolicyConfigAWSUpdateRegionsBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_update_test", "location_type", "AWS"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.#", "2"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "us-east-1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "us-west-2"),
+				),
+			},
+			// Update regions (should NOT trigger ForceNew)
+			{
+				Config: testAccVMPolicyConfigAWSUpdateRegionsAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_update_test", "location_type", "AWS"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.#", "3"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "us-east-1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "eu-west-1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.aws_update_test", "aws_targets.regions.*", "ap-southeast-1"),
+				),
+			},
+		},
+	})
+}
+
+// ============================================================================
+// AWS Test Configurations
+// ============================================================================
+
+const testAccVMPolicyConfigAWSBasic = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "aws_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "aws_test" {
+  name          = "test-vm-policy-aws-basic-${random_id.aws_test.hex}"
+  location_type = "AWS"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "ec2-user"
+    }
+  }
+
+  aws_targets {
+    regions = ["us-east-1", "us-west-2"]
+
+    tags {
+      key   = "Environment"
+      value = ["production"]
+    }
+
+    tags {
+      key   = "Team"
+      value = ["platform", "infrastructure"]
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigAWSVpcAndAccounts = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "aws_vpc_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "aws_vpc_test" {
+  name          = "test-vm-policy-aws-vpc-${random_id.aws_vpc_test.hex}"
+  location_type = "AWS"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "ubuntu"
+    }
+  }
+
+  aws_targets {
+    regions     = ["us-east-1"]
+    vpc_ids     = ["vpc-12345678", "vpc-abcdef12"]
+    account_ids = ["123456789012"]
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigAWSUpdateRegionsBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "aws_update_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "aws_update_test" {
+  name          = "test-vm-policy-aws-update-${random_id.aws_update_test.hex}"
+  location_type = "AWS"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "admin"
+    }
+  }
+
+  aws_targets {
+    regions = ["us-east-1", "us-west-2"]
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigAWSUpdateRegionsAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "aws_update_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "aws_update_test" {
+  name          = "test-vm-policy-aws-update-${random_id.aws_update_test.hex}"
+  location_type = "AWS"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "admin"
+    }
+  }
+
+  aws_targets {
+    regions = ["us-east-1", "eu-west-1", "ap-southeast-1"]
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
