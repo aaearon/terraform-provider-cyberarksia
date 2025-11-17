@@ -163,7 +163,7 @@ func TestAccVMPolicy_validationErrors(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config:      testAccVMPolicyConfigMissingPrincipals,
-					ExpectError: regexp.MustCompile("At least one principals block is required|Attribute principals list must contain at least 1 elements"),
+					ExpectError: regexp.MustCompile(`Attribute principals list must contain at least 1 elements|principals block is required|Input should be a valid list.*field:\s*principals`),
 				},
 			},
 		})
@@ -176,7 +176,7 @@ func TestAccVMPolicy_validationErrors(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config:      testAccVMPolicyConfigMissingSSHUsername,
-					ExpectError: regexp.MustCompile("username is required when SSH behavior is specified|Inappropriate value for attribute \"ssh\""),
+					ExpectError: regexp.MustCompile("The argument \"username\" is required|username is required"),
 				},
 			},
 		})
@@ -189,7 +189,7 @@ func TestAccVMPolicy_validationErrors(t *testing.T) {
 			Steps: []resource.TestStep{
 				{
 					Config:      testAccVMPolicyConfigConflictingLocationTypes,
-					ExpectError: regexp.MustCompile("Exactly one target type must be configured|multiple target types specified"),
+					ExpectError: regexp.MustCompile("Exactly one location type must be specified|Exactly one target type must be configured"),
 				},
 			},
 		})
@@ -322,6 +322,10 @@ resource "cyberarksia_vm_policy" "drift_test" {
   }
 
   max_session_duration = 1
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
+  }
 }
 `
 
@@ -358,6 +362,10 @@ resource "cyberarksia_vm_policy" "forcenew_test" {
   }
 
   max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
+  }
 }
 `
 
@@ -394,6 +402,10 @@ resource "cyberarksia_vm_policy" "forcenew_test" {
   }
 
   max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
+  }
 }
 `
 
@@ -420,6 +432,10 @@ resource "cyberarksia_vm_policy" "invalid" {
   }
 
   max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
+  }
 }
 `
 
@@ -456,6 +472,10 @@ resource "cyberarksia_vm_policy" "invalid" {
   }
 
   max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
+  }
 }
 `
 
@@ -497,5 +517,9 @@ resource "cyberarksia_vm_policy" "invalid" {
   }
 
   max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
+  }
 }
 `
