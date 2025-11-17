@@ -800,6 +800,25 @@ func (r *VMPolicyResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	policyID := state.PolicyID.ValueString()
 
+	// Extract inline principal keys from current state
+	// This prevents drift when external assignment resources add principals
+	inlinePrincipalKeys := make(map[string]bool)
+	if !state.Principals.IsNull() && !state.Principals.IsUnknown() {
+		var statePrincipals []models.PrincipalModel
+		diags := state.Principals.ElementsAs(ctx, &statePrincipals, false)
+		if !diags.HasError() {
+			for _, p := range statePrincipals {
+				key := fmt.Sprintf("%s:%s", p.PrincipalID.ValueString(), p.PrincipalType.ValueString())
+				inlinePrincipalKeys[key] = true
+			}
+		}
+	}
+
+	tflog.Debug(ctx, "Read: Inline principal keys from state", map[string]interface{}{
+		"policy_id":    policyID,
+		"inline_count": len(inlinePrincipalKeys),
+	})
+
 	// Fetch policy from API with retry logic
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
 	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
@@ -825,8 +844,8 @@ func (r *VMPolicyResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-	// Map SDK response to state
-	newState := mapSDKPolicyToState(ctx, policy, &resp.Diagnostics)
+	// Map SDK response to state, filtering to only inline principals
+	newState := mapSDKPolicyToState(ctx, policy, inlinePrincipalKeys, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -963,8 +982,8 @@ func (r *VMPolicyResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	// Map updated policy to state
-	newState := mapSDKPolicyToState(ctx, updated, &resp.Diagnostics)
+	// Map updated policy to state (no filtering - include all principals from API)
+	newState := mapSDKPolicyToState(ctx, updated, nil, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -1161,8 +1180,8 @@ func (r *VMPolicyResource) ImportState(ctx context.Context, req resource.ImportS
 		return
 	}
 
-	// Convert to state model
-	state := mapSDKPolicyToState(ctx, policy, &resp.Diagnostics)
+	// Convert to state model (no filtering - include all principals from API during import)
+	state := mapSDKPolicyToState(ctx, policy, nil, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -1648,7 +1667,9 @@ func buildSDKConditions(plan models.VMPolicyResourceModel) uapcommondels.ArkUAPS
 }
 
 // mapSDKPolicyToState converts SDK policy response to Terraform state
-func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy, diags *diag.Diagnostics) models.VMPolicyResourceModel {
+// inlinePrincipalKeys: map of "principalID:principalType" keys that should be included in state
+// If empty, all principals from API are included (used during Create/Import)
+func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy, inlinePrincipalKeys map[string]bool, diags *diag.Diagnostics) models.VMPolicyResourceModel {
 	state := models.VMPolicyResourceModel{}
 
 	// Identity
@@ -1702,32 +1723,46 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		})
 	}
 
-	// Principals - map ALL principals (inline + assigned)
+	// Principals - filter to only inline principals (or all if no filter provided)
 	if len(sdkPolicy.Principals) > 0 {
-		principalModels := make([]models.PrincipalModel, len(sdkPolicy.Principals))
-		for i, p := range sdkPolicy.Principals {
-			principalModels[i] = models.PrincipalModel{
-				PrincipalID:         types.StringValue(p.ID),
-				PrincipalName:       types.StringValue(p.Name),
-				PrincipalType:       types.StringValue(p.Type),
-				SourceDirectoryName: types.StringValue(p.SourceDirectoryName),
-				SourceDirectoryID:   types.StringValue(p.SourceDirectoryID),
+		principalModels := []models.PrincipalModel{}
+
+		for _, p := range sdkPolicy.Principals {
+			key := fmt.Sprintf("%s:%s", p.ID, p.Type)
+
+			// Include if: no filter (empty map = include all), OR principal is in inline keys
+			if len(inlinePrincipalKeys) == 0 || inlinePrincipalKeys[key] {
+				principalModels = append(principalModels, models.PrincipalModel{
+					PrincipalID:         types.StringValue(p.ID),
+					PrincipalName:       types.StringValue(p.Name),
+					PrincipalType:       types.StringValue(p.Type),
+					SourceDirectoryName: types.StringValue(p.SourceDirectoryName),
+					SourceDirectoryID:   types.StringValue(p.SourceDirectoryID),
+				})
 			}
 		}
 
-		principalsList, diagsPrincipals := types.ListValueFrom(ctx, types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"principal_id":          types.StringType,
-				"principal_name":        types.StringType,
-				"principal_type":        types.StringType,
-				"source_directory_name": types.StringType,
-				"source_directory_id":   types.StringType,
-			},
-		}, principalModels)
-		if diagsPrincipals.HasError() {
-			diags.Append(diagsPrincipals...)
-		} else {
-			state.Principals = principalsList
+		tflog.Debug(ctx, "mapSDKPolicyToState: Principal filtering", map[string]interface{}{
+			"api_principals":    len(sdkPolicy.Principals),
+			"filter_keys":       len(inlinePrincipalKeys),
+			"mapped_principals": len(principalModels),
+		})
+
+		if len(principalModels) > 0 {
+			principalsList, diagsPrincipals := types.ListValueFrom(ctx, types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"principal_id":          types.StringType,
+					"principal_name":        types.StringType,
+					"principal_type":        types.StringType,
+					"source_directory_name": types.StringType,
+					"source_directory_id":   types.StringType,
+				},
+			}, principalModels)
+			if diagsPrincipals.HasError() {
+				diags.Append(diagsPrincipals...)
+			} else {
+				state.Principals = principalsList
+			}
 		}
 	}
 
