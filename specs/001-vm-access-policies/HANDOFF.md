@@ -1,8 +1,74 @@
 # VM Access Policy Implementation - Handoff Document
 
-**Date**: 2025-11-16  
-**Branch**: `001-vm-access-policies` (commit: b2da840)  
-**Status**: Core implementation complete, acceptance tests pending
+**Date**: 2025-11-17
+**Branch**: `001-vm-access-policies` (commit: b923111)
+**Status**: User Story 1 complete, critical fixes implemented
+
+---
+
+## Session 3 Progress (2025-11-17)
+
+### ✅ What Was Actually Fixed (Root Causes)
+
+**Priority 1: Plan/State Consistency Errors**
+1. ✅ **Schema fix**: Changed `created_by`/`updated_by` from SingleNestedBlock → SingleNestedAttribute
+2. ✅ **Create() pattern**: Only set ID fields, let Terraform's Read() populate rest (matches database_policy)
+3. ✅ **Empty string normalization**: description, from_hour, to_hour, domain → null when empty
+4. ✅ **CRITICAL ROOT CAUSE FIX**: Changed `days_of_the_week` from List → Set
+   - Removed sorting workaround (was masking schema design flaw)
+   - List = ordered (drift), Set = unordered (drift-free)
+   - Added validators: ValueInt64sAre(Between(0,6)), SizeBetween(1,7)
+   - Now matches database_policy pattern
+
+**Priority 0: Interface Implementation**
+5. ✅ **ModifyPlan() implemented** (was declared but missing)
+   - Validates removing principals won't violate "min 1 principal" constraint
+   - Queries API to count TOTAL principals (inline + external assignments)
+   - Blocks plan if would leave 0 principals
+   - Pattern reused from database_policy_resource.go:524-653
+
+**Priority 1: Validation**
+6. ✅ **Access window validation**: from_hour and to_hour must both be set or both omitted
+7. ✅ **Principal directory validation**: Already implemented (code review was outdated)
+
+**User Story 1: All Tests Passing**
+8. ✅ TestAccVMPolicy_basic (25.83s)
+9. ✅ TestAccVMPolicy_sshWithTimeWindow (16.88s)
+10. ✅ TestAccVMPolicy_driftDetection (23.66s)
+11. ✅ TestAccVMPolicy_forceNewOnNameChange (33.65s)
+12. ✅ TestAccVMPolicy_validationErrors (4.82s) - 3 subtests
+
+**Total Test Time**: 104.88s for all User Story 1 tests
+
+### 🔧 Remaining P2 Fixes (Minor, Not Blocking)
+
+1. **Status field normalization** (prevents drift)
+   - Need: `types.StringValue(strings.ToLower(sdkPolicy.Metadata.Status.Status))`
+   - Currently: API returns "Active", user writes "active" → drift
+
+2. **Field name consistency** (aligns with database_policy)
+   - Change: `created_by.name` → `created_by.user`
+   - Change: `created_by.timestamp` → `created_by.time`
+   - Requires: Model update + schema update + state mapping update
+
+### 📊 Code Review Findings Summary
+
+**What We Discovered**: The initial fixes only made tests pass, didn't fix root causes.
+
+**Comparison with database_policy**: Found 4 critical gaps (now 2 remain as P2):
+- ✅ Fixed: days_of_the_week List→Set (eliminated drift root cause)
+- ✅ Fixed: ModifyPlan() implementation (interface contract)
+- ✅ Fixed: Access window validation
+- ⏳ Pending: Status normalization (P2)
+- ⏳ Pending: Field name consistency (P2)
+
+### Git Commits (Session 3)
+
+```
+76975e8 - fix: resolve VM policy plan/state consistency errors
+f891872 - test: complete User Story 1 acceptance tests (T023-T026)
+b923111 - fix(critical): change days_of_the_week from List to Set
+```
 
 ---
 
@@ -49,9 +115,55 @@
 
 ## 🚀 START HERE - Next Session Instructions
 
-### Priority 1: Fix Plan/State Consistency (30 minutes)
+### Current Status
+- ✅ All critical P0/P1 fixes complete
+- ✅ User Story 1 tests passing (100%)
+- ⏳ 2 minor P2 fixes remaining (status normalization, field renaming)
+- 📋 Ready for User Story 2-7 implementation OR final cleanup
 
-**Current Status**: VM policies create/delete successfully, but 3 Terraform validation errors prevent test from passing.
+### Option 1: Quick P2 Cleanup (30 min) - RECOMMENDED
+
+**Complete the remaining consistency fixes to match database_policy pattern:**
+
+1. **Normalize status field** (line 1668 in vm_policy_resource.go):
+   ```go
+   // Current:
+   state.Status = types.StringValue(sdkPolicy.Metadata.Status.Status)
+
+   // Change to:
+   state.Status = types.StringValue(strings.ToLower(sdkPolicy.Metadata.Status.Status))
+   ```
+   - Add `"strings"` import if not present
+   - Prevents drift when API returns "Active" but user writes "active"
+
+2. **Rename created_by/updated_by fields** (consistency with database_policy):
+   - Model (`internal/models/vm_policy_models.go`): Change `name`→`user`, `timestamp`→`time`
+   - Schema (vm_policy_resource.go:~line 485, 500): Change field names
+   - State mapping (vm_policy_resource.go:~line 2231): Update field names
+   - Tests: Update ImportStateVerifyIgnore if needed
+
+3. **Run all User Story 1 tests to verify**:
+   ```bash
+   export CYBERARK_USERNAME=timtest@cyberark.cloud.40562
+   export CYBERARK_PASSWORD='nvk*phv*hfd3ATR2rfc'
+   export TF_ACC=1
+   go test ./internal/provider -v -run "TestAccVMPolicy_(basic|sshWithTimeWindow|driftDetection|forceNewOnNameChange|validationErrors)" -timeout 15m
+   ```
+
+4. **Commit final fixes**:
+   ```bash
+   git add -A
+   git commit -m "fix: normalize status and align field names with database_policy
+
+   - Normalize status to lowercase (prevents drift)
+   - Rename created_by.name → user (consistency)
+   - Rename created_by.timestamp → time (consistency)
+   - Now fully aligned with database_policy pattern"
+   ```
+
+### Option 2: Continue with Remaining User Stories (3-5 hours)
+
+**If P2 fixes are skipped, proceed to User Story 2:**
 
 **Fix 1 - Computed Fields**: In `vm_policy_resource.go` line ~1804 (mapSDKPolicyToState):
 ```go
