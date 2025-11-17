@@ -61,8 +61,20 @@ func TestAccVMPolicyPrincipalAssignment_crud(t *testing.T) {
 			{
 				Config: testAccVMPolicyPrincipalAssignmentConfigCRUD,
 				Check: resource.ComposeAggregateTestCheckFunc(
+					// Verify assignment resource created
 					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy_principal_assignment.crud_test", "id"),
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy_principal_assignment.crud_test", "principal_type", "GROUP"),
+
+					// CRITICAL: Test Session 4 fix - inline principals preserved
+					// Policy should still have exactly 1 inline principal (from policy definition)
+					// The assigned principal is managed separately, not in policy's principals attribute
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.crud_test", "principals.#", "1"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.crud_test", "principals.0.principal_id"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.crud_test", "principals.0.principal_type", "USER"),
+
+					// Verify the inline principal is the original one, not the assigned group
+					// This proves Read() filtering works correctly (Session 4 fix)
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.crud_test", "principals.0.principal_name", "timtest@cyberark.cloud.40562"),
 				),
 			},
 			// READ: Verify assignment exists (implicit via ImportState)
