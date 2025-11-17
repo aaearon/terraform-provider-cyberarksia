@@ -317,8 +317,8 @@ Optional:
 
 Read-Only:
 
-- `name` (String) Creator username.
 - `timestamp` (String) Creation timestamp.
+- `user` (String) Creator username.
 
 
 <a id="nestedatt--updated_by"></a>
@@ -326,5 +326,5 @@ Read-Only:
 
 Read-Only:
 
-- `name` (String) Last updater username.
 - `timestamp` (String) Last update timestamp.
+- `user` (String) Last updater username.

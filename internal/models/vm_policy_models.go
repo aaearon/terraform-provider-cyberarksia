@@ -135,7 +135,7 @@ type VMAccessWindowModel struct {
 
 // UserTimestampModel - Creator/updater metadata
 type UserTimestampModel struct {
-	Name      types.String `tfsdk:"name"`
+	User      types.String `tfsdk:"user"`
 	Timestamp types.String `tfsdk:"timestamp"`
 }
 

@@ -35,6 +35,7 @@ import (
 var _ resource.Resource = &VMPolicyResource{}
 var _ resource.ResourceWithImportState = &VMPolicyResource{}
 var _ resource.ResourceWithValidateConfig = &VMPolicyResource{}
+var _ resource.ResourceWithModifyPlan = &VMPolicyResource{}
 
 func NewVMPolicyResource() resource.Resource {
 	return &VMPolicyResource{}
@@ -163,7 +164,7 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 				MarkdownDescription: "Policy creator metadata (computed).",
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
-					"name": schema.StringAttribute{
+					"user": schema.StringAttribute{
 						MarkdownDescription: "Creator username.",
 						Computed:            true,
 					},
@@ -177,7 +178,7 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 				MarkdownDescription: "Policy updater metadata (computed).",
 				Computed:            true,
 				Attributes: map[string]schema.Attribute{
-					"name": schema.StringAttribute{
+					"user": schema.StringAttribute{
 						MarkdownDescription: "Last updater username.",
 						Computed:            true,
 					},
@@ -625,6 +626,28 @@ func (r *VMPolicyResource) ValidateConfig(ctx context.Context, req resource.Vali
 			}
 		}
 	}
+
+	// Validate access_window: if from_hour or to_hour is set, both must be set
+	if !config.AccessWindow.IsNull() {
+		var accessWindow models.VMAccessWindowModel
+		diags := config.AccessWindow.As(ctx, &accessWindow, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+
+		if !resp.Diagnostics.HasError() {
+			fromHourSet := !accessWindow.FromHour.IsNull() && !accessWindow.FromHour.IsUnknown()
+			toHourSet := !accessWindow.ToHour.IsNull() && !accessWindow.ToHour.IsUnknown()
+
+			if fromHourSet != toHourSet {
+				resp.Diagnostics.AddAttributeError(
+					path.Root("access_window"),
+					"Invalid Access Window Configuration",
+					"Both from_hour and to_hour must be specified together, or both must be omitted. "+
+						"If you want to restrict access to specific hours, provide both fields. "+
+						"If you only want to restrict by days, omit both fields.",
+				)
+			}
+		}
+	}
 }
 
 func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -732,11 +755,11 @@ func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateReques
 	// Explicitly set computed metadata fields to null to avoid "unknown value" errors
 	// These will be populated by the automatic Read() call after Create()
 	plan.CreatedBy = types.ObjectNull(map[string]attr.Type{
-		"name":      types.StringType,
+		"user":      types.StringType,
 		"timestamp": types.StringType,
 	})
 	plan.UpdatedBy = types.ObjectNull(map[string]attr.Type{
-		"name":      types.StringType,
+		"user":      types.StringType,
 		"timestamp": types.StringType,
 	})
 
@@ -952,6 +975,113 @@ func (r *VMPolicyResource) Update(ctx context.Context, req resource.UpdateReques
 	})
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
+}
+
+// ModifyPlan implements plan-time validation with API awareness to prevent removing
+// the last principal from a policy. This method queries the API to count both inline
+// and externally-managed principals (via cyberarksia_vm_policy_principal_assignment),
+// ensuring accurate validation without false positives.
+func (r *VMPolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	// Skip if resource being destroyed (plan is null)
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	// Skip if resource being created (state is null)
+	if req.State.Raw.IsNull() {
+		return
+	}
+
+	// Skip if plan not fully known (computed values, data source failures)
+	if !req.Plan.Raw.IsFullyKnown() {
+		return
+	}
+
+	// Get plan and state models
+	var plan, state models.VMPolicyResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Only validate if inline principals are being REDUCED
+	var planPrincipals []models.PrincipalModel
+	var statePrincipals []models.PrincipalModel
+	plan.Principals.ElementsAs(ctx, &planPrincipals, false)
+	state.Principals.ElementsAs(ctx, &statePrincipals, false)
+
+	principalsReducing := len(planPrincipals) < len(statePrincipals)
+
+	if !principalsReducing {
+		return // No risk of constraint violation
+	}
+
+	// Ensure provider is configured
+	if r.providerData == nil || r.providerData.VMService == nil {
+		tflog.Warn(ctx, "ModifyPlan: Provider not configured, skipping validation")
+		return
+	}
+
+	// Type assert VMService
+	vmService, ok := r.providerData.VMService.(*vm.ArkUAPSIAVMService)
+	if !ok {
+		tflog.Warn(ctx, "ModifyPlan: Invalid VMService type, skipping validation")
+		return
+	}
+
+	// Fetch actual policy from API to get TOTAL principal count (inline + external)
+	policyID := state.PolicyID.ValueString()
+
+	tflog.Debug(ctx, "ModifyPlan: Fetching policy to validate principal constraints", map[string]interface{}{
+		"policy_id":           policyID,
+		"principals_reducing": principalsReducing,
+	})
+
+	actualPolicy, err := vmService.Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
+		PolicyID: policyID,
+	})
+	if err != nil {
+		// If can't fetch policy, skip validation (Update will handle it)
+		tflog.Warn(ctx, "ModifyPlan: Could not fetch policy for validation, skipping", map[string]interface{}{
+			"policy_id": policyID,
+			"error":     err.Error(),
+		})
+		return
+	}
+
+	// Validate principals constraint
+	totalPrincipals := len(actualPolicy.Principals)
+	inlinePrincipals := len(statePrincipals)
+	externalPrincipals := totalPrincipals - inlinePrincipals
+	principalsAfterChange := len(planPrincipals) + externalPrincipals
+
+	tflog.Debug(ctx, "ModifyPlan: Principal count analysis", map[string]interface{}{
+		"total_principals":    totalPrincipals,
+		"inline_principals":   inlinePrincipals,
+		"external_principals": externalPrincipals,
+		"principals_after":    principalsAfterChange,
+	})
+
+	if principalsAfterChange < 1 {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("principals"),
+			"Cannot Remove Last Principal",
+			fmt.Sprintf(
+				"This change would remove the last principal from the policy.\n\n"+
+					"Current state:\n"+
+					"  • Inline principals (in this resource): %d\n"+
+					"  • External principals (via cyberarksia_vm_policy_principal_assignment): %d\n"+
+					"  • Total principals: %d\n\n"+
+					"After this change: %d principal(s) remaining\n\n"+
+					"CyberArk SIA policies require at least 1 principal.\n\n"+
+					"To resolve:\n"+
+					"  1. Add another principal via cyberarksia_vm_policy_principal_assignment first\n"+
+					"  2. Delete the entire policy resource instead: terraform destroy <resource_name>",
+				inlinePrincipals, externalPrincipals, totalPrincipals, principalsAfterChange,
+			),
+		)
+	}
 }
 
 func (r *VMPolicyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -2122,10 +2252,10 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 	// Created/Updated metadata
 	if sdkPolicy.Metadata.CreatedBy.User != "" {
 		createdByObj, diagsCreated := types.ObjectValueFrom(ctx, map[string]attr.Type{
-			"name":      types.StringType,
+			"user":      types.StringType,
 			"timestamp": types.StringType,
 		}, models.UserTimestampModel{
-			Name:      types.StringValue(sdkPolicy.Metadata.CreatedBy.User),
+			User:      types.StringValue(sdkPolicy.Metadata.CreatedBy.User),
 			Timestamp: types.StringValue(sdkPolicy.Metadata.CreatedBy.Time),
 		})
 		if diagsCreated.HasError() {
@@ -2135,17 +2265,17 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		}
 	} else {
 		state.CreatedBy = types.ObjectNull(map[string]attr.Type{
-			"name":      types.StringType,
+			"user":      types.StringType,
 			"timestamp": types.StringType,
 		})
 	}
 
 	if sdkPolicy.Metadata.UpdatedOn.User != "" {
 		updatedByObj, diagsUpdated := types.ObjectValueFrom(ctx, map[string]attr.Type{
-			"name":      types.StringType,
+			"user":      types.StringType,
 			"timestamp": types.StringType,
 		}, models.UserTimestampModel{
-			Name:      types.StringValue(sdkPolicy.Metadata.UpdatedOn.User),
+			User:      types.StringValue(sdkPolicy.Metadata.UpdatedOn.User),
 			Timestamp: types.StringValue(sdkPolicy.Metadata.UpdatedOn.Time),
 		})
 		if diagsUpdated.HasError() {
@@ -2155,7 +2285,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		}
 	} else {
 		state.UpdatedBy = types.ObjectNull(map[string]attr.Type{
-			"name":      types.StringType,
+			"user":      types.StringType,
 			"timestamp": types.StringType,
 		})
 	}

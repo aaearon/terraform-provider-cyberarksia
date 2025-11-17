@@ -77,11 +77,16 @@ func TestAccVMPolicy_sshWithTimeWindow(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
 		Steps: []resource.TestStep{
 			{
 				Config: testAccVMPolicyConfigSSHWithTimeWindow,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.ssh_test", "name", "test-vm-policy-ssh-time"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.ssh_test", "name"),
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.ssh_test", "status", "Active"),
 
 					// SSH username
@@ -108,12 +113,17 @@ func TestAccVMPolicy_driftDetection(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
 		Steps: []resource.TestStep{
 			// Create policy
 			{
 				Config: testAccVMPolicyConfigDrift,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.drift_test", "name", "test-vm-policy-drift"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.drift_test", "name"),
 					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.drift_test", "policy_id"),
 				),
 			},
@@ -132,12 +142,17 @@ func TestAccVMPolicy_forceNewOnNameChange(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
 		Steps: []resource.TestStep{
 			// Step 1: Create with initial name
 			{
 				Config: testAccVMPolicyConfigForceNewBefore,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.forcenew_test", "name", "test-vm-policy-original"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.forcenew_test", "name"),
 					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.forcenew_test", "policy_id"),
 				),
 			},
@@ -145,7 +160,7 @@ func TestAccVMPolicy_forceNewOnNameChange(t *testing.T) {
 			{
 				Config: testAccVMPolicyConfigForceNewAfter,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.forcenew_test", "name", "test-vm-policy-renamed"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.forcenew_test", "name"),
 					// Policy ID should be different due to resource replacement
 					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.forcenew_test", "policy_id"),
 				),
@@ -251,8 +266,12 @@ data "cyberarksia_principal" "test_user" {
   type = "USER"
 }
 
+resource "random_id" "ssh_test" {
+  byte_length = 4
+}
+
 resource "cyberarksia_vm_policy" "ssh_test" {
-  name          = "test-vm-policy-ssh-time"
+  name          = "test-vm-policy-ssh-time-${random_id.ssh_test.hex}"
   location_type = "FQDN/IP"
   status        = "Active"
   time_zone     = "America/New_York"
@@ -295,8 +314,12 @@ data "cyberarksia_principal" "test_user" {
   type = "USER"
 }
 
+resource "random_id" "drift_test" {
+  byte_length = 4
+}
+
 resource "cyberarksia_vm_policy" "drift_test" {
-  name          = "test-vm-policy-drift"
+  name          = "test-vm-policy-drift-${random_id.drift_test.hex}"
   location_type = "FQDN/IP"
   status        = "Active"
 
@@ -335,8 +358,12 @@ data "cyberarksia_principal" "test_user" {
   type = "USER"
 }
 
+resource "random_id" "forcenew_test" {
+  byte_length = 4
+}
+
 resource "cyberarksia_vm_policy" "forcenew_test" {
-  name          = "test-vm-policy-original"
+  name          = "test-vm-policy-original-${random_id.forcenew_test.hex}"
   location_type = "FQDN/IP"
   status        = "Active"
 
@@ -375,8 +402,12 @@ data "cyberarksia_principal" "test_user" {
   type = "USER"
 }
 
+resource "random_id" "forcenew_test" {
+  byte_length = 4
+}
+
 resource "cyberarksia_vm_policy" "forcenew_test" {
-  name          = "test-vm-policy-renamed"
+  name          = "test-vm-policy-renamed-${random_id.forcenew_test.hex}"
   location_type = "FQDN/IP"
   status        = "Active"
 
