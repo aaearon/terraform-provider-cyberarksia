@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -278,8 +279,8 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 						MarkdownDescription: "SSH connection profile.",
 						Attributes: map[string]schema.Attribute{
 							"username": schema.StringAttribute{
-								MarkdownDescription: "SSH username. Required if ssh block present.",
-								Required:            true,
+								MarkdownDescription: "SSH username. **Required** when SSH profile is present.",
+								Optional:            true,
 								Validators: []validator.String{
 									stringvalidator.LengthAtLeast(1),
 								},
@@ -292,33 +293,37 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 							"local_ephemeral_user": schema.SingleNestedBlock{
 								MarkdownDescription: "Local Windows ephemeral user configuration.",
 								Attributes: map[string]schema.Attribute{
-									"assign_groups": schema.ListAttribute{
-										MarkdownDescription: "Local Windows groups to assign.",
+									"assign_groups": schema.SetAttribute{
+										MarkdownDescription: "Local Windows groups to assign. **Note**: Order is not preserved by API.",
 										Optional:            true,
 										ElementType:         types.StringType,
 									},
 									"enable_ephemeral_user_reconnect": schema.BoolAttribute{
-										MarkdownDescription: "Enable reconnection to same ephemeral user.",
+										MarkdownDescription: "Enable reconnection to same ephemeral user. Defaults to `false`.",
 										Optional:            true,
+										Computed:            true,
+										Default:             booldefault.StaticBool(false),
 									},
 								},
 							},
 							"domain_ephemeral_user": schema.SingleNestedBlock{
 								MarkdownDescription: "Domain-joined ephemeral user configuration. **Note**: SDK-supported, OpenAPI undocumented.",
 								Attributes: map[string]schema.Attribute{
-									"assign_groups": schema.ListAttribute{
-										MarkdownDescription: "Local Windows groups to assign.",
+									"assign_groups": schema.SetAttribute{
+										MarkdownDescription: "Local Windows groups to assign. **Note**: Order is not preserved by API.",
 										Optional:            true,
 										ElementType:         types.StringType,
 									},
-									"assign_domain_groups": schema.ListAttribute{
-										MarkdownDescription: "Domain groups to assign.",
+									"assign_domain_groups": schema.SetAttribute{
+										MarkdownDescription: "Domain groups to assign. **Note**: Order is not preserved by API.",
 										Optional:            true,
 										ElementType:         types.StringType,
 									},
 									"enable_ephemeral_user_reconnect": schema.BoolAttribute{
-										MarkdownDescription: "Enable reconnection to same ephemeral user.",
+										MarkdownDescription: "Enable reconnection to same ephemeral user. Defaults to `false`.",
 										Optional:            true,
+										Computed:            true,
+										Default:             booldefault.StaticBool(false),
 									},
 								},
 							},
@@ -595,6 +600,23 @@ func (r *VMPolicyResource) ValidateConfig(ctx context.Context, req resource.Vali
 				"Invalid Behavior Configuration",
 				"At least one connection profile (ssh or rdp) must be configured in behavior block",
 			)
+		}
+
+		// Validate SSH username when SSH profile is present
+		if hasSSH {
+			var sshProfile models.SSHProfileModel
+			diags := behavior.SSH.As(ctx, &sshProfile, basetypes.ObjectAsOptions{})
+			resp.Diagnostics.Append(diags...)
+
+			if !resp.Diagnostics.HasError() {
+				if sshProfile.Username.IsNull() || sshProfile.Username.ValueString() == "" {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("behavior").AtName("ssh").AtName("username"),
+						"Missing Required Field",
+						"SSH username is required when SSH profile is configured",
+					)
+				}
+			}
 		}
 	}
 
@@ -1847,16 +1869,16 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		// Map local ephemeral user if present
 		if sdkPolicy.Behavior.RDPProfile.LocalEphemeralUser != nil {
 			assignGroups := sdkPolicy.Behavior.RDPProfile.LocalEphemeralUser.AssignGroups
-			assignGroupsList, diagsGroups := types.ListValueFrom(ctx, types.StringType, assignGroups)
+			assignGroupsSet, diagsGroups := types.SetValueFrom(ctx, types.StringType, assignGroups)
 			if diagsGroups.HasError() {
 				diags.Append(diagsGroups...)
 			}
 
 			localUserObj, diagsLocalUser := types.ObjectValueFrom(ctx, map[string]attr.Type{
-				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"assign_groups":                   types.SetType{ElemType: types.StringType},
 				"enable_ephemeral_user_reconnect": types.BoolType,
 			}, models.LocalEphemeralUserModel{
-				AssignGroups:                 assignGroupsList,
+				AssignGroups:                 assignGroupsSet,
 				EnableEphemeralUserReconnect: types.BoolValue(sdkPolicy.Behavior.RDPProfile.LocalEphemeralUser.EnableEphemeralUserReconnect),
 			})
 			if diagsLocalUser.HasError() {
@@ -1866,7 +1888,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			}
 		} else {
 			rdpModel.LocalEphemeralUser = types.ObjectNull(map[string]attr.Type{
-				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"assign_groups":                   types.SetType{ElemType: types.StringType},
 				"enable_ephemeral_user_reconnect": types.BoolType,
 			})
 		}
@@ -1874,24 +1896,24 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		// Map domain ephemeral user if present
 		if sdkPolicy.Behavior.RDPProfile.DomainEphemeralUser != nil {
 			assignGroups := sdkPolicy.Behavior.RDPProfile.DomainEphemeralUser.AssignGroups
-			assignGroupsList, diagsGroups := types.ListValueFrom(ctx, types.StringType, assignGroups)
+			assignGroupsSet, diagsGroups := types.SetValueFrom(ctx, types.StringType, assignGroups)
 			if diagsGroups.HasError() {
 				diags.Append(diagsGroups...)
 			}
 
 			assignDomainGroups := sdkPolicy.Behavior.RDPProfile.DomainEphemeralUser.AssignDomainGroups
-			assignDomainGroupsList, diagsDomainGroups := types.ListValueFrom(ctx, types.StringType, assignDomainGroups)
+			assignDomainGroupsSet, diagsDomainGroups := types.SetValueFrom(ctx, types.StringType, assignDomainGroups)
 			if diagsDomainGroups.HasError() {
 				diags.Append(diagsDomainGroups...)
 			}
 
 			domainUserObj, diagsDomainUser := types.ObjectValueFrom(ctx, map[string]attr.Type{
-				"assign_groups":                   types.ListType{ElemType: types.StringType},
-				"assign_domain_groups":            types.ListType{ElemType: types.StringType},
+				"assign_groups":                   types.SetType{ElemType: types.StringType},
+				"assign_domain_groups":            types.SetType{ElemType: types.StringType},
 				"enable_ephemeral_user_reconnect": types.BoolType,
 			}, models.DomainEphemeralUserModel{
-				AssignGroups:                 assignGroupsList,
-				AssignDomainGroups:           assignDomainGroupsList,
+				AssignGroups:                 assignGroupsSet,
+				AssignDomainGroups:           assignDomainGroupsSet,
 				EnableEphemeralUserReconnect: types.BoolValue(sdkPolicy.Behavior.RDPProfile.DomainEphemeralUser.EnableEphemeralUserReconnect),
 			})
 			if diagsDomainUser.HasError() {
@@ -1901,15 +1923,15 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			}
 		} else {
 			rdpModel.DomainEphemeralUser = types.ObjectNull(map[string]attr.Type{
-				"assign_groups":                   types.ListType{ElemType: types.StringType},
-				"assign_domain_groups":            types.ListType{ElemType: types.StringType},
+				"assign_groups":                   types.SetType{ElemType: types.StringType},
+				"assign_domain_groups":            types.SetType{ElemType: types.StringType},
 				"enable_ephemeral_user_reconnect": types.BoolType,
 			})
 		}
 
 		rdpObj, diagsRDP := types.ObjectValueFrom(ctx, map[string]attr.Type{
-			"local_ephemeral_user":  types.ObjectType{AttrTypes: map[string]attr.Type{"assign_groups": types.ListType{ElemType: types.StringType}, "enable_ephemeral_user_reconnect": types.BoolType}},
-			"domain_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{"assign_groups": types.ListType{ElemType: types.StringType}, "assign_domain_groups": types.ListType{ElemType: types.StringType}, "enable_ephemeral_user_reconnect": types.BoolType}},
+			"local_ephemeral_user":  types.ObjectType{AttrTypes: map[string]attr.Type{"assign_groups": types.SetType{ElemType: types.StringType}, "enable_ephemeral_user_reconnect": types.BoolType}},
+			"domain_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{"assign_groups": types.SetType{ElemType: types.StringType}, "assign_domain_groups": types.SetType{ElemType: types.StringType}, "enable_ephemeral_user_reconnect": types.BoolType}},
 		}, rdpModel)
 		if diagsRDP.HasError() {
 			diags.Append(diagsRDP...)
@@ -1919,12 +1941,12 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 	} else {
 		behaviorModel.RDP = types.ObjectNull(map[string]attr.Type{
 			"local_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{
-				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"assign_groups":                   types.SetType{ElemType: types.StringType},
 				"enable_ephemeral_user_reconnect": types.BoolType,
 			}},
 			"domain_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{
-				"assign_groups":                   types.ListType{ElemType: types.StringType},
-				"assign_domain_groups":            types.ListType{ElemType: types.StringType},
+				"assign_groups":                   types.SetType{ElemType: types.StringType},
+				"assign_domain_groups":            types.SetType{ElemType: types.StringType},
 				"enable_ephemeral_user_reconnect": types.BoolType,
 			}},
 		})
@@ -1934,12 +1956,12 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		"ssh": types.ObjectType{AttrTypes: map[string]attr.Type{"username": types.StringType}},
 		"rdp": types.ObjectType{AttrTypes: map[string]attr.Type{
 			"local_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{
-				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"assign_groups":                   types.SetType{ElemType: types.StringType},
 				"enable_ephemeral_user_reconnect": types.BoolType,
 			}},
 			"domain_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{
-				"assign_groups":                   types.ListType{ElemType: types.StringType},
-				"assign_domain_groups":            types.ListType{ElemType: types.StringType},
+				"assign_groups":                   types.SetType{ElemType: types.StringType},
+				"assign_domain_groups":            types.SetType{ElemType: types.StringType},
 				"enable_ephemeral_user_reconnect": types.BoolType,
 			}},
 		}},

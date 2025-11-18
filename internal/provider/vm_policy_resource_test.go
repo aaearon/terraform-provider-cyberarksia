@@ -922,3 +922,724 @@ resource "cyberarksia_vm_policy" "aws_update_test" {
   }
 }
 `
+
+// ============================================================================
+// RDP Connection Behavior Tests - User Story 4
+// ============================================================================
+
+// TestAccVMPolicy_rdpLocalEphemeral tests RDP with local ephemeral user (T048)
+func TestAccVMPolicy_rdpLocalEphemeral(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigRDPLocalEphemeral,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.rdp_local_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_local_test", "status", "Active"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_local_test", "location_type", "FQDN/IP"),
+
+					// RDP local ephemeral user
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_local_test", "behavior.rdp.local_ephemeral_user.assign_groups.#", "2"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_local_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Administrators"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_local_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Remote Desktop Users"),
+
+					// NO SSH profile
+					resource.TestCheckNoResourceAttr("cyberarksia_vm_policy.rdp_local_test", "behavior.ssh.username"),
+				),
+			},
+			// ImportState testing
+			{
+				ResourceName:            "cyberarksia_vm_policy.rdp_local_test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"created_by", "updated_by"},
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_rdpDomainEphemeral tests RDP with domain ephemeral user (T049)
+func TestAccVMPolicy_rdpDomainEphemeral(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigRDPDomainEphemeral,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.rdp_domain_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_domain_test", "status", "Active"),
+
+					// RDP domain ephemeral user
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_domain_test", "behavior.rdp.domain_ephemeral_user.assign_groups.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_domain_test", "behavior.rdp.domain_ephemeral_user.assign_groups.*", "Power Users"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_domain_test", "behavior.rdp.domain_ephemeral_user.assign_domain_groups.#", "1"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_domain_test", "behavior.rdp.domain_ephemeral_user.assign_domain_groups.0", "Domain Admins"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_domain_test", "behavior.rdp.domain_ephemeral_user.enable_ephemeral_user_reconnect", "true"),
+
+					// NO SSH profile
+					resource.TestCheckNoResourceAttr("cyberarksia_vm_policy.rdp_domain_test", "behavior.ssh.username"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_sshAndRdp tests combined SSH and RDP behavior (T050)
+func TestAccVMPolicy_sshAndRdp(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigSSHAndRDP,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.ssh_rdp_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.ssh_rdp_test", "status", "Active"),
+
+					// SSH profile
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.ssh_rdp_test", "behavior.ssh.username", "admin"),
+
+					// RDP profile
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.ssh_rdp_test", "behavior.rdp.local_ephemeral_user.assign_groups.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.ssh_rdp_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Administrators"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_rdpUpdate tests updating RDP settings (T051)
+func TestAccVMPolicy_rdpUpdate(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Initial RDP config with Administrators group
+			{
+				Config: testAccVMPolicyConfigRDPUpdateBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_update_test", "behavior.rdp.local_ephemeral_user.assign_groups.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_update_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Administrators"),
+				),
+			},
+			// Update RDP config: add group and enable reconnect
+			{
+				Config: testAccVMPolicyConfigRDPUpdateAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_update_test", "behavior.rdp.local_ephemeral_user.assign_groups.#", "2"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_update_test", "behavior.rdp.local_ephemeral_user.enable_ephemeral_user_reconnect", "true"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_rdpWithTimeWindow tests RDP with access window (T052)
+func TestAccVMPolicy_rdpWithTimeWindow(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigRDPWithTimeWindow,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.rdp_time_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_time_test", "behavior.rdp.local_ephemeral_user.assign_groups.#", "1"),
+
+					// Access window (business hours only)
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_time_test", "access_window.from_hour", "08:00"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_time_test", "access_window.to_hour", "18:00"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_time_test", "access_window.days_of_the_week.#", "5"), // Weekdays
+				),
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_rdpWithAWSTargets tests RDP with AWS cloud targets (T053)
+func TestAccVMPolicy_rdpWithAWSTargets(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigRDPWithAWS,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.rdp_aws_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_aws_test", "location_type", "AWS"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_aws_test", "behavior.rdp.local_ephemeral_user.assign_groups.#", "1"),
+
+					// AWS targets
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_aws_test", "aws_targets.regions.#", "2"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_aws_test", "aws_targets.regions.*", "us-east-1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_aws_test", "aws_targets.regions.*", "us-west-2"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_rdpMultipleGroups tests RDP with multiple group assignments (T054)
+func TestAccVMPolicy_rdpMultipleGroups(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigRDPMultipleGroups,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.rdp_groups_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_groups_test", "behavior.rdp.local_ephemeral_user.assign_groups.#", "4"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_groups_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Administrators"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_groups_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Remote Desktop Users"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_groups_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Power Users"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.rdp_groups_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Backup Operators"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_rdpReconnectSettings tests RDP reconnect enable/disable (T055)
+func TestAccVMPolicy_rdpReconnectSettings(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Initially disabled
+			{
+				Config: testAccVMPolicyConfigRDPReconnectDisabled,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.rdp_reconnect_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_reconnect_test", "behavior.rdp.local_ephemeral_user.enable_ephemeral_user_reconnect", "false"),
+				),
+			},
+			// Enable reconnect
+			{
+				Config: testAccVMPolicyConfigRDPReconnectEnabled,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.rdp_reconnect_test", "behavior.rdp.local_ephemeral_user.enable_ephemeral_user_reconnect", "true"),
+				),
+			},
+		},
+	})
+}
+
+// ============================================================================
+// RDP Test Configurations
+// ============================================================================
+
+const testAccVMPolicyConfigRDPLocalEphemeral = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_local_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_local_test" {
+  name          = "test-vm-policy-rdp-local-${random_id.rdp_local_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      local_ephemeral_user {
+        assign_groups = ["Administrators", "Remote Desktop Users"]
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-rdp"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigRDPDomainEphemeral = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_domain_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_domain_test" {
+  name          = "test-vm-policy-rdp-domain-${random_id.rdp_domain_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      domain_ephemeral_user {
+        assign_groups                   = ["Power Users"]
+        assign_domain_groups            = ["Domain Admins"]
+        enable_ephemeral_user_reconnect = true
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-domain"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigSSHAndRDP = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "ssh_rdp_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "ssh_rdp_test" {
+  name          = "test-vm-policy-ssh-rdp-${random_id.ssh_rdp_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "admin"
+    }
+    rdp {
+      local_ephemeral_user {
+        assign_groups = ["Administrators"]
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-multi"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigRDPUpdateBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_update_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_update_test" {
+  name          = "test-vm-policy-rdp-update-${random_id.rdp_update_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      local_ephemeral_user {
+        assign_groups = ["Administrators"]
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-update"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigRDPUpdateAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_update_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_update_test" {
+  name          = "test-vm-policy-rdp-update-${random_id.rdp_update_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      local_ephemeral_user {
+        assign_groups                   = ["Administrators", "Remote Desktop Users"]
+        enable_ephemeral_user_reconnect = true
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-update"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigRDPWithTimeWindow = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_time_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_time_test" {
+  name          = "test-vm-policy-rdp-time-${random_id.rdp_time_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      local_ephemeral_user {
+        assign_groups = ["Administrators"]
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-time"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [1, 2, 3, 4, 5] # Weekdays only
+    from_hour        = "08:00"
+    to_hour          = "18:00"
+  }
+}
+`
+
+const testAccVMPolicyConfigRDPWithAWS = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_aws_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_aws_test" {
+  name          = "test-vm-policy-rdp-aws-${random_id.rdp_aws_test.hex}"
+  location_type = "AWS"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      local_ephemeral_user {
+        assign_groups = ["Administrators"]
+      }
+    }
+  }
+
+  aws_targets {
+    regions = ["us-east-1", "us-west-2"]
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigRDPMultipleGroups = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_groups_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_groups_test" {
+  name          = "test-vm-policy-rdp-groups-${random_id.rdp_groups_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      local_ephemeral_user {
+        assign_groups = [
+          "Administrators",
+          "Remote Desktop Users",
+          "Power Users",
+          "Backup Operators"
+        ]
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-groups"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigRDPReconnectDisabled = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_reconnect_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_reconnect_test" {
+  name          = "test-vm-policy-rdp-reconnect-${random_id.rdp_reconnect_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      local_ephemeral_user {
+        assign_groups                   = ["Administrators"]
+        enable_ephemeral_user_reconnect = false
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-reconnect"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigRDPReconnectEnabled = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "rdp_reconnect_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "rdp_reconnect_test" {
+  name          = "test-vm-policy-rdp-reconnect-${random_id.rdp_reconnect_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    rdp {
+      local_ephemeral_user {
+        assign_groups                   = ["Administrators"]
+        enable_ephemeral_user_reconnect = true
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-reconnect"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`

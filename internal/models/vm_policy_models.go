@@ -64,14 +64,14 @@ type RDPProfileModel struct {
 
 // LocalEphemeralUserModel - Local Windows ephemeral user configuration
 type LocalEphemeralUserModel struct {
-	AssignGroups                 types.List `tfsdk:"assign_groups"`                   // []string
+	AssignGroups                 types.Set  `tfsdk:"assign_groups"`                   // Set of strings (unordered)
 	EnableEphemeralUserReconnect types.Bool `tfsdk:"enable_ephemeral_user_reconnect"` // bool
 }
 
 // DomainEphemeralUserModel - Domain-joined ephemeral user configuration
 type DomainEphemeralUserModel struct {
-	AssignGroups                 types.List `tfsdk:"assign_groups"`                   // []string (local groups)
-	AssignDomainGroups           types.List `tfsdk:"assign_domain_groups"`            // []string (domain groups)
+	AssignGroups                 types.Set  `tfsdk:"assign_groups"`                   // Set of strings (local groups, unordered)
+	AssignDomainGroups           types.Set  `tfsdk:"assign_domain_groups"`            // Set of strings (domain groups, unordered)
 	EnableEphemeralUserReconnect types.Bool `tfsdk:"enable_ephemeral_user_reconnect"` // bool
 }
 

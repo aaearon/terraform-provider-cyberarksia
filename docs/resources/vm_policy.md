@@ -209,9 +209,9 @@ Optional:
 
 Optional:
 
-- `assign_domain_groups` (List of String) Domain groups to assign.
-- `assign_groups` (List of String) Local Windows groups to assign.
-- `enable_ephemeral_user_reconnect` (Boolean) Enable reconnection to same ephemeral user.
+- `assign_domain_groups` (Set of String) Domain groups to assign. **Note**: Order is not preserved by API.
+- `assign_groups` (Set of String) Local Windows groups to assign. **Note**: Order is not preserved by API.
+- `enable_ephemeral_user_reconnect` (Boolean) Enable reconnection to same ephemeral user. Defaults to `false`.
 
 
 <a id="nestedblock--behavior--rdp--local_ephemeral_user"></a>
@@ -219,17 +219,17 @@ Optional:
 
 Optional:
 
-- `assign_groups` (List of String) Local Windows groups to assign.
-- `enable_ephemeral_user_reconnect` (Boolean) Enable reconnection to same ephemeral user.
+- `assign_groups` (Set of String) Local Windows groups to assign. **Note**: Order is not preserved by API.
+- `enable_ephemeral_user_reconnect` (Boolean) Enable reconnection to same ephemeral user. Defaults to `false`.
 
 
 
 <a id="nestedblock--behavior--ssh"></a>
 ### Nested Schema for `behavior.ssh`
 
-Required:
+Optional:
 
-- `username` (String) SSH username. Required if ssh block present.
+- `username` (String) SSH username. **Required** when SSH profile is present.
 
 
 

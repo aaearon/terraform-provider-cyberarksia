@@ -155,17 +155,17 @@
 
 **NEW: Schema Fix Required (Session 7) - BLOCKER**
 
-- [ ] T056 [BLOCKER] Refactor behavior.ssh from SingleNestedBlock to SingleNestedAttribute (vm_policy_resource.go:277)
-- [ ] T057 [BLOCKER] Refactor behavior.rdp from SingleNestedBlock to SingleNestedAttribute (vm_policy_resource.go:289)
-- [ ] T058 [BLOCKER] Refactor rdp.local_ephemeral_user from SingleNestedBlock to SingleNestedAttribute (vm_policy_resource.go:292)
-- [ ] T059 [BLOCKER] Refactor rdp.domain_ephemeral_user from SingleNestedBlock to SingleNestedAttribute (vm_policy_resource.go:306)
-- [ ] T060 [BLOCKER] Update BehaviorModel if needed (internal/models/vm_policy_models.go)
-- [ ] T061 [BLOCKER] Verify buildSDKBehavior() still works after schema change
-- [ ] T062 [BLOCKER] Verify mapSDKPolicyToState() still works after schema change
+- [x] T056 [BLOCKER] Schema fix: ssh.username Required→Optional with validation (vm_policy_resource.go:282)
+- [x] T057 [BLOCKER] Schema fix: assign_groups List→Set (API reorders) (vm_policy_resource.go:296, 313, 317)
+- [x] T058 [BLOCKER] Schema fix: Added Default(false) for enable_ephemeral_user_reconnect (vm_policy_resource.go:300, 322)
+- [x] T059 [BLOCKER] Schema fix: ObjectType definitions use SetType (vm_policy_resource.go:1933-1934, 1944, 1948-1949)
+- [x] T060 [BLOCKER] Updated models to use types.Set for AssignGroups/AssignDomainGroups (vm_policy_models.go:67, 73-74)
+- [x] T061 [BLOCKER] Verified buildSDKBehavior() works with Optional ssh.username
+- [x] T062 [BLOCKER] Verified mapSDKPolicyToState() works with SetValueFrom for assign_groups
 - [x] T063 [US4] Fix RDP null object initialization - **DONE** (Session 6, vm_policy_resource.go:1867-1908)
-- [ ] T064 [BLOCKER] Test all existing 13 tests still pass after schema refactor
-- [ ] T065 [BLOCKER] Verify RDP-only policy can be created (no SSH block)
-- [ ] T066 [BLOCKER] Verify SSH-only policy can be created (no RDP block)
+- [x] T064 [BLOCKER] All 13 existing tests pass (User Stories 1-3)
+- [x] T065 [BLOCKER] RDP-only policy works (7 new tests pass)
+- [x] T066 [BLOCKER] SSH-only policy works (existing SSH tests pass)
 
 **Root Cause**: Terraform Plugin Framework limitation - SingleNestedBlock with Required attributes makes parent block effectively required.
 **Reference**: https://github.com/hashicorp/terraform-plugin-framework/issues/740
@@ -173,18 +173,18 @@
 
 ### Testing for User Story 4
 
-**STATUS: Tests written, waiting for schema fix (7/8 blocked)**
+**STATUS: All 8 RDP tests passing ✅ (Session 7-8 fixes complete)**
 
-- [x] T067 [US4] TestAccVMPolicy_rdpLocalEphemeral (T048) - **BLOCKED** by schema issue
-- [x] T068 [US4] TestAccVMPolicy_rdpDomainEphemeral (T049) - **BLOCKED** by schema issue
+- [x] T067 [US4] TestAccVMPolicy_rdpLocalEphemeral (T048) - **PASSING** ✅ (27.27s)
+- [x] T068 [US4] TestAccVMPolicy_rdpDomainEphemeral (T049) - **PASSING** ✅ (20.04s)
 - [x] T069 [US4] TestAccVMPolicy_sshAndRdp (T050) - **PASSING** ✅ (34.84s)
-- [x] T070 [US4] TestAccVMPolicy_rdpUpdate (T051) - **BLOCKED** by schema issue
-- [x] T071 [US4] TestAccVMPolicy_rdpWithTimeWindow (T052) - **BLOCKED** by schema issue
-- [x] T072 [US4] TestAccVMPolicy_rdpWithAWSTargets (T053) - **BLOCKED** by schema issue
-- [x] T073 [US4] TestAccVMPolicy_rdpMultipleGroups (T054) - **BLOCKED** by schema issue
-- [x] T074 [US4] TestAccVMPolicy_rdpReconnectSettings (T055) - **BLOCKED** by schema issue
+- [x] T070 [US4] TestAccVMPolicy_rdpUpdate (T051) - **PASSING** ✅ (35.52s)
+- [x] T071 [US4] TestAccVMPolicy_rdpWithTimeWindow (T052) - **PASSING** ✅ (18.85s)
+- [x] T072 [US4] TestAccVMPolicy_rdpWithAWSTargets (T053) - **PASSING** ✅ (19.33s)
+- [x] T073 [US4] TestAccVMPolicy_rdpMultipleGroups (T054) - **PASSING** ✅ (18.62s)
+- [x] T074 [US4] TestAccVMPolicy_rdpReconnectSettings (T055) - **PASSING** ✅ (35.62s)
 
-**Test Results**: 1/8 RDP tests passing (SSH+RDP combined works, 7 RDP-only blocked)
+**Test Results**: All 21 tests passing (13 existing + 8 RDP, 566s total)
 
 ### Examples for User Story 4
 
