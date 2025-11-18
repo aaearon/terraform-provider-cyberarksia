@@ -1,4 +1,66 @@
-## Session 7 Progress (2025-11-18 - Current)
+## Session 8 Progress (2025-11-18 - Current)
+
+### ✅ User Story 7: Delete Operations - Verification Complete
+
+**Objective**: Verify that delete operations and drift detection are properly tested.
+
+**Tasks Analyzed**:
+- T069: Principal assignment removal
+- T070: Policy deletion
+- T071: Drift detection on manual policy deletion
+
+**Analysis Results** - All tasks ALREADY COVERED by existing code:
+
+1. **T069 - Principal Assignment Removal** ✅
+   - **Test**: `TestAccVMPolicyPrincipalAssignment_crud` (lines 49-89)
+   - **Coverage**: Creates assignment, Terraform destroys at end
+   - **File**: `internal/provider/vm_policy_principal_assignment_resource_test.go`
+
+2. **T070 - Policy Deletion** ✅
+   - **Coverage**: ALL 21 VM policy tests create and delete policies
+   - **Implementation**: Delete() method handles 404 gracefully (lines 1155-1162)
+   - **File**: `internal/provider/vm_policy_resource.go`
+   - **Code**:
+     ```go
+     if client.IsNotFoundError(err) {
+         tflog.Info(ctx, "Policy already deleted", ...)
+         return  // Success - treat as already deleted
+     }
+     ```
+
+3. **T071 - Drift Detection** ✅
+   - **Test**: `TestAccVMPolicy_driftDetection` (lines 113-146)
+   - **Implementation**: Read() method detects 404 and removes from state (lines 858-867)
+   - **File**: `internal/provider/vm_policy_resource.go`
+   - **Code**:
+     ```go
+     if client.IsNotFoundError(err) {
+         resp.State.RemoveResource(ctx)  // Drift detected
+         return
+     }
+     ```
+
+**Test Verification** (7 delete-related tests, 209s total):
+```bash
+✅ TestAccVMPolicyPrincipalAssignment_basic (37.81s)
+✅ TestAccVMPolicyPrincipalAssignment_crud (35.64s)
+✅ TestAccVMPolicyPrincipalAssignment_duplicateDetection (14.68s)
+✅ TestAccVMPolicyPrincipalAssignment_importState (34.16s)
+✅ TestAccVMPolicyPrincipalAssignment_compositeID (27.80s)
+✅ TestAccVMPolicy_basic (27.84s)
+✅ TestAccVMPolicy_driftDetection (31.29s)
+```
+
+**Files Updated**:
+- `specs/001-vm-access-policies/tasks.md`: Marked T069-T071 complete with evidence
+
+**Conclusion**: User Story 7 requires NO additional implementation. All delete operations and drift detection are properly implemented and tested.
+
+**Next Session**: User Story 6 (Update testing) or User Story 5 (Azure/GCP cloud targets)
+
+---
+
+## Session 7 Progress (2025-11-18)
 
 ### ✅ Schema Fix Complete - RDP-only Policies Now Work!
 

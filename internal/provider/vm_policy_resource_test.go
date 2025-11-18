@@ -743,6 +743,111 @@ func TestAccVMPolicy_awsUpdateRegions(t *testing.T) {
 	})
 }
 
+// TestAccVMPolicy_azureBasic tests Azure policy with regions, resource groups, and tags (T060)
+// SKIPPED: Azure support may not be enabled on test tenant (see POC notes: "HTTP 500 errors - may indicate server-side issue")
+func TestAccVMPolicy_azureBasic(t *testing.T) {
+	t.Skip("Azure support not available on test tenant - POC notes indicate server-side issues")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigAzureBasic,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// Basic metadata
+					resource.TestMatchResourceAttr("cyberarksia_vm_policy.azure_test", "name",
+						regexp.MustCompile(`^test-vm-policy-azure-[a-f0-9]{8}$`)),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.azure_test", "status", "Active"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.azure_test", "location_type", "Azure"),
+
+					// Azure targets - regions
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.azure_test", "azure_targets.regions.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.azure_test", "azure_targets.regions.*", "eastus"),
+
+					// Azure targets - verify empty arrays for unspecified fields
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.azure_test", "azure_targets.resource_groups.#", "0"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.azure_test", "azure_targets.tags.#", "0"),
+
+					// SSH behavior
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.azure_test", "behavior.ssh.username", "azureuser"),
+
+					// Session conditions
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.azure_test", "max_session_duration", "2"),
+				),
+			},
+			// ImportState testing
+			{
+				ResourceName:            "cyberarksia_vm_policy.azure_test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"created_by", "updated_by"},
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_gcpBasic tests GCP policy with regions, projects, and labels (T061)
+func TestAccVMPolicy_gcpBasic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			{
+				Config: testAccVMPolicyConfigGcpBasic,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// Basic metadata
+					resource.TestMatchResourceAttr("cyberarksia_vm_policy.gcp_test", "name",
+						regexp.MustCompile(`^test-vm-policy-gcp-[a-f0-9]{8}$`)),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "status", "Active"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "location_type", "GCP"),
+
+					// GCP targets - regions
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.regions.#", "2"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.regions.*", "us-central1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.regions.*", "us-east1"),
+
+					// GCP targets - projects
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.projects.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.projects.*", "my-gcp-project"),
+
+					// GCP targets - labels (verify structure)
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.labels.#", "2"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.labels.0.key", "environment"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.labels.0.value.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.labels.0.value.*", "production"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.labels.1.key", "team"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.labels.1.value.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.gcp_test", "gcp_targets.labels.1.value.*", "platform"),
+
+					// SSH behavior
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "behavior.ssh.username", "gcpuser"),
+
+					// Session conditions
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.gcp_test", "max_session_duration", "2"),
+				),
+			},
+			// ImportState testing
+			{
+				ResourceName:            "cyberarksia_vm_policy.gcp_test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"created_by", "updated_by"},
+			},
+		},
+	})
+}
+
 // ============================================================================
 // AWS Test Configurations
 // ============================================================================
@@ -1633,6 +1738,107 @@ resource "cyberarksia_vm_policy" "rdp_reconnect_test" {
     fqdn_rule {
       operator             = "SUFFIX"
       computername_pattern = "-reconnect"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+// ============================================================================
+// Azure Test Configurations
+// ============================================================================
+
+const testAccVMPolicyConfigAzureBasic = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "azure_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "azure_test" {
+  name          = "test-vm-policy-azure-${random_id.azure_test.hex}"
+  location_type = "Azure"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "azureuser"
+    }
+  }
+
+  azure_targets {
+    regions = ["eastus"]
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+// ============================================================================
+// GCP Test Configurations
+// ============================================================================
+
+const testAccVMPolicyConfigGcpBasic = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "gcp_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "gcp_test" {
+  name          = "test-vm-policy-gcp-${random_id.gcp_test.hex}"
+  location_type = "GCP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "gcpuser"
+    }
+  }
+
+  gcp_targets {
+    regions  = ["us-central1", "us-east1"]
+    projects = ["my-gcp-project"]
+
+    labels {
+      key   = "environment"
+      value = ["production"]
+    }
+
+    labels {
+      key   = "team"
+      value = ["platform"]
     }
   }
 

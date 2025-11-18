@@ -1516,7 +1516,13 @@ func buildSDKTargets(ctx context.Context, plan models.VMPolicyResourceModel, dia
 			return targets
 		}
 
-		azureResource := &uapsiavmmodels.ArkUAPSIAVMAzureResource{}
+		azureResource := &uapsiavmmodels.ArkUAPSIAVMAzureResource{
+			// Initialize empty arrays - API requires these fields even if empty
+			Regions:        []string{},
+			ResourceGroups: []string{},
+			VNetIDs:        []string{},
+			Subscriptions:  []string{},
+		}
 
 		// Regions
 		if !azureTargets.Regions.IsNull() {
@@ -1595,7 +1601,12 @@ func buildSDKTargets(ctx context.Context, plan models.VMPolicyResourceModel, dia
 			return targets
 		}
 
-		gcpResource := &uapsiavmmodels.ArkUAPSIAVMGCPResource{}
+		gcpResource := &uapsiavmmodels.ArkUAPSIAVMGCPResource{
+			// Initialize empty arrays - API requires these fields even if empty
+			Regions:  []string{},
+			VPCIDs:   []string{},
+			Projects: []string{},
+		}
 
 		// Regions
 		if !gcpTargets.Regions.IsNull() {

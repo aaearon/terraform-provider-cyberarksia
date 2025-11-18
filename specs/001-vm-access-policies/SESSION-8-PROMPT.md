@@ -1,176 +1,189 @@
-# Session 8: Finalize RDP Tests and Complete User Story 4
+# Session 8: Verify User Story 7 Delete Operations
 
 ## Context
 
-You are continuing the VM Access Policy implementation. Session 7 fixed the schema blocker that prevented RDP-only policies, but there's ONE small bug remaining in the ObjectType definitions.
+You are continuing the VM Access Policy implementation. Session 7 completed User Story 4 (RDP tests), and now we need to verify User Story 7 (delete operations) is properly tested.
 
 **Handoff Location**: `/home/tim/terraform-provider-cyberarksia/specs/001-vm-access-policies/HANDOFF.md`
 
 **Current Status** (from Session 7):
 - Branch: `001-vm-access-policies`
-- Schema fix: ✅ COMPLETE (ssh.username now Optional with validation)
-- RDP tests: ✅ 8 tests written, 5-8 passing (flaky when run together)
-- **BLOCKER**: Lines 1933-1934 still use `types.ListType` instead of `types.SetType`
+- User Stories 1-4: ✅ COMPLETE (21/21 tests passing)
+- User Story 5-6: Not started
+- User Story 7: Implementation exists, need to verify test coverage
 
 ## Your Mission
 
-Fix the final bug and complete User Story 4.
+**IMPORTANT: This is a verification task, NOT an implementation task.**
+
+Verify that User Story 7 (T069-T071) delete operations are already covered by existing tests. Do NOT write new tests unless there are actual gaps.
 
 ---
 
-## Critical Bug to Fix (5 minutes)
+## Tasks to Verify
 
-**File**: `internal/provider/vm_policy_resource.go`  
-**Lines**: 1933-1934
+From `specs/001-vm-access-policies/tasks.md` Phase 9:
 
-**Current Code (WRONG)**:
-```go
-rdpObj, diagsRDP := types.ObjectValueFrom(ctx, map[string]attr.Type{
-    "local_ephemeral_user":  types.ObjectType{AttrTypes: map[string]attr.Type{"assign_groups": types.ListType{ElemType: types.StringType}, "enable_ephemeral_user_reconnect": types.BoolType}},
-    "domain_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{"assign_groups": types.ListType{ElemType: types.StringType}, "assign_domain_groups": types.ListType{ElemType: types.StringType}, "enable_ephemeral_user_reconnect": types.BoolType}},
-}, rdpModel)
-```
+### T069: Principal Assignment Removal Testing
+**Expected**: Already covered by `TestAccVMPolicyPrincipalAssignment_crud`
+- Check if test creates and deletes assignment
+- Verify Delete() method handles removal correctly
 
-**Should Be**:
-```go
-rdpObj, diagsRDP := types.ObjectValueFrom(ctx, map[string]attr.Type{
-    "local_ephemeral_user":  types.ObjectType{AttrTypes: map[string]attr.Type{"assign_groups": types.SetType{ElemType: types.StringType}, "enable_ephemeral_user_reconnect": types.BoolType}},
-    "domain_ephemeral_user": types.ObjectType{AttrTypes: map[string]attr.Type{"assign_groups": types.SetType{ElemType: types.StringType}, "assign_domain_groups": types.SetType{ElemType: types.StringType}, "enable_ephemeral_user_reconnect": types.BoolType}},
-}, rdpModel)
-```
+### T070: Policy Deletion Testing
+**Expected**: Already covered by all VM policy tests
+- All tests implicitly test DELETE (Terraform destroys at end)
+- Verify Delete() method handles 404 gracefully
 
-**Why**: We changed `assign_groups` from List to Set because the API doesn't preserve order. All type definitions must match.
+### T071: Drift Detection on Manual Deletion
+**Expected**: Already covered by Read() method
+- Check Read() method for 404 handling
+- Verify `TestAccVMPolicy_driftDetection` exists and tests this
 
 ---
 
-## Validation Steps
+## Analysis Steps
 
-### 1. Build and Test (10 minutes)
+### Step 1: Verify Principal Assignment Deletion (5 minutes)
 
 ```bash
 cd /home/tim/terraform-provider-cyberarksia
-git checkout 001-vm-access-policies
 
-# Build
-go build
+# Check TestAccVMPolicyPrincipalAssignment_crud
+grep -A 30 "func TestAccVMPolicyPrincipalAssignment_crud" internal/provider/vm_policy_principal_assignment_resource_test.go
 
-# Set credentials
+# Question: Does this test DELETE the assignment?
+# Answer: YES if test uses Terraform destroy (implicit in all acceptance tests)
+```
+
+### Step 2: Verify Policy Deletion (5 minutes)
+
+```bash
+# Check Delete() method in vm_policy_resource.go
+grep -A 15 "func (r \*VMPolicyResource) Delete" internal/provider/vm_policy_resource.go
+
+# Look for 404 handling:
+# - Should check IsNotFoundError(err)
+# - Should return success if 404 (already deleted)
+```
+
+### Step 3: Verify Drift Detection (5 minutes)
+
+```bash
+# Check Read() method in vm_policy_resource.go
+grep -A 10 "Drift detection" internal/provider/vm_policy_resource.go
+
+# Look for:
+# - IsNotFoundError check
+# - resp.State.RemoveResource(ctx) call
+
+# Check test exists
+grep "TestAccVMPolicy_driftDetection" internal/provider/vm_policy_resource_test.go
+```
+
+### Step 4: Run Delete-Related Tests (5 minutes)
+
+```bash
 export CYBERARK_USERNAME="timtest@cyberark.cloud.40562"
 export CYBERARK_PASSWORD='nvk*phv*hfd3ATR2rfc'
 export TF_ACC=1
 
-# Run all VM policy tests
-go test ./internal/provider -v -run "TestAccVMPolicy" -timeout 30m 2>&1 | tee /tmp/test-results.log
-
-# Expected: 21/21 tests pass (13 existing + 8 RDP)
+# Run delete-related tests
+TF_ACC=1 go test ./internal/provider -v -run "TestAccVMPolicy_basic|TestAccVMPolicy_driftDetection|TestAccVMPolicyPrincipalAssignment" -timeout 10m
 ```
 
-### 2. Verify Test Results
-
-Check for:
-- ✅ All 13 existing tests pass (User Stories 1-3)
-- ✅ All 8 RDP tests pass (User Story 4)
-- ✅ No drift errors (assign_groups order)
-- ✅ No "Provider produced inconsistent result" errors
-
-**If tests are flaky**: Run RDP tests individually to verify they work:
-```bash
-go test ./internal/provider -v -run "TestAccVMPolicy_rdp" -timeout 20m
-```
+**Expected Results**:
+- All tests pass
+- No new tests needed if existing tests cover DELETE and drift detection
 
 ---
 
-## Commit Changes (5 minutes)
+## Decision Tree
 
-### Update Tasks
+**After analysis, choose ONE of these actions:**
 
-Mark complete in `specs/001-vm-access-policies/tasks.md`:
-- T056-T066: Schema refactor tasks
-- T067-T074: RDP test tasks
+### Option A: Tests Already Cover Everything ✅
+If you find:
+- TestAccVMPolicyPrincipalAssignment_crud tests DELETE
+- All policy tests implicitly test DELETE
+- Delete() handles 404 gracefully
+- Read() handles 404 (drift detection)
 
-### Git Commit
+**Then**:
+1. Mark T069-T071 complete in tasks.md with references to existing tests
+2. Update HANDOFF.md documenting findings
+3. No new tests needed
 
-```bash
-git add -A
-git commit -m "fix: enable RDP-only and SSH-only VM policies + add RDP tests
-
-- Changed ssh.username from Required to Optional with ValidateConfig enforcement
-- Added Default(false) for enable_ephemeral_user_reconnect (prevents drift)
-- Changed assign_groups/assign_domain_groups from List to Set (API reorders)
-- Implemented 8 RDP acceptance tests covering all scenarios (T048-T055)
-- Fixed schema limitation using database_policy pattern (SingleNestedBlock + Optional + validation)
-
-Schema Changes:
-- vm_policy_resource.go:282 - ssh.username: Required→Optional
-- vm_policy_resource.go:296,313,317 - assign_groups: List→Set
-- vm_policy_resource.go:600-616 - Added SSH username validation
-- vm_policy_models.go:67,73-74 - Updated models to use types.Set
-
-Test Results:
-- All 21 tests passing (13 existing + 8 RDP)
-- User Stories 1-3: ✅ COMPLETE
-- User Story 4: ✅ COMPLETE
-
-Fixes T056-T074
-Closes: User Story 4 - RDP Connection Behavior"
-
-# Verify commit
-git log -1 --stat
-```
+### Option B: Gaps Found (Unlikely) ⚠️
+If you find actual gaps:
+1. Document exactly what's missing
+2. Ask user before implementing
+3. Only add tests if gaps are confirmed
 
 ---
 
-## Optional: Continue to User Stories 5-7 (If Time Permits)
+## Update Tasks File
 
-If all tests pass and you have time remaining, start User Story 5 (Azure/GCP tests). See `tasks.md` T060-T063.
+**If Option A (expected scenario)**:
 
----
+Edit `specs/001-vm-access-policies/tasks.md`:
 
-## Environment Setup
+```markdown
+### Testing for User Story 7
 
-```bash
-cd /home/tim/terraform-provider-cyberarksia
-git checkout 001-vm-access-policies
-git status  # Should show modified files
+**STATUS: All delete operations covered by existing tests ✅**
 
-# Load credentials
-export CYBERARK_USERNAME="timtest@cyberark.cloud.40562"
-export CYBERARK_PASSWORD='nvk*phv*hfd3ATR2rfc'
-export TF_ACC=1
+- [x] T069 [US7] Principal assignment removal - COVERED by TestAccVMPolicyPrincipalAssignment_crud
+- [x] T070 [US7] Policy deletion - COVERED by all VM policy tests (implicit Terraform destroy)
+- [x] T071 [US7] Drift detection - COVERED by Read() method (line X) and TestAccVMPolicy_driftDetection
+
+**Evidence**:
+- Delete() handles 404: internal/provider/vm_policy_resource.go:XXXX
+- Read() handles 404: internal/provider/vm_policy_resource.go:XXXX
+- Test coverage: internal/provider/vm_policy_principal_assignment_resource_test.go:XXXX
 ```
 
 ---
 
 ## Success Criteria
 
-- [ ] Lines 1933-1934 fixed (ListType → SetType)
-- [ ] All 21 tests pass (go test output shows PASS)
-- [ ] No drift or inconsistent state errors
-- [ ] tasks.md updated (T056-T074 marked complete)
-- [ ] Git commit created with all changes
-- [ ] Clean git status after commit
+- [ ] T069 verified (principal assignment deletion covered)
+- [ ] T070 verified (policy deletion covered)
+- [ ] T071 verified (drift detection covered)
+- [ ] tasks.md updated with evidence
+- [ ] HANDOFF.md updated with Session 8 entry
+- [ ] QUICK-START-SESSION-8.md created
+- [ ] All delete-related tests pass
 
 ---
 
-## Key Files
+## Key Files to Review
 
-- `internal/provider/vm_policy_resource.go` (line 1933-1934 - FIX THIS)
-- `internal/provider/vm_policy_resource_test.go` (8 RDP tests)
-- `specs/001-vm-access-policies/tasks.md` (mark T056-T074 complete)
-- `specs/001-vm-access-policies/HANDOFF.md` (Session 7 summary added)
-
----
-
-## What Session 7 Accomplished
-
-✅ Root cause analyzed (consulted Codex twice for validation)  
-✅ Schema refactored (SingleNestedBlock + Optional + Validation pattern)  
-✅ Validation added for SSH username when present  
-✅ Default value added for enable_ephemeral_user_reconnect  
-✅ List→Set conversion for assign_groups (API ordering issue)  
-✅ All 8 RDP tests written  
-🔄 One tiny bug remains (lines 1933-1934)
+- `internal/provider/vm_policy_resource.go` (Delete and Read methods)
+- `internal/provider/vm_policy_principal_assignment_resource_test.go` (CRUD test)
+- `internal/provider/vm_policy_resource_test.go` (drift test)
+- `specs/001-vm-access-policies/tasks.md` (mark T069-T071)
+- `specs/001-vm-access-policies/HANDOFF.md` (add Session 8 entry)
 
 ---
 
-Good luck! This should be a quick session - just fix 2 lines, test, and commit. 🚀
+## What Actually Happened in Session 8
+
+**Option A was correct** ✅
+
+Analysis revealed:
+1. **T069**: Covered by `TestAccVMPolicyPrincipalAssignment_crud` (lines 49-89)
+2. **T070**: Covered by ALL 21 tests + Delete() 404 handling (lines 1155-1162)
+3. **T071**: Covered by Read() drift detection (lines 858-867)
+
+**Test Results**: 7 delete-related tests, 209s, all passing
+
+**Files Updated**:
+- tasks.md: Marked T069-T071 complete with evidence
+- HANDOFF.md: Added Session 8 entry
+- QUICK-START-SESSION-8.md: Created documentation
+
+**Conclusion**: User Story 7 is COMPLETE - no new tests needed!
+
+---
+
+This was a verification task, not an implementation task. All delete operations are properly implemented and tested. 🎉
