@@ -1,12 +1,119 @@
 # VM Access Policy Implementation - Handoff Document
 
 **Date**: 2025-11-18
-**Branch**: `001-vm-access-policies` (commit: deaf58c)
-**Status**: User Stories 1-3 complete, all tests meaningfully verify functionality
+**Branch**: `001-vm-access-policies` (commit: TBD)
+**Status**: User Stories 1-3 complete, User Story 4 blocked by schema issue
 
 ---
 
-## Session 5 Progress (2025-11-18 - Current)
+## Session 6 Progress (2025-11-18 - Current)
+
+### 🚧 BLOCKED: Schema Issue Discovered
+
+**User Story 4: RDP Connection Behavior (T048-T055)**
+1. ✅ **8 RDP tests implemented** - All test code written and ready
+2. ✅ **RDP mapping bug fixed** - Added null object initialization for nested RDP objects
+3. ❌ **RDP-only policies fail** - Terraform schema limitation prevents RDP-only configurations
+4. ✅ **Root cause identified** - Terraform Plugin Framework `SingleNestedBlock` limitation
+5. ✅ **API structure confirmed** - Retrieved RDP-only policy via ark CLI
+
+**Critical Findings**
+
+**Problem**: RDP-only policies fail with "SSH username required" error, despite working in SIA UI.
+
+**Root Cause**: Terraform Plugin Framework limitation with `SingleNestedBlock`:
+> "If one or more attributes of the block you want to make optional are required, the parent block also functions as if it were required."
+
+Since `ssh.username` is `Required: true`, the entire SSH block becomes effectively required when the behavior block is present.
+
+**API Evidence** (Policy ID: `d3f1cb0a-4a3d-4098-8ff1-5ef22be1e602`):
+```json
+"behavior": {
+  "rdp_profile": {
+    "local_ephemeral_user": {
+      "assign_groups": ["Power Users"],
+      "enable_ephemeral_user_reconnect": false
+    }
+  }
+}
+```
+Note: `ssh_profile` key is **completely omitted** from API response (not null/empty).
+
+**Test Results**:
+- ✅ SSH+RDP combined test: **PASSES** (34.84s) - `TestAccVMPolicy_sshAndRdp`
+- ❌ RDP-only tests: **FAIL** - 7 tests fail with "SSH username required"
+- ✅ RDP mapping fix: **WORKS** - Null object initialization prevents type conversion errors
+
+**Files Modified (Session 6)**:
+- `internal/provider/vm_policy_resource.go` (lines 1867-1908): Added null object initialization for RDP nested objects
+- `internal/provider/vm_policy_resource_test.go` (+758 lines): 8 RDP tests implemented (T048-T055)
+
+**Git Status**: Changes uncommitted (awaiting schema fix)
+
+### 📋 Required Fix for Next Session
+
+**Objective**: Refactor behavior schema from `SingleNestedBlock` to `SingleNestedAttribute` to enable RDP-only and SSH-only policies.
+
+**Schema Changes Required**:
+1. Change `behavior.ssh` from `SingleNestedBlock` → `SingleNestedAttribute` (line 277)
+2. Change `behavior.rdp` from `SingleNestedBlock` → `SingleNestedAttribute` (line 289)
+3. Change `rdp.local_ephemeral_user` from `SingleNestedBlock` → `SingleNestedAttribute` (line 292)
+4. Change `rdp.domain_ephemeral_user` from `SingleNestedBlock` → `SingleNestedAttribute` (line 306)
+5. Update models if needed (check `internal/models/vm_policy_models.go`)
+6. Update mapping logic in `buildSDKBehavior()` and `mapSDKPolicyToState()` if needed
+7. Test all existing tests still pass (13 tests from User Stories 1-3)
+8. Run 8 new RDP tests (should all pass after fix)
+
+**Reference Documentation**:
+- HashiCorp Issue: https://github.com/hashicorp/terraform-plugin-framework/issues/740
+- Docs: https://developer.hashicorp.com/terraform/plugin/framework/handling-data/attributes/single-nested
+- Recommended: Use `SingleNestedAttribute` instead of `SingleNestedBlock` for new implementations
+
+**Success Criteria**:
+- [ ] RDP-only policies can be created (no SSH block required)
+- [ ] SSH-only policies can be created (no RDP block required)
+- [ ] SSH+RDP combined policies still work
+- [ ] All 21 tests pass (13 existing + 8 new RDP tests)
+- [ ] Provider compiles without errors
+- [ ] No breaking changes to existing functionality
+
+### 🔧 Files to Modify (Next Session)
+
+**Priority 1: Schema Definition**
+- `internal/provider/vm_policy_resource.go` (lines 274-330): Behavior schema definition
+
+**Priority 2: Models** (May not need changes)
+- `internal/models/vm_policy_models.go`: Check if BehaviorModel needs updates
+
+**Priority 3: Validation** (May not need changes)
+- `internal/provider/vm_policy_resource.go` (lines 584-599): ValidateConfig behavior checks
+
+**Priority 4: Test & Verify**
+- Run existing tests: `go test ./internal/provider -v -run "TestAccVMPolicy" -timeout 30m`
+- Verify all 21 tests pass
+
+### 📊 Testing Status
+
+**User Story 1: All 5 tests passing** ✅
+**User Story 2: All 5 tests passing** ✅
+**User Story 3: All 3 tests passing** ✅
+**User Story 4: 8 tests implemented, 0 passing** ❌ (blocked by schema issue)
+- TestAccVMPolicy_rdpLocalEphemeral (T048) - Ready
+- TestAccVMPolicy_rdpDomainEphemeral (T049) - Ready
+- TestAccVMPolicy_sshAndRdp (T050) - **PASSING** ✅
+- TestAccVMPolicy_rdpUpdate (T051) - Ready
+- TestAccVMPolicy_rdpWithTimeWindow (T052) - Ready
+- TestAccVMPolicy_rdpWithAWSTargets (T053) - Ready
+- TestAccVMPolicy_rdpMultipleGroups (T054) - Ready
+- TestAccVMPolicy_rdpReconnectSettings (T055) - Ready
+
+**Total: 13/21 tests passing** (62%)
+**Blocked: 7 tests** (RDP-only configurations)
+**Ready after fix: 8 tests** (all RDP tests are written and ready)
+
+---
+
+## Session 5 Progress (2025-11-18)
 
 ### ✅ What Was Completed
 

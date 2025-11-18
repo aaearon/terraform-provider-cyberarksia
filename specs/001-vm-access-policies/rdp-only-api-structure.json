@@ -1,0 +1,69 @@
+{
+  "_comment": "RDP-only VM Policy API Structure - Retrieved via ark CLI",
+  "_policy_id": "d3f1cb0a-4a3d-4098-8ff1-5ef22be1e602",
+  "_created_by": "Tim Schindler via SIA UI",
+  "_session": "Session 6 - 2025-11-18",
+
+  "metadata": {
+    "policy_id": "d3f1cb0a-4a3d-4098-8ff1-5ef22be1e602",
+    "name": "vm-zsp-rdp-only",
+    "status": {
+      "status": "Active",
+      "status_code": "200",
+      "status_description": "All good"
+    },
+    "time_frame": {},
+    "policy_entitlement": {
+      "target_category": "VM",
+      "location_type": "FQDN/IP",
+      "policy_type": "Recurring"
+    },
+    "created_by": {
+      "user": "tim.schindler@cyberark.cloud.40562",
+      "time": "2025-11-18T15:45:44.318724"
+    },
+    "updated_on": {
+      "user": "tim.schindler@cyberark.cloud.40562",
+      "time": "2025-11-18T15:45:44.318724"
+    },
+    "policy_tags": [],
+    "time_zone": "Europe/Amsterdam"
+  },
+  "principals": [
+    {
+      "id": "d0793278-84a5-8aca-6df9-a78920aaea62",
+      "name": "Tim.Schindler@CyberIAM.com",
+      "source_directory_name": "Federation with cyberiam.tech",
+      "source_directory_id": "C30B30B1-0B46-49AC-8D99-F6279EED7999",
+      "type": "USER"
+    }
+  ],
+  "delegation_classification": "Unrestricted",
+  "conditions": {
+    "access_window": {
+      "days_of_the_week": [4, 0, 5, 6, 3, 1, 2]
+    },
+    "max_session_duration": 2,
+    "idle_time": 10
+  },
+  "targets": {
+    "fqdnip_resource": {
+      "fqdn_rules": [
+        {
+          "operator": "EXACTLY",
+          "computername_pattern": "example",
+          "domain": "what.com"
+        }
+      ]
+    }
+  },
+  "behavior": {
+    "_note": "CRITICAL: ssh_profile key is COMPLETELY OMITTED (not null, not empty)",
+    "rdp_profile": {
+      "local_ephemeral_user": {
+        "assign_groups": ["Power Users"],
+        "enable_ephemeral_user_reconnect": false
+      }
+    }
+  }
+}

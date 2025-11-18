@@ -1864,6 +1864,11 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			} else {
 				rdpModel.LocalEphemeralUser = localUserObj
 			}
+		} else {
+			rdpModel.LocalEphemeralUser = types.ObjectNull(map[string]attr.Type{
+				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"enable_ephemeral_user_reconnect": types.BoolType,
+			})
 		}
 
 		// Map domain ephemeral user if present
@@ -1894,6 +1899,12 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			} else {
 				rdpModel.DomainEphemeralUser = domainUserObj
 			}
+		} else {
+			rdpModel.DomainEphemeralUser = types.ObjectNull(map[string]attr.Type{
+				"assign_groups":                   types.ListType{ElemType: types.StringType},
+				"assign_domain_groups":            types.ListType{ElemType: types.StringType},
+				"enable_ephemeral_user_reconnect": types.BoolType,
+			})
 		}
 
 		rdpObj, diagsRDP := types.ObjectValueFrom(ctx, map[string]attr.Type{

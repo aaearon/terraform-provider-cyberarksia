@@ -146,22 +146,51 @@
 
 ### Implementation for User Story 4
 
-- [ ] T048 [US4] Add rdp block to behavior schema in `internal/provider/vm_policy_resource.go` (local_ephemeral_user and domain_ephemeral_user blocks per data-model.md §3)
-- [ ] T049 [US4] Extend buildSDKBehavior helper to handle RDP profile mapping (LocalEphemeralUser and DomainEphemeralUser)
-- [ ] T050 [US4] Extend mapSDKPolicyToState helper to handle RDP profile deserialization
-- [ ] T051 [US4] Add ValidateConfig logic for RDP ephemeral user oneOf (warn if both local and domain specified per research.md §3.7)
+**STATUS: BLOCKED - Schema refactor required (see HANDOFF.md Session 6)**
+
+- [x] T048 [US4] Add rdp block to behavior schema in `internal/provider/vm_policy_resource.go` - **DONE** (Session 2)
+- [x] T049 [US4] Extend buildSDKBehavior helper to handle RDP profile mapping - **DONE** (Session 2)
+- [x] T050 [US4] Extend mapSDKPolicyToState helper to handle RDP profile deserialization - **DONE** (Session 2)
+- [x] T051 [US4] Add ValidateConfig logic for RDP ephemeral user oneOf - **DONE** (Session 3)
+
+**NEW: Schema Fix Required (Session 7) - BLOCKER**
+
+- [ ] T056 [BLOCKER] Refactor behavior.ssh from SingleNestedBlock to SingleNestedAttribute (vm_policy_resource.go:277)
+- [ ] T057 [BLOCKER] Refactor behavior.rdp from SingleNestedBlock to SingleNestedAttribute (vm_policy_resource.go:289)
+- [ ] T058 [BLOCKER] Refactor rdp.local_ephemeral_user from SingleNestedBlock to SingleNestedAttribute (vm_policy_resource.go:292)
+- [ ] T059 [BLOCKER] Refactor rdp.domain_ephemeral_user from SingleNestedBlock to SingleNestedAttribute (vm_policy_resource.go:306)
+- [ ] T060 [BLOCKER] Update BehaviorModel if needed (internal/models/vm_policy_models.go)
+- [ ] T061 [BLOCKER] Verify buildSDKBehavior() still works after schema change
+- [ ] T062 [BLOCKER] Verify mapSDKPolicyToState() still works after schema change
+- [x] T063 [US4] Fix RDP null object initialization - **DONE** (Session 6, vm_policy_resource.go:1867-1908)
+- [ ] T064 [BLOCKER] Test all existing 13 tests still pass after schema refactor
+- [ ] T065 [BLOCKER] Verify RDP-only policy can be created (no SSH block)
+- [ ] T066 [BLOCKER] Verify SSH-only policy can be created (no RDP block)
+
+**Root Cause**: Terraform Plugin Framework limitation - SingleNestedBlock with Required attributes makes parent block effectively required.
+**Reference**: https://github.com/hashicorp/terraform-plugin-framework/issues/740
+**API Evidence**: RDP-only policy (ID: `d3f1cb0a-4a3d-4098-8ff1-5ef22be1e602`) shows `ssh_profile` key completely omitted.
 
 ### Testing for User Story 4
 
-- [ ] T052 [US4] Add acceptance test for RDP local ephemeral user configuration
-- [ ] T053 [US4] Add acceptance test for RDP domain ephemeral user configuration
-- [ ] T054 [US4] Add acceptance test for policy with both SSH and RDP profiles
+**STATUS: Tests written, waiting for schema fix (7/8 blocked)**
+
+- [x] T067 [US4] TestAccVMPolicy_rdpLocalEphemeral (T048) - **BLOCKED** by schema issue
+- [x] T068 [US4] TestAccVMPolicy_rdpDomainEphemeral (T049) - **BLOCKED** by schema issue
+- [x] T069 [US4] TestAccVMPolicy_sshAndRdp (T050) - **PASSING** ✅ (34.84s)
+- [x] T070 [US4] TestAccVMPolicy_rdpUpdate (T051) - **BLOCKED** by schema issue
+- [x] T071 [US4] TestAccVMPolicy_rdpWithTimeWindow (T052) - **BLOCKED** by schema issue
+- [x] T072 [US4] TestAccVMPolicy_rdpWithAWSTargets (T053) - **BLOCKED** by schema issue
+- [x] T073 [US4] TestAccVMPolicy_rdpMultipleGroups (T054) - **BLOCKED** by schema issue
+- [x] T074 [US4] TestAccVMPolicy_rdpReconnectSettings (T055) - **BLOCKED** by schema issue
+
+**Test Results**: 1/8 RDP tests passing (SSH+RDP combined works, 7 RDP-only blocked)
 
 ### Examples for User Story 4
 
-- [x] T055 [P] [US4] Create RDP connection behavior example in `examples/resources/cyberarksia_vm_policy/rdp_policy.tf`
+- [x] T055 [P] [US4] Create RDP connection behavior example - **DONE** (Session 2)
 
-**Checkpoint**: Connection behavior fully configurable - SSH and RDP both supported
+**Checkpoint**: RDP tests written, schema fix required before tests can pass
 
 ---
 
