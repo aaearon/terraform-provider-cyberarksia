@@ -1,7 +1,7 @@
 # VM Access Policy Implementation - Handoff Document
 
 **Date**: 2025-11-18
-**Branch**: `001-vm-access-policies` (commit: TBD)
+**Branch**: `001-vm-access-policies` (commit: f6087b6)
 **Status**: User Stories 1-3 complete, User Story 4 blocked by schema issue
 
 ---
