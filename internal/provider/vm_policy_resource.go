@@ -335,8 +335,8 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 			"fqdn_ip_targets": schema.SingleNestedBlock{
 				MarkdownDescription: "FQDN/IP target rules. Use when location_type = `FQDN/IP`.",
 				Blocks: map[string]schema.Block{
-					"fqdn_rule": schema.ListNestedBlock{
-						MarkdownDescription: "FQDN matching rules.",
+					"fqdn_rule": schema.SetNestedBlock{
+						MarkdownDescription: "FQDN matching rules. Order-independent - rules are evaluated as a set.",
 						NestedObject: schema.NestedBlockObject{
 							Attributes: map[string]schema.Attribute{
 								"operator": schema.StringAttribute{
@@ -2002,7 +2002,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 					Domain:              domain,
 				}
 			}
-			fqdnRulesList, diagsFQDNRules := types.ListValueFrom(ctx, types.ObjectType{
+			fqdnRulesSet, diagsFQDNRules := types.SetValueFrom(ctx, types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"operator":             types.StringType,
 					"computername_pattern": types.StringType,
@@ -2012,7 +2012,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			if diagsFQDNRules.HasError() {
 				diags.Append(diagsFQDNRules...)
 			} else {
-				fqdnIPTargets.FQDNRules = fqdnRulesList
+				fqdnIPTargets.FQDNRules = fqdnRulesSet
 			}
 		}
 
@@ -2054,7 +2054,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		}
 
 		fqdnIPTargetsObj, diagsFQDNIP := types.ObjectValueFrom(ctx, map[string]attr.Type{
-			"fqdn_rule": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "computername_pattern": types.StringType, "domain": types.StringType}}},
+			"fqdn_rule": types.SetType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "computername_pattern": types.StringType, "domain": types.StringType}}},
 			"ip_rule":   types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "ip_addresses": types.ListType{ElemType: types.StringType}, "logical_name": types.StringType}}},
 		}, fqdnIPTargets)
 		if diagsFQDNIP.HasError() {
@@ -2065,7 +2065,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 	} else {
 		// Set FQDN/IP targets to null when not present
 		state.FQDNIPTargets = types.ObjectNull(map[string]attr.Type{
-			"fqdn_rule": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "computername_pattern": types.StringType, "domain": types.StringType}}},
+			"fqdn_rule": types.SetType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "computername_pattern": types.StringType, "domain": types.StringType}}},
 			"ip_rule":   types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "ip_addresses": types.ListType{ElemType: types.StringType}, "logical_name": types.StringType}}},
 		})
 	}

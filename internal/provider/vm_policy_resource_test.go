@@ -1850,3 +1850,708 @@ resource "cyberarksia_vm_policy" "gcp_test" {
   }
 }
 `
+
+// ============================================================================
+// Update Tests - User Story 6
+// ============================================================================
+
+// TestAccVMPolicy_updateSessionDuration tests updating max_session_duration (T064)
+func TestAccVMPolicy_updateSessionDuration(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Step 1: Create with 1-hour session duration
+			{
+				Config: testAccVMPolicyConfigUpdateSessionBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_session_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "max_session_duration", "1"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "idle_time", "10"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "behavior.ssh.username", "original"),
+					// Verify principals set initially
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "principals.#", "1"),
+				),
+			},
+			// Step 2: Update to 4-hour session duration
+			{
+				Config: testAccVMPolicyConfigUpdateSessionAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_session_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "max_session_duration", "4"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "idle_time", "10"),                   // Unchanged
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "behavior.ssh.username", "original"), // Unchanged
+					// CRITICAL: Verify policy_id didn't change (no ForceNew)
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_session_test", "policy_id"),
+					// CRITICAL: Verify principals preserved during update
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "principals.#", "1"),
+				),
+			},
+			// Step 3: Verify import still works after update
+			{
+				ResourceName:      "cyberarksia_vm_policy.update_session_test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_updateAccessWindow tests updating access window days and times (T065)
+func TestAccVMPolicy_updateAccessWindow(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Step 1: Create with weekday 9-5 access
+			{
+				Config: testAccVMPolicyConfigUpdateAccessWindowBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_window_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_window_test", "access_window.from_hour", "09:00"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_window_test", "access_window.to_hour", "17:00"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_window_test", "access_window.days_of_the_week.#", "5"), // Mon-Fri
+				),
+			},
+			// Step 2: Update to 24/7 access
+			{
+				Config: testAccVMPolicyConfigUpdateAccessWindowAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_window_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_window_test", "access_window.from_hour", "00:00"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_window_test", "access_window.to_hour", "23:59"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_window_test", "access_window.days_of_the_week.#", "7"), // All days
+					// Verify policy_id didn't change (no ForceNew)
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_window_test", "policy_id"),
+					// Verify principals preserved
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_window_test", "principals.#", "1"),
+				),
+			},
+			// Step 3: Verify import still works after update
+			{
+				ResourceName:      "cyberarksia_vm_policy.update_window_test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_updateTargets tests updating FQDN rules (T066)
+func TestAccVMPolicy_updateTargets(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Step 1: Create with single SUFFIX rule
+			{
+				Config: testAccVMPolicyConfigUpdateTargetsBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_targets_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_targets_test", "fqdn_ip_targets.fqdn_rule.#", "1"),
+					// Use Set-based check (order-independent)
+					resource.TestCheckTypeSetElemNestedAttrs("cyberarksia_vm_policy.update_targets_test", "fqdn_ip_targets.fqdn_rule.*", map[string]string{
+						"operator":             "SUFFIX",
+						"computername_pattern": "-dev",
+					}),
+				),
+			},
+			// Step 2: Update to different pattern and add second rule
+			{
+				Config: testAccVMPolicyConfigUpdateTargetsAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_targets_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_targets_test", "fqdn_ip_targets.fqdn_rule.#", "2"),
+					// Use Set-based checks (order-independent) - verify both rules exist
+					resource.TestCheckTypeSetElemNestedAttrs("cyberarksia_vm_policy.update_targets_test", "fqdn_ip_targets.fqdn_rule.*", map[string]string{
+						"operator":             "SUFFIX",
+						"computername_pattern": "-prod",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs("cyberarksia_vm_policy.update_targets_test", "fqdn_ip_targets.fqdn_rule.*", map[string]string{
+						"operator":             "PREFIX",
+						"computername_pattern": "web-",
+					}),
+					// Verify policy_id didn't change (no ForceNew)
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_targets_test", "policy_id"),
+					// Verify principals preserved
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_targets_test", "principals.#", "1"),
+				),
+			},
+			// Step 3: Verify import still works after update
+			{
+				ResourceName:      "cyberarksia_vm_policy.update_targets_test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_updateBehavior tests updating SSH username and RDP settings (T067)
+func TestAccVMPolicy_updateBehavior(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Step 1: Create with SSH only
+			{
+				Config: testAccVMPolicyConfigUpdateBehaviorBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_behavior_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_behavior_test", "behavior.ssh.username", "admin"),
+					// NO RDP profile initially
+					resource.TestCheckNoResourceAttr("cyberarksia_vm_policy.update_behavior_test", "behavior.rdp.local_ephemeral_user.assign_groups"),
+				),
+			},
+			// Step 2: Update SSH username and add RDP
+			{
+				Config: testAccVMPolicyConfigUpdateBehaviorAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_behavior_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_behavior_test", "behavior.ssh.username", "ubuntu"), // Changed
+					// RDP profile added
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_behavior_test", "behavior.rdp.local_ephemeral_user.assign_groups.#", "1"),
+					resource.TestCheckTypeSetElemAttr("cyberarksia_vm_policy.update_behavior_test", "behavior.rdp.local_ephemeral_user.assign_groups.*", "Administrators"),
+					// Verify policy_id didn't change (no ForceNew)
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_behavior_test", "policy_id"),
+					// Verify principals preserved
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_behavior_test", "principals.#", "1"),
+				),
+			},
+			// Step 3: Verify import still works after update
+			{
+				ResourceName:      "cyberarksia_vm_policy.update_behavior_test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// TestAccVMPolicy_updatePreservesPrincipals tests critical Read-Modify-Write pattern (T068)
+// This test verifies that updating policy attributes (session duration) while principals
+// exist doesn't overwrite or lose principal assignments.
+func TestAccVMPolicy_updatePreservesPrincipals(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Step 1: Create policy with principal and 2-hour session
+			{
+				Config: testAccVMPolicyConfigUpdatePreservesBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "max_session_duration", "2"),
+					// Verify principal is set
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "principals.#", "1"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "principals.0.principal_id"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "principals.0.principal_type", "USER"),
+				),
+			},
+			// Step 2: Update session duration (tests Read-Modify-Write pattern)
+			{
+				Config: testAccVMPolicyConfigUpdatePreservesAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "max_session_duration", "6"), // Changed
+					// CRITICAL: Verify principal still exists after update
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "principals.#", "1"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "principals.0.principal_id"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "principals.0.principal_type", "USER"),
+					// Verify policy_id didn't change (no ForceNew)
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "policy_id"),
+				),
+			},
+			// Step 3: Verify import still works after update
+			{
+				ResourceName:      "cyberarksia_vm_policy.update_preserve_test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+// ============================================================================
+// Update Test Configurations - User Story 6
+// ============================================================================
+
+const testAccVMPolicyConfigUpdateSessionBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_session_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_session_test" {
+  name          = "test-vm-policy-update-session-${random_id.update_session_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "original"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-test"
+    }
+  }
+
+  max_session_duration = 1
+  idle_time            = 10
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdateSessionAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_session_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_session_test" {
+  name          = "test-vm-policy-update-session-${random_id.update_session_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "original"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-test"
+    }
+  }
+
+  max_session_duration = 4  # Updated
+  idle_time            = 10
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdateAccessWindowBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_window_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_window_test" {
+  name          = "test-vm-policy-update-window-${random_id.update_window_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-window"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [1, 2, 3, 4, 5]  # Monday-Friday
+    from_hour        = "09:00"
+    to_hour          = "17:00"
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdateAccessWindowAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_window_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_window_test" {
+  name          = "test-vm-policy-update-window-${random_id.update_window_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-window"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days (24/7)
+    from_hour        = "00:00"
+    to_hour          = "23:59"
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdateTargetsBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_targets_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_targets_test" {
+  name          = "test-vm-policy-update-targets-${random_id.update_targets_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "admin"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-dev"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdateTargetsAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_targets_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_targets_test" {
+  name          = "test-vm-policy-update-targets-${random_id.update_targets_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "admin"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-prod"  # Changed pattern
+    }
+    fqdn_rule {
+      operator             = "PREFIX"  # Added second rule
+      computername_pattern = "web-"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdateBehaviorBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_behavior_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_behavior_test" {
+  name          = "test-vm-policy-update-behavior-${random_id.update_behavior_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "admin"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-behavior"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdateBehaviorAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_behavior_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_behavior_test" {
+  name          = "test-vm-policy-update-behavior-${random_id.update_behavior_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "ubuntu"  # Changed username
+    }
+    rdp {  # Added RDP profile
+      local_ephemeral_user {
+        assign_groups = ["Administrators"]
+      }
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-behavior"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdatePreservesBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_preserve_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_preserve_test" {
+  name          = "test-vm-policy-update-preserve-${random_id.update_preserve_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-preserve"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigUpdatePreservesAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "update_preserve_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "update_preserve_test" {
+  name          = "test-vm-policy-update-preserve-${random_id.update_preserve_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-preserve"
+    }
+  }
+
+  max_session_duration = 6  # Updated from 2 to 6
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`

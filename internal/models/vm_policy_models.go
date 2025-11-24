@@ -77,7 +77,7 @@ type DomainEphemeralUserModel struct {
 
 // FQDNIPTargetsModel - FQDN/IP target rules
 type FQDNIPTargetsModel struct {
-	FQDNRules types.List `tfsdk:"fqdn_rule"` // []FQDNRuleModel
+	FQDNRules types.Set  `tfsdk:"fqdn_rule"` // Set of FQDNRuleModel (order-independent)
 	IPRules   types.List `tfsdk:"ip_rule"`   // []IPRuleModel
 }
 

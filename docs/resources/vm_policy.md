@@ -238,7 +238,7 @@ Optional:
 
 Optional:
 
-- `fqdn_rule` (Block List) FQDN matching rules. (see [below for nested schema](#nestedblock--fqdn_ip_targets--fqdn_rule))
+- `fqdn_rule` (Block Set) FQDN matching rules. Order-independent - rules are evaluated as a set. (see [below for nested schema](#nestedblock--fqdn_ip_targets--fqdn_rule))
 - `ip_rule` (Block List) IP address matching rules. (see [below for nested schema](#nestedblock--fqdn_ip_targets--ip_rule))
 
 <a id="nestedblock--fqdn_ip_targets--fqdn_rule"></a>
