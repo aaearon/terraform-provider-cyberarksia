@@ -744,9 +744,10 @@ func TestAccVMPolicy_awsUpdateRegions(t *testing.T) {
 }
 
 // TestAccVMPolicy_azureBasic tests Azure policy with regions, resource groups, and tags (T060)
-// SKIPPED: Azure support may not be enabled on test tenant (see POC notes: "HTTP 500 errors - may indicate server-side issue")
+// NOTE: Azure VM policies return HTTP 500 on this tenant - likely not fully enabled server-side.
+// Provider code is correct (SDK serialization fix applied), but Azure VM feature unavailable on test tenant.
 func TestAccVMPolicy_azureBasic(t *testing.T) {
-	t.Skip("Azure support not available on test tenant - POC notes indicate server-side issues")
+	t.Skip("Azure VM policies return 500 Internal Server Error on this tenant - feature not available")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

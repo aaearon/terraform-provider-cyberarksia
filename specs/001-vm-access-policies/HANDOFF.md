@@ -1,4 +1,63 @@
-## Session 8 Progress (2025-11-18 - Current)
+## Session 9 Progress (2025-11-24 - Current)
+
+### ✅ Azure SDK Bug - Definitively Proven & Documented
+
+**Objective**: Investigate Azure VM policy creation failures and determine root cause.
+
+**What Was Completed**:
+
+1. **SDK PoC Test Created** ✅
+   - File: `internal/provider/azure_sdk_poc_test.go`
+   - Fixed compile errors (auth types, principals, conditions)
+   - Proved both "Azure" and "AZURE" fail at SDK level
+   - Results: "Azure" → SDK rejects, "AZURE" → API rejects (500)
+
+2. **Direct API Testing** ✅
+   - Bypassed SDK entirely, made direct HTTP calls to SIA API
+   - Test 1: `{"Azure": {...}}` → HTTP 200 ✅ (Policy created: c0d56d12-93dd-48e3-8a9e-01ba0df2a779)
+   - Test 2: `{"AZURE": {...}}` → HTTP 500 ❌ (Internal Server Error)
+   - **Definitive proof**: API requires "Azure", SDK sends "AZURE"
+
+3. **Bug Documentation** ✅
+   - Comprehensive bug report: `GITHUB-ISSUE-ARK-SDK-AZURE-BUG.md`
+   - Follows official template from ark-sdk-golang repo
+   - Includes 3 reproduction methods (SDK, ARK CLI, Direct API)
+   - Root cause analysis with exact line numbers
+   - Proposed backward-compatible fix
+   - **Status**: Ready to submit to https://github.com/cyberark/ark-sdk-golang
+
+4. **Workaround Implementation Guide** ✅
+   - File: `AZURE-WORKAROUND-IMPLEMENTATION.md`
+   - Complete step-by-step implementation plan
+   - Follows `delete_workarounds.go` pattern
+   - Includes code templates and verification checklist
+   - Ready for future implementation (after US6 complete)
+
+**Root Cause**:
+```go
+// File: pkg/services/uap/sia/vm/models/ark_uap_sia_vm_targets.go
+const WorkspaceTypeAzure = "AZURE"  // ❌ SDK uses uppercase
+
+// Line 410: Uses constant as JSON key
+data[common.WorkspaceTypeAzure] = t.AzureResource.Serialize()  // Sends "AZURE"
+
+// API expects: {"Azure": {...}}  ✅ Mixed case
+// SDK sends:   {"AZURE": {...}}  ❌ Uppercase
+// Result: HTTP 500 Internal Server Error
+```
+
+**Files Created**:
+- `internal/provider/azure_sdk_poc_test.go` - PoC test proving bug
+- `specs/001-vm-access-policies/GITHUB-ISSUE-ARK-SDK-AZURE-BUG.md` - Bug report for SDK maintainers
+- `specs/001-vm-access-policies/AZURE-WORKAROUND-IMPLEMENTATION.md` - Implementation guide for Option 2 workaround
+
+**Decision**: Pause Azure workaround implementation, complete User Story 6 (Update Operations) first, then unblock Azure in separate PR.
+
+**Next Session**: Implement User Story 6 - Update Operations (5 tests)
+
+---
+
+## Session 8 Progress (2025-11-18)
 
 ### ✅ User Story 7: Delete Operations - Verification Complete
 
@@ -509,16 +568,23 @@ b923111 - fix(critical): change days_of_the_week from List to Set
 
 ---
 
-## 🚀 START HERE - Next Session Instructions
+## 🚀 START HERE - Session 10 Instructions
 
-### Current Status (Session 5 Complete)
-- ✅ User Stories 1-3: COMPLETE (13/13 tests passing, 373.46s)
-- ✅ Test quality: All tests now meaningfully verify functionality
-- ✅ Critical fixes: AWS empty arrays, ForceNew verification, principal preservation testing
-- ⏳ User Stories 4-7: PENDING (18 tests remaining)
-- 📋 Ready to continue with RDP, Azure/GCP, Update, Delete tests
+### Current Status (Session 9 Complete)
+- ✅ User Stories 1-4: COMPLETE (21/21 tests passing)
+- ✅ User Story 5: GCP complete (1/1), Azure documented/blocked (SDK bug)
+- ✅ User Story 7: Delete operations verified
+- ⏳ **User Story 6: Update Operations - NOT STARTED (5 tests remaining)**
+- 📊 Progress: 62/81 tasks (77% complete)
+- 🎯 Goal: Implement US6, reach 100% (minus Azure workaround)
 
-### Session 6 Quick Start
+### Azure Status
+- **Blocked**: SDK bug prevents Azure VM policy creation
+- **Documented**: Bug report ready for GitHub submission
+- **Workaround Ready**: Implementation guide created
+- **Decision**: Implement US6 first, Azure workaround in separate PR
+
+### Session 10 Quick Start
 
 **Credentials:**
 ```bash
@@ -531,50 +597,68 @@ export TF_ACC=1
 ```bash
 cd /home/tim/terraform-provider-cyberarksia
 git checkout 001-vm-access-policies
-git log --oneline -3  # Should show: deaf58c, d6026fe, 12e925d
+git log --oneline -3  # Should show: 274fafd, 26f2a9f, 7bf24fb
 
 # Run existing tests to verify
-go test ./internal/provider -v -run "TestAccVMPolicy" -timeout 20m
-# Expected: 13 tests pass (User Stories 1-3, ~373s)
+go test ./internal/provider -v -run "TestAccVMPolicy" -timeout 30m
+# Expected: 22 tests pass (US1-4, GCP, Delete; ~450s)
+# Expected: 1 test fail (Azure - blocked by SDK bug)
 ```
 
-### Recommended Approach: Continue with User Story 4 (RDP Connection Behavior)
+### Recommended Approach: User Story 6 (Update Operations) - ~2-3 hours
 
-**User Story 4: RDP Connection Behavior (T048-T055) - ~2-3 hours**
+**User Story 6: Update Operations (T064-T068) - ~2-3 hours**
 
 Tests to implement in `vm_policy_resource_test.go`:
 
-**T048**: RDP local ephemeral user
+**T064**: Update session duration
 ```go
-func TestAccVMPolicy_rdpLocalEphemeral(t *testing.T) {
-    // Test: RDP policy with local_ephemeral_user
-    // Verify: behavior.rdp.local_ephemeral_user populated
-    // Check: assign_groups, enable_ephemeral_user_reconnect
+func TestAccVMPolicy_updateSessionDuration(t *testing.T) {
+    // Test: Create policy with 1-hour session, update to 4 hours
+    // Verify: max_session_duration changes, all other fields preserved
+    // Pattern: resource.TestStep with Config changes
 }
 ```
 
-**T049**: RDP domain ephemeral user
+**T065**: Update access window
 ```go
-func TestAccVMPolicy_rdpDomainEphemeral(t *testing.T) {
-    // Test: RDP policy with domain_ephemeral_user
-    // Verify: assign_groups, assign_domain_groups
+func TestAccVMPolicy_updateAccessWindow(t *testing.T) {
+    // Test: Update days_of_the_week, from_hour, to_hour
+    // Verify: Access window changes reflect in state
 }
 ```
 
-**T050**: SSH + RDP combined
+**T066**: Update target rules
 ```go
-func TestAccVMPolicy_sshAndRdp(t *testing.T) {
-    // Test: Policy with both SSH and RDP behavior
-    // Verify: Both behaviors coexist correctly
+func TestAccVMPolicy_updateTargets(t *testing.T) {
+    // Test: Add/modify FQDN rules or AWS regions
+    // Verify: Target changes applied, principals preserved
 }
 ```
 
-**T051-T055**: Update RDP settings, ImportState, etc.
+**T067**: Update connection behavior
+```go
+func TestAccVMPolicy_updateBehavior(t *testing.T) {
+    // Test: Change SSH username or RDP settings
+    // Verify: Behavior updates, other config unchanged
+}
+```
+
+**T068**: Verify principals preserved during updates
+```go
+func TestAccVMPolicy_updatePreservesPrincipals(t *testing.T) {
+    // Test: Update session duration while principals exist
+    // Verify: Inline principals + assignments both preserved
+    // Critical: Tests Read-Modify-Write pattern
+}
+```
 
 **Test Command:**
 ```bash
-TF_ACC=1 go test ./internal/provider -v -run "TestAccVMPolicy_rdp" -timeout 15m
+TF_ACC=1 go test ./internal/provider -v -run "TestAccVMPolicy_update" -timeout 20m
 ```
+
+**Reference Pattern**: Look at `database_policy_resource_test.go` for update test examples
 
 ### Alternative: Skip to User Story 5 (Azure/GCP)
 
@@ -1235,3 +1319,124 @@ echo "Start with: TF_ACC=1 go test ./internal/provider -v -run TestAccVMPolicy_b
 
 Next developer: Start with Step 1 (Setup Test Environment) and proceed sequentially through Step 7 (Final PR).
 All context, patterns, and references are documented above. Good luck! 🚀
+
+---
+
+## Session 8 Progress (2025-11-18 - Complete)
+
+### ✅ User Stories 5 & 7 Implemented via Parallel Agents
+
+**Objective**: Implement Azure/GCP tests (US5) and verify delete operations (US7) using parallel agent execution.
+
+**Strategy**: Launched 2 agents simultaneously using the Task tool to maximize efficiency within context window.
+
+### User Story 5: Azure/GCP Cloud VM Access
+
+**Agent 1 Results**:
+- ✅ **GCP Test**: TestAccVMPolicy_gcpBasic - **PASSING** (25.70s)
+  - Tests: regions, projects, labels, SSH behavior, ImportState
+  - Verifies GCP-specific attribute naming (labels NOT tags)
+- ⚠️ **Azure Test**: TestAccVMPolicy_azureBasic - **FAILING**
+  - Error: `unsupported workspace type or missing resource`
+  - **NOT a server issue** - Provider bug (GCP works with same pattern)
+  - Test implementation complete, bug fix needed
+
+**Implementation Changes**:
+- Added `TestAccVMPolicy_azureBasic()` with comprehensive checks
+- Added `TestAccVMPolicy_gcpBasic()` with GCP-specific validation
+- Fixed empty array initialization for Azure/GCP targets (API requirement)
+- Added test configs for both cloud providers
+
+### User Story 7: Delete Operations Verification
+
+**Agent 2 Results**:
+- ✅ **T069: Principal Removal** - Verified by `TestAccVMPolicyPrincipalAssignment_crud`
+- ✅ **T070: Policy Deletion** - Verified by all 23 tests (automatic cleanup)
+- ✅ **T071: Drift Detection** - Verified by `TestAccVMPolicy_driftDetection`
+
+**Code Analysis**:
+- Delete() method: Lines 1155-1162 handle 404 gracefully
+- Read() method: Lines 858-867 detect drift and remove from state
+- All delete operations properly tested via existing test infrastructure
+
+### Test Results
+
+**Total: 23 tests**
+- ✅ **22 PASS** (95.7%)
+- ❌ **1 FAIL** (Azure - provider bug)
+
+**Breakdown by User Story**:
+- US1 (FQDN/IP): 5/5 ✅
+- US2 (Principals): 5/5 ✅
+- US3 (AWS): 3/3 ✅
+- US4 (RDP): 8/8 ✅
+- US5 (Azure/GCP): 1/2 (GCP ✅, Azure ❌)
+- US7 (Delete): Verified ✅
+
+### Files Modified (Session 8)
+
+**Code**:
+1. `internal/provider/vm_policy_resource.go`
+   - Fixed Azure/GCP empty array initialization
+   - Ensures API compatibility (arrays not null)
+
+2. `internal/provider/vm_policy_resource_test.go` (+200 lines)
+   - Added TestAccVMPolicy_azureBasic (Azure test)
+   - Added TestAccVMPolicy_gcpBasic (GCP test)
+   - Both tests include ImportState verification
+
+**Documentation**:
+3. `specs/001-vm-access-policies/tasks.md`
+   - Marked T060-T061 (Azure/GCP tests) complete
+   - Marked T069-T071 (Delete operations) complete
+
+4. `specs/001-vm-access-policies/QUICK-START-SESSION-8.md`
+   - Agent execution summary
+   - Parallel agent workflow documentation
+
+### Git Commits (Session 8)
+
+```
+274fafd - feat: add Azure/GCP acceptance tests + verify delete operations (US5 & US7)
+```
+
+### 🚧 Remaining Issue: Azure Provider Bug
+
+**Error**: `unsupported workspace type or missing resource`
+
+**Evidence it's a provider bug**:
+1. GCP works with identical pattern
+2. API responds (not HTTP 500)
+3. Error message indicates request structure issue
+4. Likely missing field or incorrect data structure
+
+**Hypothesis**:
+- Missing `Type` field in targets structure
+- Incorrect field name/casing
+- Missing required Azure-specific field
+
+**Next Session Action**: Debug and fix Azure implementation (see SESSION-9-PROMPT.md)
+
+### 📊 Overall Status (End of Session 8)
+
+**Progress**: 62/81 tasks (77%)
+
+**User Stories**:
+- ✅ US1: FQDN/IP Basic (COMPLETE)
+- ✅ US2: Principal Assignments (COMPLETE)
+- ✅ US3: AWS Cloud (COMPLETE)
+- ✅ US4: RDP Connection (COMPLETE)
+- ⚠️ US5: Azure/GCP (GCP complete, Azure bug)
+- ⏳ US6: Update Operations (Not started)
+- ✅ US7: Delete Operations (COMPLETE)
+
+**Test Coverage**: 22/23 passing (95.7%)
+
+**Branch**: `001-vm-access-policies`
+**Last Commit**: 274fafd
+
+**Next Steps**:
+1. Fix Azure provider bug (SESSION-9-PROMPT.md)
+2. Implement User Story 6 (Update operations - 5 tests)
+3. Documentation finalization
+4. Create PR
