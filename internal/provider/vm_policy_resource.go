@@ -546,6 +546,16 @@ func (r *VMPolicyResource) ValidateConfig(ctx context.Context, req resource.Vali
 		return
 	}
 
+	// Validate principals block is present and non-empty
+	// The SizeAtLeast(1) validator only runs when the block exists, so we need explicit null check
+	if config.Principals.IsNull() {
+		resp.Diagnostics.AddError(
+			"Missing Required Block",
+			"The 'principals' block is required. At least one principal must be assigned to the policy.",
+		)
+		return // Early return - no point checking other fields if principals is missing
+	}
+
 	// Validate exactly ONE location type and that it matches location_type attribute
 	locationTypeCount := 0
 	var configuredTargetType string
@@ -1853,6 +1863,16 @@ func buildSDKConditions(plan models.VMPolicyResourceModel) uapcommondels.ArkUAPS
 	return conditions
 }
 
+// normalizeStringToNull converts empty strings to types.StringNull()
+// This prevents perpetual diffs where plan has null but state has ""
+// Used for optional fields like source_directory_name/id on ROLE principals
+func normalizeStringToNull(s string) types.String {
+	if s == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(s)
+}
+
 // mapSDKPolicyToState converts SDK policy response to Terraform state
 // inlinePrincipalKeys: map of "principalID:principalType" keys that should be included in state
 // If empty, all principals from API are included (used during Create/Import)
@@ -1928,8 +1948,8 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 					PrincipalID:         types.StringValue(p.ID),
 					PrincipalName:       types.StringValue(p.Name),
 					PrincipalType:       types.StringValue(p.Type),
-					SourceDirectoryName: types.StringValue(p.SourceDirectoryName),
-					SourceDirectoryID:   types.StringValue(p.SourceDirectoryID),
+					SourceDirectoryName: normalizeStringToNull(p.SourceDirectoryName),
+					SourceDirectoryID:   normalizeStringToNull(p.SourceDirectoryID),
 				})
 			}
 		}

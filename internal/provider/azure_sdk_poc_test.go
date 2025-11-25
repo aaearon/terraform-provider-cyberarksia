@@ -1,4 +1,5 @@
 //go:build manual
+
 package provider
 
 import (

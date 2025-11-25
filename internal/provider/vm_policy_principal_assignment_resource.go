@@ -172,6 +172,9 @@ func (r *VMPolicyPrincipalAssignmentResource) Create(ctx context.Context, req re
 	}
 
 	// Read-modify-write: Fetch existing policy
+	// WORKAROUND: Azure VM policies may fail with SDK due to "AZURE" vs "Azure" case sensitivity
+	// If SDK fails with "unsupported workspace type", fallback to direct API read
+	// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
 	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
@@ -184,6 +187,22 @@ func (r *VMPolicyPrincipalAssignmentResource) Create(ctx context.Context, req re
 		})
 		return retryErr
 	})
+
+	// If SDK fails with "unsupported workspace type", it's likely an Azure policy - try workaround
+	if err != nil && strings.Contains(err.Error(), "unsupported workspace type") {
+		tflog.Debug(ctx, "SDK failed with unsupported workspace type, trying Azure workaround for Create", map[string]interface{}{
+			"policy_id": policyID,
+		})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			policy, fetchErr = client.ReadAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID)
+			return fetchErr
+		})
+	}
 
 	if err != nil {
 		resp.Diagnostics.Append(client.MapError(err, "fetch VM policy for principal assignment"))
@@ -214,14 +233,35 @@ func (r *VMPolicyPrincipalAssignmentResource) Create(ctx context.Context, req re
 	policy.Principals = append(policy.Principals, newPrincipal)
 
 	// Update policy with retry
-	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		_, err := vmService.UpdatePolicy(policy)
-		return err
-	})
+	// WORKAROUND: Azure VM policies require direct API call due to SDK bug
+	// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+	// TODO: Remove when SDK v1.6.0+ fixes WorkspaceTypeAzure case sensitivity
+	if policy.Targets.AzureResource != nil {
+		// Azure policies: Use workaround to fix "AZURE" → "Azure" key casing
+		tflog.Debug(ctx, "Using Azure VM policy UPDATE workaround for principal assignment", map[string]interface{}{
+			"policy_id":      policyID,
+			"principal_id":   principalID,
+			"principal_type": principalType,
+		})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			_, updateErr := client.UpdateAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID, policy)
+			return updateErr
+		})
+	} else {
+		// AWS/GCP/FQDN policies: Use normal SDK path
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			_, updateErr := vmService.UpdatePolicy(policy)
+			return updateErr
+		})
+	}
 
 	if err != nil {
 		resp.Diagnostics.Append(client.MapError(err, "assign principal to VM policy"))
@@ -280,6 +320,9 @@ func (r *VMPolicyPrincipalAssignmentResource) Read(ctx context.Context, req reso
 	}
 
 	// Fetch policy with retry
+	// WORKAROUND: Azure VM policies may fail with SDK due to "AZURE" vs "Azure" case sensitivity
+	// If SDK fails with "unsupported workspace type", fallback to direct API read
+	// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
 	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
@@ -292,6 +335,22 @@ func (r *VMPolicyPrincipalAssignmentResource) Read(ctx context.Context, req reso
 		})
 		return retryErr
 	})
+
+	// If SDK fails with "unsupported workspace type", it's likely an Azure policy - try workaround
+	if err != nil && strings.Contains(err.Error(), "unsupported workspace type") {
+		tflog.Debug(ctx, "SDK failed with unsupported workspace type, trying Azure workaround for Read", map[string]interface{}{
+			"policy_id": policyID,
+		})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			policy, fetchErr = client.ReadAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID)
+			return fetchErr
+		})
+	}
 
 	if err != nil {
 		if client.IsNotFoundError(err) {
@@ -389,6 +448,9 @@ func (r *VMPolicyPrincipalAssignmentResource) Delete(ctx context.Context, req re
 	}
 
 	// Read-modify-write: Fetch policy with retry
+	// WORKAROUND: Azure VM policies may fail with SDK due to "AZURE" vs "Azure" case sensitivity
+	// If SDK fails with "unsupported workspace type", fallback to direct API read
+	// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
 	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
@@ -401,6 +463,22 @@ func (r *VMPolicyPrincipalAssignmentResource) Delete(ctx context.Context, req re
 		})
 		return retryErr
 	})
+
+	// If SDK fails with "unsupported workspace type", it's likely an Azure policy - try workaround
+	if err != nil && strings.Contains(err.Error(), "unsupported workspace type") {
+		tflog.Debug(ctx, "SDK failed with unsupported workspace type, trying Azure workaround for Delete", map[string]interface{}{
+			"policy_id": policyID,
+		})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			policy, fetchErr = client.ReadAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID)
+			return fetchErr
+		})
+	}
 
 	if err != nil {
 		if client.IsNotFoundError(err) {
@@ -436,14 +514,35 @@ func (r *VMPolicyPrincipalAssignmentResource) Delete(ctx context.Context, req re
 	// Update policy with modified principals (let API validate ≥1 constraint)
 	policy.Principals = newPrincipals
 
-	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		_, updateErr := vmService.UpdatePolicy(policy)
-		return updateErr
-	})
+	// WORKAROUND: Azure VM policies require direct API call due to SDK bug
+	// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+	// TODO: Remove when SDK v1.6.0+ fixes WorkspaceTypeAzure case sensitivity
+	if policy.Targets.AzureResource != nil {
+		// Azure policies: Use workaround to fix "AZURE" → "Azure" key casing
+		tflog.Debug(ctx, "Using Azure VM policy UPDATE workaround for principal removal", map[string]interface{}{
+			"policy_id":      policyID,
+			"principal_id":   principalID,
+			"principal_type": principalType,
+		})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			_, updateErr := client.UpdateAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID, policy)
+			return updateErr
+		})
+	} else {
+		// AWS/GCP/FQDN policies: Use normal SDK path
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			_, updateErr := vmService.UpdatePolicy(policy)
+			return updateErr
+		})
+	}
 
 	if err != nil {
 		// Handle 404 as success - policy was deleted between check and update (race condition)

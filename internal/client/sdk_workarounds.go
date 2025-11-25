@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strconv"
 
 	"github.com/cyberark/ark-sdk-golang/pkg/common"
 	"github.com/cyberark/ark-sdk-golang/pkg/common/isp"
@@ -1260,37 +1261,75 @@ func UpdateAzureVMPolicyDirect(
 		return nil, fmt.Errorf("failed to create ISP client: %w", err)
 	}
 
-	// Build policy JSON using SDK's Serialize() + ConvertToCamelCase() methods
-	// This matches exactly what the SDK does, except we fix the Azure key afterwards
+	// Build policy JSON - can't use policy.Serialize() because it may fail with Azure policies
+	// that were read from API (workspace type "AZURE" vs SDK expectation)
+	// Instead: Marshal → ConvertToCamelCase → Fix Azure key (same as CreateAzureVMPolicyDirect)
 
-	// Step 1: Serialize (this will use "AZURE" key)
-	serialized, err := policy.Serialize()
+	// Step 1: Marshal to get basic JSON structure
+	policyJSON, err := json.Marshal(policy)
 	if err != nil {
-		tflog.Error(ctx, "Failed to serialize policy", map[string]interface{}{
+		tflog.Error(ctx, "Failed to marshal policy", map[string]interface{}{
 			"policy_id":   policyID,
 			"policy_name": policy.Metadata.Name,
 			"error":       err.Error(),
 		})
-		return nil, fmt.Errorf("failed to serialize policy: %w", err)
+		return nil, fmt.Errorf("failed to marshal policy: %w", err)
 	}
 
-	// Step 2: Convert to camelCase (this is what SDK does - converts AZURE → azure)
+	var policyMapSnakeCase map[string]interface{}
+	if err := json.Unmarshal(policyJSON, &policyMapSnakeCase); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal policy: %w", err)
+	}
+
+	// Step 2: Apply ConvertToCamelCase like the SDK does
 	policyType := uapsiavmmodels.ArkUAPSIAVMAccessPolicy{}
 	reflectType := reflect.TypeOf(policyType)
-	camelCaseMap := common.ConvertToCamelCase(serialized, &reflectType)
+	camelCaseMap := common.ConvertToCamelCase(policyMapSnakeCase, &reflectType)
 
 	policyMap, ok := camelCaseMap.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("failed to convert camelCase result to map")
 	}
 
-	// Step 3: Fix Azure key (azure → Azure) since ConvertToCamelCase lowercases it
+	// Step 3: Fix Azure key and ensure Azure targets have camelCase fields
+	// - ConvertToCamelCase converts azure_resource → azureResource, but we need "Azure"
+	// - Also need to ensure Azure targets have camelCase fields (resourceGroups, vnetIds)
+	// - Also need to ensure null arrays become empty arrays (API requires this)
 	if targets, ok := policyMap["targets"].(map[string]interface{}); ok {
-		if azureTargets, exists := targets["azure"]; exists {
-			delete(targets, "azure")
-			targets["Azure"] = azureTargets
+		// Get the properly serialized Azure targets with camelCase fields
+		if policy.Targets.AzureResource != nil {
+			azureTargetsSerialized := policy.Targets.AzureResource.Serialize()
+			delete(targets, "azureResource") // Remove the camelCased version
 
-			tflog.Debug(ctx, "Fixed Azure targets key: azure → Azure", map[string]interface{}{
+			// Fix null arrays → empty arrays in Azure targets (API requires non-null arrays)
+			// Serialize() returns map[string]interface{} where nil slices become JSON null
+			// We need to ensure all array fields are non-null for the API
+			// Force all array fields to empty array if they would marshal to JSON null
+			for _, key := range []string{"regions", "resourceGroups", "subscriptions", "vnetIds", "tags"} {
+				val := azureTargetsSerialized[key]
+				needsFix := false
+
+				if val == nil {
+					needsFix = true
+				} else {
+					// Use reflection to check for nil slice
+					rv := reflect.ValueOf(val)
+					if rv.Kind() == reflect.Slice && rv.IsNil() {
+						needsFix = true
+					}
+				}
+
+				if needsFix {
+					azureTargetsSerialized[key] = []interface{}{}
+					tflog.Debug(ctx, "Fixed Azure target null → empty array", map[string]interface{}{
+						"field": key,
+					})
+				}
+			}
+
+			targets["Azure"] = azureTargetsSerialized // Add with correct capitalization
+
+			tflog.Debug(ctx, "Fixed Azure targets: replaced azureResource with Azure (camelCase fields)", map[string]interface{}{
 				"policy_id":   policyID,
 				"policy_name": policy.Metadata.Name,
 			})
@@ -1335,19 +1374,17 @@ func UpdateAzureVMPolicyDirect(
 		})
 	}
 
-	// Step 5: Clean up metadata - remove server-managed empty objects and fix policyTags
+	// Step 5: Clean up metadata - remove server-managed fields and fix various issues
 	// Note: Keys are now camelCase after ConvertToCamelCase()
+	// For UPDATE, the policy was READ from API so has full server-managed fields populated
 	if metadata, ok := policyMap["metadata"].(map[string]interface{}); ok {
-		// Remove empty objects that the SDK emits but the API doesn't expect
+		// Remove server-managed fields (they exist with full data from API read, not just empty)
 		for _, key := range []string{"createdBy", "updatedOn", "timeFrame"} {
-			if val, exists := metadata[key]; exists {
-				// Check if it's an empty map
-				if mapVal, isMap := val.(map[string]interface{}); isMap && len(mapVal) == 0 {
-					delete(metadata, key)
-					tflog.Debug(ctx, "Removed empty metadata field", map[string]interface{}{
-						"field": key,
-					})
-				}
+			if _, exists := metadata[key]; exists {
+				delete(metadata, key)
+				tflog.Debug(ctx, "Removed server-managed metadata field for UPDATE", map[string]interface{}{
+					"field": key,
+				})
 			}
 		}
 
@@ -1357,9 +1394,41 @@ func UpdateAzureVMPolicyDirect(
 			metadata["policyTags"] = []string{}
 			tflog.Debug(ctx, "Fixed policyTags from null to empty array", nil)
 		}
+
+		// Fix locationType: AZURE → Azure (ReadAzureVMPolicyDirect converts Azure→AZURE for SDK)
+		if entitlement, ok := metadata["policyEntitlement"].(map[string]interface{}); ok {
+			if locationType, ok := entitlement["locationType"].(string); ok && locationType == "AZURE" {
+				entitlement["locationType"] = "Azure"
+				tflog.Debug(ctx, "Fixed locationType: AZURE → Azure for API", nil)
+			}
+		}
+
+		// Fix status.statusCode: string "200" → integer 200
+		if status, ok := metadata["status"].(map[string]interface{}); ok {
+			if statusCode, ok := status["statusCode"].(string); ok {
+				// Convert string to float64 (JSON numbers are float64)
+				if code, err := strconv.ParseFloat(statusCode, 64); err == nil {
+					status["statusCode"] = code
+					tflog.Debug(ctx, "Fixed statusCode: string → number", nil)
+				}
+			}
+			// Remove link if empty/nil
+			if link, exists := status["link"]; exists && (link == nil || link == "") {
+				delete(status, "link")
+			}
+		}
 	}
 
 	// Step 6: Make PUT request with corrected JSON
+	// Log the full JSON being sent for debugging
+	if jsonBytes, err := json.MarshalIndent(policyMap, "", "  "); err == nil {
+		tflog.Debug(ctx, "Sending Azure VM policy UPDATE JSON to API", map[string]interface{}{
+			"policy_id":   policyID,
+			"policy_name": policy.Metadata.Name,
+			"json":        string(jsonBytes),
+		})
+	}
+
 	endpoint := fmt.Sprintf(vmPolicyUpdateURL, policyID)
 	response, err := client.Put(ctx, endpoint, policyMap)
 	if err != nil {
