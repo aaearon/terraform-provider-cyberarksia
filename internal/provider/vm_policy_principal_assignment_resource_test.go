@@ -92,6 +92,41 @@ func TestAccVMPolicyPrincipalAssignment_duplicateDetection(t *testing.T) {
 	})
 }
 
+// TestAccVMPolicyPrincipalAssignment_forceNewAttributes tests that principal_id and principal_type changes force replacement (T069)
+// This validates ForceNew behavior - changing the principal should create a new assignment.
+func TestAccVMPolicyPrincipalAssignment_forceNewAttributes(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Step 1: Create with GROUP principal
+			{
+				Config: testAccVMPolicyPrincipalAssignmentConfigForceNewBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy_principal_assignment.forcenew_test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy_principal_assignment.forcenew_test", "principal_type", "GROUP"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy_principal_assignment.forcenew_test", "principal_name", "CyberArk Guardians"),
+				),
+			},
+			// Step 2: Change to USER principal - should force replacement
+			{
+				Config: testAccVMPolicyPrincipalAssignmentConfigForceNewAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy_principal_assignment.forcenew_test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy_principal_assignment.forcenew_test", "principal_type", "USER"),
+					// Verify the assignment changed to a different principal
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy_principal_assignment.forcenew_test", "principal_name", "tim.schindler@cyberark.cloud.40562"),
+				),
+			},
+		},
+	})
+}
+
 // ============================================================================
 // Test Configurations
 // ============================================================================
@@ -206,5 +241,123 @@ resource "cyberarksia_vm_policy_principal_assignment" "dup_test" {
   principal_type        = data.cyberarksia_principal.test_user.principal_type
   source_directory_name = data.cyberarksia_principal.test_user.directory_name
   source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+}
+`
+
+const testAccVMPolicyPrincipalAssignmentConfigForceNewBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "forcenew_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "forcenew_test" {
+  name          = "test-vm-policy-forcenew-${random_id.forcenew_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-forcenew"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+# Initial assignment with GROUP principal
+data "cyberarksia_principal" "assigned_group" {
+  name = "CyberArk Guardians"
+  type = "GROUP"
+}
+
+resource "cyberarksia_vm_policy_principal_assignment" "forcenew_test" {
+  policy_id             = cyberarksia_vm_policy.forcenew_test.policy_id
+  principal_id          = data.cyberarksia_principal.assigned_group.id
+  principal_name        = data.cyberarksia_principal.assigned_group.name
+  principal_type        = data.cyberarksia_principal.assigned_group.principal_type
+  source_directory_name = data.cyberarksia_principal.assigned_group.directory_name
+  source_directory_id   = data.cyberarksia_principal.assigned_group.directory_id
+}
+`
+
+const testAccVMPolicyPrincipalAssignmentConfigForceNewAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "forcenew_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "forcenew_test" {
+  name          = "test-vm-policy-forcenew-${random_id.forcenew_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-forcenew"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+# Changed to USER principal - should force replacement of assignment
+data "cyberarksia_principal" "assigned_user" {
+  name = "tim.schindler@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "cyberarksia_vm_policy_principal_assignment" "forcenew_test" {
+  policy_id             = cyberarksia_vm_policy.forcenew_test.policy_id
+  principal_id          = data.cyberarksia_principal.assigned_user.id
+  principal_name        = data.cyberarksia_principal.assigned_user.name
+  principal_type        = data.cyberarksia_principal.assigned_user.principal_type
+  source_directory_name = data.cyberarksia_principal.assigned_user.directory_name
+  source_directory_id   = data.cyberarksia_principal.assigned_user.directory_id
 }
 `

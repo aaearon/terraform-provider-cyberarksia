@@ -1925,6 +1925,54 @@ func TestAccVMPolicy_updateBehavior(t *testing.T) {
 	})
 }
 
+// TestAccVMPolicy_updateStatusDescriptionTags tests updating status (Active→Suspended), description, and tags (T068)
+// This test validates fields that were previously untested, inspired by DB policy test coverage.
+func TestAccVMPolicy_updateStatusDescriptionTags(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Step 1: Create with Active status, initial description and tags
+			{
+				Config: testAccVMPolicyConfigStatusDescTagsBefore,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.status_desc_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "status", "Active"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "description", "Initial policy description for testing"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "tags.#", "2"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "tags.0", "initial-tag"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "tags.1", "terraform-test"),
+				),
+			},
+			// Step 2: Update status to Suspended, change description and modify tags
+			{
+				Config: testAccVMPolicyConfigStatusDescTagsAfter,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.status_desc_test", "name"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "status", "Suspended"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "description", "Updated policy description after modification"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "tags.#", "3"),
+					// Verify policy_id didn't change (no ForceNew)
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.status_desc_test", "policy_id"),
+					// Verify principals preserved
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.status_desc_test", "principals.#", "1"),
+				),
+			},
+			// Step 3: Verify import still works after update
+			{
+				ResourceName:      "cyberarksia_vm_policy.status_desc_test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 // ============================================================================
 // Update Test Configurations - User Story 6
 // ============================================================================
@@ -2285,6 +2333,102 @@ resource "cyberarksia_vm_policy" "update_behavior_test" {
     fqdn_rule {
       operator             = "SUFFIX"
       computername_pattern = "-behavior"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+// ============================================================================
+// Status and Description Update Tests - High Value (inspired by DB policy tests)
+// ============================================================================
+
+const testAccVMPolicyConfigStatusDescTagsBefore = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "status_desc_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "status_desc_test" {
+  name          = "test-vm-policy-status-desc-${random_id.status_desc_test.hex}"
+  description   = "Initial policy description for testing"
+  location_type = "FQDN/IP"
+  status        = "Active"
+  tags          = ["initial-tag", "terraform-test"]
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-statustest"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+`
+
+const testAccVMPolicyConfigStatusDescTagsAfter = `
+data "cyberarksia_principal" "test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+resource "random_id" "status_desc_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "status_desc_test" {
+  name          = "test-vm-policy-status-desc-${random_id.status_desc_test.hex}"
+  description   = "Updated policy description after modification"
+  location_type = "FQDN/IP"
+  status        = "Suspended"
+  tags          = ["updated-tag", "terraform-test", "modified"]
+
+  principals {
+    principal_id          = data.cyberarksia_principal.test_user.id
+    principal_name        = data.cyberarksia_principal.test_user.name
+    principal_type        = data.cyberarksia_principal.test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-statustest"
     }
   }
 
