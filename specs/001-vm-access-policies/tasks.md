@@ -212,6 +212,17 @@
 - [x] T060 [P] [US5] Add acceptance test for Azure policy with resource groups and tags - **DONE** (TestAccVMPolicy_azureBasic)
 - [x] T061 [P] [US5] Add acceptance test for GCP policy with labels and projects - **DONE** (TestAccVMPolicy_gcpBasic)
 
+**Azure SDK Workaround (Session 11)**: ARK SDK v1.5.0 has bugs preventing Azure VM policies from working:
+- SDK uses `"AZURE"` (uppercase) but API expects `"Azure"` (mixed case) for targets key and locationType
+- SDK produces `behavior.sshProfile` but API expects `behavior.connectAs.ssh`
+- SDK's `Deserialize()` fails on Azure responses
+
+**Solution**: Implemented direct HTTP workarounds in `internal/client/sdk_workarounds.go`:
+- `CreateAzureVMPolicyDirect()`, `ReadAzureVMPolicyDirect()`, `UpdateAzureVMPolicyDirect()`
+- Resource methods detect Azure via `strings.EqualFold(locationType, "Azure")` and use workarounds
+- GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+- TODO: Remove when ARK SDK v1.6.0+ fixes Azure serialization
+
 ### Examples for User Story 5
 
 - [x] T062 [P] [US5] Create Azure policy example in `examples/resources/cyberarksia_vm_policy/azure_policy.tf`

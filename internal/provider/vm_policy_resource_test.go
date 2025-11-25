@@ -747,7 +747,8 @@ func TestAccVMPolicy_awsUpdateRegions(t *testing.T) {
 // NOTE: Azure VM policies return HTTP 500 on this tenant - likely not fully enabled server-side.
 // Provider code is correct (SDK serialization fix applied), but Azure VM feature unavailable on test tenant.
 func TestAccVMPolicy_azureBasic(t *testing.T) {
-	t.Skip("Azure VM policies return 500 Internal Server Error on this tenant - feature not available")
+	// Workaround implemented for Azure SDK bug (GitHub issue #32)
+	// Azure VM policies should now work correctly with fixed JSON key casing
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

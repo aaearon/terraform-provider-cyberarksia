@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
@@ -586,6 +587,16 @@ func (r *VMPolicyResource) ValidateConfig(ctx context.Context, req resource.Vali
 		}
 	}
 
+	// Additional validation: If location_type is "Azure" but azure_targets is null
+	// This prevents malformed Azure policies that would fail with SDK workaround
+	if !config.LocationType.IsNull() && config.LocationType.ValueString() == "Azure" && config.AzureTargets.IsNull() {
+		resp.Diagnostics.AddError(
+			"Missing Azure Targets Configuration",
+			"When location_type is set to \"Azure\", you must configure the azure_targets block. "+
+				"Azure VM policies require Azure-specific target criteria (regions, resource_groups, vnet_ids, subscriptions, or tags).",
+		)
+	}
+
 	// Validate at least one connection profile (SSH or RDP)
 	var behavior models.BehaviorModel
 	diags := config.Behavior.As(ctx, &behavior, basetypes.ObjectAsOptions{})
@@ -736,16 +747,40 @@ func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateReques
 	policy.Conditions = buildSDKConditions(plan)
 
 	// Create policy with retry logic
+	// WORKAROUND: Azure VM policies require direct API call due to SDK bug
+	// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+	// TODO: Remove when SDK v1.6.0+ fixes WorkspaceTypeAzure case sensitivity
 	var created *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
-	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		var createErr error
-		created, createErr = vmService.AddPolicy(policy)
-		return createErr
-	})
+	var err error
+
+	if !plan.AzureTargets.IsNull() {
+		// Azure policies: Use workaround to fix "AZURE" → "Azure" key casing
+		tflog.Debug(ctx, "Using Azure VM policy workaround", map[string]interface{}{
+			"policy_name":   plan.Name.ValueString(),
+			"location_type": plan.LocationType.ValueString(),
+		})
+
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var createErr error
+			created, createErr = client.CreateAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policy)
+			return createErr
+		})
+	} else {
+		// AWS/GCP/FQDN policies: Use normal SDK path
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var createErr error
+			created, createErr = vmService.AddPolicy(policy)
+			return createErr
+		})
+	}
 
 	if err != nil {
 		resp.Diagnostics.Append(client.MapError(err, "create VM policy"))
@@ -842,18 +877,41 @@ func (r *VMPolicyResource) Read(ctx context.Context, req resource.ReadRequest, r
 	})
 
 	// Fetch policy from API with retry logic
+	// Use Azure workaround if location_type is Azure (SDK has deserialization bug)
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
-	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		var fetchErr error
-		policy, fetchErr = vmService.Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
-			PolicyID: policyID,
+	var err error
+
+	// Use case-insensitive comparison to handle both "Azure" and "AZURE" (pre-normalization state)
+	isAzurePolicy := strings.EqualFold(state.LocationType.ValueString(), "Azure")
+
+	if isAzurePolicy {
+		tflog.Debug(ctx, "Using Azure VM policy READ workaround", map[string]interface{}{
+			"policy_id":     policyID,
+			"location_type": "Azure",
 		})
-		return fetchErr
-	})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			policy, fetchErr = client.ReadAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID)
+			return fetchErr
+		})
+	} else {
+		// AWS/GCP/FQDN policies: Use normal SDK path
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			policy, fetchErr = vmService.Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
+				PolicyID: policyID,
+			})
+			return fetchErr
+		})
+	}
 
 	if err != nil {
 		// Drift detection: 404 = policy deleted externally
@@ -863,6 +921,12 @@ func (r *VMPolicyResource) Read(ctx context.Context, req resource.ReadRequest, r
 		}
 
 		resp.Diagnostics.Append(client.MapError(err, "read VM policy"))
+		return
+	}
+
+	// Azure workaround returns nil for 404 (drift detection)
+	if policy == nil {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -909,20 +973,52 @@ func (r *VMPolicyResource) Update(ctx context.Context, req resource.UpdateReques
 	policyID := state.PolicyID.ValueString()
 
 	// Step 1: READ existing policy from API with retry logic
+	// Use Azure workaround if location_type is Azure (SDK has deserialization bug)
 	var existingPolicy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
-	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		var fetchErr error
-		existingPolicy, fetchErr = vmService.Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
-			PolicyID: policyID,
+	var err error
+
+	isAzurePolicy := strings.EqualFold(state.LocationType.ValueString(), "Azure")
+
+	if isAzurePolicy {
+		tflog.Debug(ctx, "Using Azure VM policy READ workaround for update", map[string]interface{}{
+			"policy_id":     policyID,
+			"location_type": state.LocationType.ValueString(),
 		})
-		return fetchErr
-	})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			existingPolicy, fetchErr = client.ReadAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID)
+			return fetchErr
+		})
+	} else {
+		// AWS/GCP/FQDN policies: Use normal SDK path
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			existingPolicy, fetchErr = vmService.Policy(&uapcommonmodels.ArkUAPGetPolicyRequest{
+				PolicyID: policyID,
+			})
+			return fetchErr
+		})
+	}
+
 	if err != nil {
 		resp.Diagnostics.Append(client.MapError(err, "read VM policy for update"))
+		return
+	}
+
+	// Azure workaround returns nil for 404
+	if existingPolicy == nil {
+		resp.Diagnostics.AddError(
+			"Policy Not Found",
+			fmt.Sprintf("VM policy %s no longer exists", policyID),
+		)
 		return
 	}
 
@@ -988,16 +1084,40 @@ func (r *VMPolicyResource) Update(ctx context.Context, req resource.UpdateReques
 	existingPolicy.Conditions = buildSDKConditions(plan)
 
 	// Step 6: WRITE back to API
+	// WORKAROUND: Azure VM policies require direct API call due to SDK bug
+	// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+	// TODO: Remove when SDK v1.6.0+ fixes WorkspaceTypeAzure case sensitivity
 	var updated *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
-	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
-		MaxRetries: client.DefaultMaxRetries,
-		BaseDelay:  client.BaseDelay,
-		MaxDelay:   client.MaxDelay,
-	}, func() error {
-		var updateErr error
-		updated, updateErr = vmService.UpdatePolicy(existingPolicy)
-		return updateErr
-	})
+
+	if !plan.AzureTargets.IsNull() {
+		// Azure policies: Use workaround to fix "AZURE" → "Azure" key casing
+		tflog.Debug(ctx, "Using Azure VM policy UPDATE workaround", map[string]interface{}{
+			"policy_id":     plan.PolicyID.ValueString(),
+			"policy_name":   plan.Name.ValueString(),
+			"location_type": plan.LocationType.ValueString(),
+		})
+
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var updateErr error
+			updated, updateErr = client.UpdateAzureVMPolicyDirect(ctx, r.providerData.AuthContext, plan.PolicyID.ValueString(), existingPolicy)
+			return updateErr
+		})
+	} else {
+		// AWS/GCP/FQDN policies: Use normal SDK path
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var updateErr error
+			updated, updateErr = vmService.UpdatePolicy(existingPolicy)
+			return updateErr
+		})
+	}
 
 	if err != nil {
 		resp.Diagnostics.Append(client.MapError(err, "update VM policy"))
@@ -1184,8 +1304,12 @@ func (r *VMPolicyResource) ImportState(ctx context.Context, req resource.ImportS
 	}
 
 	// Fetch policy from API with retry logic
+	// Try normal SDK path first, fall back to Azure workaround if needed
+	// (We don't know the location type during import)
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
-	err := client.RetryWithBackoff(ctx, &client.RetryConfig{
+	var err error
+
+	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
 		BaseDelay:  client.BaseDelay,
 		MaxDelay:   client.MaxDelay,
@@ -1197,8 +1321,33 @@ func (r *VMPolicyResource) ImportState(ctx context.Context, req resource.ImportS
 		return fetchErr
 	})
 
+	// If SDK fails with "unsupported workspace type", it's likely an Azure policy - try workaround
+	if err != nil && strings.Contains(err.Error(), "unsupported workspace type") {
+		tflog.Debug(ctx, "SDK failed with unsupported workspace type, trying Azure workaround", map[string]interface{}{
+			"policy_id": policyID,
+		})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			policy, fetchErr = client.ReadAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID)
+			return fetchErr
+		})
+	}
+
 	if err != nil {
 		resp.Diagnostics.Append(client.MapError(err, "import VM policy"))
+		return
+	}
+
+	// Azure workaround returns nil for 404 (policy deleted between SDK call and fallback)
+	if policy == nil {
+		resp.Diagnostics.AddError(
+			"Policy Not Found",
+			fmt.Sprintf("VM policy %s does not exist or was deleted", policyID),
+		)
 		return
 	}
 
@@ -1519,6 +1668,7 @@ func buildSDKTargets(ctx context.Context, plan models.VMPolicyResourceModel, dia
 		azureResource := &uapsiavmmodels.ArkUAPSIAVMAzureResource{
 			// Initialize empty arrays - API requires these fields even if empty
 			Regions:        []string{},
+			Tags:           []uapsiavmmodels.ArkUAPSIAVMKeyValTag{},
 			ResourceGroups: []string{},
 			VNetIDs:        []string{},
 			Subscriptions:  []string{},
@@ -1722,7 +1872,12 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		state.Description = types.StringNull()
 	}
 	state.TimeZone = types.StringValue(sdkPolicy.Metadata.TimeZone)
-	state.LocationType = types.StringValue(sdkPolicy.Metadata.PolicyEntitlement.LocationType)
+	// Normalize location type: SDK workaround uses "AZURE" but TF schema expects "Azure"
+	locationType := sdkPolicy.Metadata.PolicyEntitlement.LocationType
+	if locationType == "AZURE" {
+		locationType = "Azure"
+	}
+	state.LocationType = types.StringValue(locationType)
 	state.Status = types.StringValue(sdkPolicy.Metadata.Status.Status)
 	state.PolicyType = types.StringValue(sdkPolicy.Metadata.PolicyEntitlement.PolicyType)
 	state.DelegationClassification = types.StringValue(sdkPolicy.DelegationClassification)
@@ -1800,7 +1955,29 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			} else {
 				state.Principals = principalsList
 			}
+		} else {
+			// No matching principals - set to typed null list
+			state.Principals = types.ListNull(types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"principal_id":          types.StringType,
+					"principal_name":        types.StringType,
+					"principal_type":        types.StringType,
+					"source_directory_name": types.StringType,
+					"source_directory_id":   types.StringType,
+				},
+			})
 		}
+	} else {
+		// No principals from API - set to typed null list
+		state.Principals = types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"principal_id":          types.StringType,
+				"principal_name":        types.StringType,
+				"principal_type":        types.StringType,
+				"source_directory_name": types.StringType,
+				"source_directory_id":   types.StringType,
+			},
+		})
 	}
 
 	// Conditions
