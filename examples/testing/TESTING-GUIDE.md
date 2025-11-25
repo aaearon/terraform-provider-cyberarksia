@@ -163,12 +163,20 @@ If templates or procedures are outdated:
 ## Resources Tested
 
 This test validates all CyberArk SIA Terraform provider resources:
+
+### Database Resources
 1. **Certificate** - TLS/mTLS certificates
 2. **Secret** - Database credentials
 3. **Database Workspace** - Database connection configurations
 4. **Database Policy** - Access policy metadata and conditions
 5. **Database Policy Principal Assignment** - Assign users/groups/roles to policies
 6. **Policy Database Assignment** - Assign databases to access policies
+
+### VM/Server Resources
+7. **VM Policy** - VM access policies (FQDN/IP, AWS, Azure, GCP targets with SSH/RDP)
+8. **VM Policy Principal Assignment** - Assign users/groups/roles to VM policies
+9. **Target Set** - VM/server target sets (Domain/Suffix/Target matching)
+10. **Virtual Machine Secret** - VM credentials (ProvisionerUser/PCloudAccount)
 
 ---
 
@@ -368,6 +376,12 @@ For detailed testing procedures for specific resources, see the following guides
   - Policy condition testing
 
 ### VM/Server Resources
+
+- **[VM Policy Resource Testing](resources/vm-policy.md)**
+  - VM access policy CRUD testing (FQDN/IP, AWS, Azure, GCP)
+  - SSH and RDP connection behavior testing
+  - Principal assignment resource testing
+  - Azure SDK workaround validation
 
 - **[Target Set Resource Testing](resources/target-set.md)**
   - VM/server target set testing

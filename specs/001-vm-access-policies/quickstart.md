@@ -634,13 +634,17 @@ func (r *VMPolicyResource) Delete(ctx context.Context, req resource.DeleteReques
 
     policyID := state.PolicyID.ValueString()
 
-    // Use SDK method directly - NO workaround needed for VM policies
-    err := r.providerData.VMService.DeletePolicy(&uapcommonmodels.ArkUAPDeletePolicyRequest{
-        PolicyID: policyID,
+    // Use workaround (ARK SDK v1.5.0 nil body bug affects all DELETE operations)
+    err := client.RetryWithBackoff(ctx, &client.RetryConfig{
+        MaxRetries: client.DefaultMaxRetries,
+        BaseDelay:  client.BaseDelay,
+        MaxDelay:   client.MaxDelay,
+    }, func() error {
+        return client.DeleteDatabasePolicyDirect(ctx, r.providerData.AuthContext, policyID)
     })
     if err != nil {
         // 404 = already deleted (drift detection) - treat as success
-        if strings.Contains(err.Error(), "404") {
+        if client.IsNotFoundError(err) {
             return
         }
         resp.Diagnostics.Append(client.MapError(err, "delete VM policy")...)
@@ -649,7 +653,7 @@ func (r *VMPolicyResource) Delete(ctx context.Context, req resource.DeleteReques
 }
 ```
 
-**Note**: VM policies do NOT need `internal/client/delete_workarounds.go`
+**Note**: VM policies reuse `DeleteDatabasePolicyDirect` from `internal/client/delete_workarounds.go` since the ARK SDK v1.5.0 nil body bug affects all policy delete operations.
 
 ---
 
@@ -752,16 +756,16 @@ existingPolicy.Principals = /* only inline principals from plan */
 existingPolicy.Principals = append(inlinePrincipals, assignedPrincipals...)
 ```
 
-### Pitfall 2: Using DELETE Workaround
+### Pitfall 2: NOT Using DELETE Workaround
 
-**Wrong**:
+**Wrong** (will panic due to ARK SDK v1.5.0 nil body bug):
 ```go
-err := client.DeletePolicyDirect(ctx, providerData.AuthContext, policyID)  // Database policy workaround
+err := vmService.DeletePolicy(&uapcommonmodels.ArkUAPDeletePolicyRequest{PolicyID: policyID})
 ```
 
-**Correct**:
+**Correct** (use workaround):
 ```go
-err := vmService.DeletePolicy(&uapcommonmodels.ArkUAPDeletePolicyRequest{PolicyID: policyID})  // SDK works directly
+err := client.DeleteDatabasePolicyDirect(ctx, providerData.AuthContext, policyID)  // Reuses database workaround
 ```
 
 ### Pitfall 3: Incorrect Location Type Validation
@@ -769,6 +773,26 @@ err := vmService.DeletePolicy(&uapcommonmodels.ArkUAPDeletePolicyRequest{PolicyI
 **Wrong**: Allow multiple location type blocks (confusing error from API)
 
 **Correct**: Validate exactly one location type in `ValidateConfig()`
+
+### Pitfall 4: Not Using Azure Workarounds
+
+**Wrong** (ARK SDK v1.5.0 uses wrong casing for Azure):
+```go
+// SDK uses "AZURE" but API expects "Azure" - causes HTTP 500 errors
+created, err := vmService.AddPolicy(policy)  // For Azure policies
+```
+
+**Correct** (use HTTP workarounds in `internal/client/sdk_workarounds.go`):
+```go
+// Detect Azure location type
+if strings.EqualFold(plan.LocationType.ValueString(), "Azure") {
+    created, err = client.CreateAzureVMPolicyDirect(ctx, providerData.AuthContext, policy)
+} else {
+    created, err = vmService.AddPolicy(policy)
+}
+```
+
+**Note**: Azure policies require `CreateAzureVMPolicyDirect()`, `ReadAzureVMPolicyDirect()`, and `UpdateAzureVMPolicyDirect()` workarounds. See GitHub issue: https://github.com/cyberark/ark-sdk-golang/issues/32
 
 ---
 

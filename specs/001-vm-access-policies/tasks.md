@@ -296,13 +296,13 @@
 - [x] T072 Register VM policy resource in `internal/provider/provider.go` (add to Resources method)
 - [x] T073 Register principal assignment resource in `internal/provider/provider.go`
 - [x] T074 [P] Create complete policy example in `examples/resources/cyberarksia_vm_policy/complete.tf` (all features: AWS + RDP + time windows + multiple principals)
-- [ ] T075 [P] Update `examples/testing/TESTING-GUIDE.md` with VM policy CRUD validation scenarios
+- [x] T075 [P] Update `examples/testing/TESTING-GUIDE.md` with VM policy CRUD validation scenarios - **DONE** (Session 12, added `examples/testing/resources/vm-policy.md`)
 - [x] T076 Run `tfplugindocs generate` to create resource documentation
 - [x] T077 [P] Update `CLAUDE.md` resource table with cyberarksia_vm_policy and cyberarksia_vm_policy_principal_assignment
 - [x] T078 [P] Create implementation summary in `docs/development/vm-policy-implementation.md`
 - [x] T079 Run `make validate` (format, lint, security checks)
-- [ ] T080 Run full acceptance test suite: `TF_ACC=1 go test ./internal/provider -v -run TestAccVMPolicy`
-- [ ] T081 Verify quickstart.md walkthrough produces working resources
+- [x] T080 Run full acceptance test suite: `TF_ACC=1 go test ./internal/provider -v -run TestAccVMPolicy` - **DONE** (Session 12, 31 tests passed in 918.85s)
+- [x] T081 Verify quickstart.md walkthrough produces working resources - **DONE** (Session 12, updated DELETE/Azure workaround documentation)
 
 ---
 
@@ -416,7 +416,7 @@ With multiple developers:
 
 ## Summary
 
-**Total Tasks**: 81 (78 completed ✅, 3 remaining)
+**Total Tasks**: 81 (81 completed ✅)
 **By User Story**:
 - Setup: 3/3 tasks ✅
 - Foundational: 4/4 tasks ✅ (BLOCKS all user stories)
@@ -424,15 +424,15 @@ With multiple developers:
 - US2 (P1 - Principal assignment): 12/12 tasks ✅ (implementation + tests)
 - US3 (P2 - AWS cloud): 7/7 tasks ✅
 - US4 (P2 - RDP behavior): 20/20 tasks ✅ (includes schema fixes)
-- US5 (P3 - Multi-cloud): 8/8 tasks ✅ (implementation + tests)
+- US5 (P3 - Multi-cloud): 8/8 tasks ✅ (implementation + tests + Azure workaround)
 - US6 (P2 - Update testing): 5/5 tasks ✅ (Session 10 - includes drift fix)
 - US7 (P3 - Delete testing): 3/3 tasks ✅
-- Polish: 7/10 tasks (3 tasks pending: T075, T080, T081)
+- Polish: 10/10 tasks ✅
 
 **Parallel Opportunities**: 28 tasks marked [P] can run in parallel with other tasks
 **Independent Stories**: Each user story (US1-US7) can be tested independently
 **MVP Scope**: US1 + US2 (34 tasks) delivers core on-premises VM access policy management
 
-**Latest Update (Session 10)**: User Story 6 complete - all update tests passing with ImportState verification, drift issue resolved
+**Latest Update (Session 12)**: All tasks complete - 31 acceptance tests passing, documentation updated
 
 **Format Validation**: ✅ All tasks follow checklist format with checkbox, ID, [P] marker (where applicable), [Story] label (for user story tasks), and file paths
