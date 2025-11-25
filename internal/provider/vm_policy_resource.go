@@ -456,25 +456,25 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 					},
 				},
 				Attributes: map[string]schema.Attribute{
-					"regions": schema.ListAttribute{
+					"regions": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "Azure regions (e.g., eastus, westeurope). Empty means all regions.",
+						MarkdownDescription: "Azure regions (e.g., eastus, westeurope). Empty means all regions. Order is not significant.",
 					},
-					"resource_groups": schema.ListAttribute{
+					"resource_groups": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "Azure resource groups. Empty means all resource groups.",
+						MarkdownDescription: "Azure resource groups. Empty means all resource groups. Order is not significant.",
 					},
-					"vnet_ids": schema.ListAttribute{
+					"vnet_ids": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "Virtual Network IDs. Empty means all VNets.",
+						MarkdownDescription: "Virtual Network IDs. Empty means all VNets. Order is not significant.",
 					},
-					"subscriptions": schema.ListAttribute{
+					"subscriptions": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "Azure subscription IDs. Empty means all subscriptions.",
+						MarkdownDescription: "Azure subscription IDs. Empty means all subscriptions. Order is not significant.",
 					},
 				},
 			},
@@ -500,20 +500,20 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 					},
 				},
 				Attributes: map[string]schema.Attribute{
-					"regions": schema.ListAttribute{
+					"regions": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "GCP regions (e.g., us-central1, europe-west1). Empty means all regions.",
+						MarkdownDescription: "GCP regions (e.g., us-central1, europe-west1). Empty means all regions. Order is not significant.",
 					},
-					"vpc_ids": schema.ListAttribute{
+					"vpc_ids": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "VPC network IDs. Empty means all VPCs.",
+						MarkdownDescription: "VPC network IDs. Empty means all VPCs. Order is not significant.",
 					},
-					"projects": schema.ListAttribute{
+					"projects": schema.SetAttribute{
 						ElementType:         types.StringType,
 						Optional:            true,
-						MarkdownDescription: "GCP project IDs. Empty means all projects.",
+						MarkdownDescription: "GCP project IDs. Empty means all projects. Order is not significant.",
 					},
 				},
 			},
@@ -2340,10 +2340,10 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 		// Map regions
 		if len(sdkPolicy.Targets.AzureResource.Regions) > 0 {
-			azureTargets.Regions, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.AzureResource.Regions)
+			azureTargets.Regions, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.AzureResource.Regions)
 			diags.Append(diagsTemp...)
 		} else {
-			azureTargets.Regions = types.ListNull(types.StringType)
+			azureTargets.Regions = types.SetNull(types.StringType)
 		}
 
 		// Map tags
@@ -2378,54 +2378,54 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 		// Map Resource Groups
 		if len(sdkPolicy.Targets.AzureResource.ResourceGroups) > 0 {
-			azureTargets.ResourceGroups, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.AzureResource.ResourceGroups)
+			azureTargets.ResourceGroups, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.AzureResource.ResourceGroups)
 			diags.Append(diagsTemp...)
 		} else {
-			azureTargets.ResourceGroups = types.ListNull(types.StringType)
+			azureTargets.ResourceGroups = types.SetNull(types.StringType)
 		}
 
 		// Map VNet IDs
 		if len(sdkPolicy.Targets.AzureResource.VNetIDs) > 0 {
-			azureTargets.VNetIDs, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.AzureResource.VNetIDs)
+			azureTargets.VNetIDs, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.AzureResource.VNetIDs)
 			diags.Append(diagsTemp...)
 		} else {
-			azureTargets.VNetIDs = types.ListNull(types.StringType)
+			azureTargets.VNetIDs = types.SetNull(types.StringType)
 		}
 
 		// Map Subscriptions
 		if len(sdkPolicy.Targets.AzureResource.Subscriptions) > 0 {
-			azureTargets.Subscriptions, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.AzureResource.Subscriptions)
+			azureTargets.Subscriptions, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.AzureResource.Subscriptions)
 			diags.Append(diagsTemp...)
 		} else {
-			azureTargets.Subscriptions = types.ListNull(types.StringType)
+			azureTargets.Subscriptions = types.SetNull(types.StringType)
 		}
 
 		// Convert to object
 		state.AzureTargets, diagsTemp = types.ObjectValueFrom(ctx, map[string]attr.Type{
-			"regions": types.ListType{ElemType: types.StringType},
+			"regions": types.SetType{ElemType: types.StringType},
 			"tags": types.ListType{ElemType: types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"key":   types.StringType,
 					"value": types.ListType{ElemType: types.StringType},
 				},
 			}},
-			"resource_groups": types.ListType{ElemType: types.StringType},
-			"vnet_ids":        types.ListType{ElemType: types.StringType},
-			"subscriptions":   types.ListType{ElemType: types.StringType},
+			"resource_groups": types.SetType{ElemType: types.StringType},
+			"vnet_ids":        types.SetType{ElemType: types.StringType},
+			"subscriptions":   types.SetType{ElemType: types.StringType},
 		}, azureTargets)
 		diags.Append(diagsTemp...)
 	} else {
 		state.AzureTargets = types.ObjectNull(map[string]attr.Type{
-			"regions": types.ListType{ElemType: types.StringType},
+			"regions": types.SetType{ElemType: types.StringType},
 			"tags": types.ListType{ElemType: types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"key":   types.StringType,
 					"value": types.ListType{ElemType: types.StringType},
 				},
 			}},
-			"resource_groups": types.ListType{ElemType: types.StringType},
-			"vnet_ids":        types.ListType{ElemType: types.StringType},
-			"subscriptions":   types.ListType{ElemType: types.StringType},
+			"resource_groups": types.SetType{ElemType: types.StringType},
+			"vnet_ids":        types.SetType{ElemType: types.StringType},
+			"subscriptions":   types.SetType{ElemType: types.StringType},
 		})
 	}
 
@@ -2436,10 +2436,10 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 		// Map regions
 		if len(sdkPolicy.Targets.GCPResource.Regions) > 0 {
-			gcpTargets.Regions, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.GCPResource.Regions)
+			gcpTargets.Regions, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.GCPResource.Regions)
 			diags.Append(diagsTemp...)
 		} else {
-			gcpTargets.Regions = types.ListNull(types.StringType)
+			gcpTargets.Regions = types.SetNull(types.StringType)
 		}
 
 		// Map labels (NOTE: GCP uses Labels not Tags!)
@@ -2474,44 +2474,44 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 		// Map VPC IDs
 		if len(sdkPolicy.Targets.GCPResource.VPCIDs) > 0 {
-			gcpTargets.VPCIDs, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.GCPResource.VPCIDs)
+			gcpTargets.VPCIDs, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.GCPResource.VPCIDs)
 			diags.Append(diagsTemp...)
 		} else {
-			gcpTargets.VPCIDs = types.ListNull(types.StringType)
+			gcpTargets.VPCIDs = types.SetNull(types.StringType)
 		}
 
 		// Map Projects
 		if len(sdkPolicy.Targets.GCPResource.Projects) > 0 {
-			gcpTargets.Projects, diagsTemp = types.ListValueFrom(ctx, types.StringType, sdkPolicy.Targets.GCPResource.Projects)
+			gcpTargets.Projects, diagsTemp = types.SetValueFrom(ctx, types.StringType, sdkPolicy.Targets.GCPResource.Projects)
 			diags.Append(diagsTemp...)
 		} else {
-			gcpTargets.Projects = types.ListNull(types.StringType)
+			gcpTargets.Projects = types.SetNull(types.StringType)
 		}
 
 		// Convert to object
 		state.GCPTargets, diagsTemp = types.ObjectValueFrom(ctx, map[string]attr.Type{
-			"regions": types.ListType{ElemType: types.StringType},
+			"regions": types.SetType{ElemType: types.StringType},
 			"labels": types.ListType{ElemType: types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"key":   types.StringType,
 					"value": types.ListType{ElemType: types.StringType},
 				},
 			}},
-			"vpc_ids":  types.ListType{ElemType: types.StringType},
-			"projects": types.ListType{ElemType: types.StringType},
+			"vpc_ids":  types.SetType{ElemType: types.StringType},
+			"projects": types.SetType{ElemType: types.StringType},
 		}, gcpTargets)
 		diags.Append(diagsTemp...)
 	} else {
 		state.GCPTargets = types.ObjectNull(map[string]attr.Type{
-			"regions": types.ListType{ElemType: types.StringType},
+			"regions": types.SetType{ElemType: types.StringType},
 			"labels": types.ListType{ElemType: types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"key":   types.StringType,
 					"value": types.ListType{ElemType: types.StringType},
 				},
 			}},
-			"vpc_ids":  types.ListType{ElemType: types.StringType},
-			"projects": types.ListType{ElemType: types.StringType},
+			"vpc_ids":  types.SetType{ElemType: types.StringType},
+			"projects": types.SetType{ElemType: types.StringType},
 		})
 	}
 

@@ -105,19 +105,19 @@ type AWSTargetsModel struct {
 
 // AzureTargetsModel - Azure cloud target criteria
 type AzureTargetsModel struct {
-	Regions        types.List `tfsdk:"regions"`         // []string
+	Regions        types.Set  `tfsdk:"regions"`         // []string, order-independent
 	Tags           types.List `tfsdk:"tags"`            // []TagModel
-	ResourceGroups types.List `tfsdk:"resource_groups"` // []string
-	VNetIDs        types.List `tfsdk:"vnet_ids"`        // []string
-	Subscriptions  types.List `tfsdk:"subscriptions"`   // []string
+	ResourceGroups types.Set  `tfsdk:"resource_groups"` // []string, order-independent
+	VNetIDs        types.Set  `tfsdk:"vnet_ids"`        // []string, order-independent
+	Subscriptions  types.Set  `tfsdk:"subscriptions"`   // []string, order-independent
 }
 
 // GCPTargetsModel - GCP cloud target criteria (uses Labels, not Tags!)
 type GCPTargetsModel struct {
-	Regions  types.List `tfsdk:"regions"`  // []string
+	Regions  types.Set  `tfsdk:"regions"`  // []string, order-independent
 	Labels   types.List `tfsdk:"labels"`   // []TagModel (NOTE: field name is "labels" not "tags")
-	VPCIDs   types.List `tfsdk:"vpc_ids"`  // []string
-	Projects types.List `tfsdk:"projects"` // []string
+	VPCIDs   types.Set  `tfsdk:"vpc_ids"`  // []string, order-independent
+	Projects types.Set  `tfsdk:"projects"` // []string, order-independent
 }
 
 // TagModel - Key-value tag/label structure

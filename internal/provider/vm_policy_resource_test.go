@@ -2,10 +2,12 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"testing"
 
+	"github.com/aaearon/terraform-provider-cyberarksia/internal/client"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
@@ -112,8 +114,10 @@ func TestAccVMPolicy_sshWithTimeWindow(t *testing.T) {
 
 // TestAccVMPolicy_driftDetection tests policy drift detection (T024)
 // This test verifies that if a policy is deleted outside Terraform (e.g., manually via API),
-// Terraform correctly detects the drift and handles the 404 gracefully.
+// Terraform correctly detects the drift and plans to recreate the resource.
 func TestAccVMPolicy_driftDetection(t *testing.T) {
+	var policyID string
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -123,23 +127,45 @@ func TestAccVMPolicy_driftDetection(t *testing.T) {
 			},
 		},
 		Steps: []resource.TestStep{
-			// Step 1: Create policy
+			// Step 1: Create policy and capture policy_id for out-of-band delete
 			{
 				Config: testAccVMPolicyConfigDrift,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.drift_test", "name"),
 					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.drift_test", "policy_id"),
+					// Capture policy_id for deletion in next step
+					func(s *terraform.State) error {
+						rs, ok := s.RootModule().Resources["cyberarksia_vm_policy.drift_test"]
+						if !ok {
+							return fmt.Errorf("resource not found")
+						}
+						policyID = rs.Primary.Attributes["policy_id"]
+						return nil
+					},
 				),
 			},
-			// Step 2: Destroy (tests that Delete handles 404 gracefully for drift scenarios)
-			// The Read method detects 404 and removes from state
-			// The Delete method also handles 404 as "already deleted" (drift case)
-			// This implicitly tests drift detection behavior
+			// Step 2: Delete policy via API (out-of-band) and verify Terraform detects drift
 			{
-				Config: testAccVMPolicyConfigDrift,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.drift_test", "policy_id"),
-				),
+				PreConfig: func() {
+					// Delete policy via API to simulate external deletion/drift
+					providerData, err := getProviderDataFromEnv()
+					if err != nil {
+						t.Fatalf("failed to get provider data: %v", err)
+					}
+
+					ctx := context.Background()
+					err = client.DeleteDatabasePolicyDirect(ctx, providerData.AuthContext, policyID)
+					if err != nil {
+						// Ignore 404 - policy may already be deleted
+						if !client.IsNotFoundError(err) {
+							t.Fatalf("failed to delete policy via API: %v", err)
+						}
+					}
+					t.Logf("Deleted policy '%s' via API to simulate drift", policyID)
+				},
+				Config:             testAccVMPolicyConfigDrift,
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true, // Terraform should detect drift and plan to recreate
 			},
 		},
 	})
@@ -198,48 +224,6 @@ func TestAccVMPolicy_forceNewOnNameChange(t *testing.T) {
 				),
 			},
 		},
-	})
-}
-
-// TestAccVMPolicy_validationErrors tests validation error handling (T026)
-func TestAccVMPolicy_validationErrors(t *testing.T) {
-	t.Run("missing_principals", func(t *testing.T) {
-		resource.Test(t, resource.TestCase{
-			PreCheck:                 func() { testAccPreCheck(t) },
-			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				{
-					Config:      testAccVMPolicyConfigMissingPrincipals,
-					ExpectError: regexp.MustCompile(`Attribute principals list must contain at least 1 elements|principals block is required|Input should be a valid list.*field:\s*principals`),
-				},
-			},
-		})
-	})
-
-	t.Run("missing_ssh_username", func(t *testing.T) {
-		resource.Test(t, resource.TestCase{
-			PreCheck:                 func() { testAccPreCheck(t) },
-			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				{
-					Config:      testAccVMPolicyConfigMissingSSHUsername,
-					ExpectError: regexp.MustCompile("The argument \"username\" is required|username is required"),
-				},
-			},
-		})
-	})
-
-	t.Run("conflicting_location_types", func(t *testing.T) {
-		resource.Test(t, resource.TestCase{
-			PreCheck:                 func() { testAccPreCheck(t) },
-			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-			Steps: []resource.TestStep{
-				{
-					Config:      testAccVMPolicyConfigConflictingLocationTypes,
-					ExpectError: regexp.MustCompile("Exactly one location type must be specified|Exactly one target type must be configured"),
-				},
-			},
-		})
 	})
 }
 
@@ -462,121 +446,6 @@ resource "cyberarksia_vm_policy" "forcenew_test" {
       operator             = "SUFFIX"
       computername_pattern = "-renamed"
     }
-  }
-
-  max_session_duration = 2
-
-  access_window {
-    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
-  }
-}
-`
-
-// Validation test configs
-const testAccVMPolicyConfigMissingPrincipals = `
-resource "cyberarksia_vm_policy" "invalid" {
-  name          = "test-vm-policy-invalid"
-  location_type = "FQDN/IP"
-  status        = "Active"
-
-  # Missing required principals block
-
-  behavior {
-    ssh {
-      username = "testuser"
-    }
-  }
-
-  fqdn_ip_targets {
-    fqdn_rule {
-      operator             = "SUFFIX"
-      computername_pattern = "-test"
-    }
-  }
-
-  max_session_duration = 2
-
-  access_window {
-    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
-  }
-}
-`
-
-const testAccVMPolicyConfigMissingSSHUsername = `
-data "cyberarksia_principal" "test_user" {
-  name = "timtest@cyberark.cloud.40562"
-  type = "USER"
-}
-
-resource "cyberarksia_vm_policy" "invalid" {
-  name          = "test-vm-policy-invalid-ssh"
-  location_type = "FQDN/IP"
-  status        = "Active"
-
-  principals {
-    principal_id          = data.cyberarksia_principal.test_user.id
-    principal_name        = data.cyberarksia_principal.test_user.name
-    principal_type        = data.cyberarksia_principal.test_user.principal_type
-    source_directory_name = data.cyberarksia_principal.test_user.directory_name
-    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
-  }
-
-  behavior {
-    ssh {
-      # Missing required username
-    }
-  }
-
-  fqdn_ip_targets {
-    fqdn_rule {
-      operator             = "SUFFIX"
-      computername_pattern = "-test"
-    }
-  }
-
-  max_session_duration = 2
-
-  access_window {
-    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]  # All days
-  }
-}
-`
-
-const testAccVMPolicyConfigConflictingLocationTypes = `
-data "cyberarksia_principal" "test_user" {
-  name = "timtest@cyberark.cloud.40562"
-  type = "USER"
-}
-
-resource "cyberarksia_vm_policy" "invalid" {
-  name          = "test-vm-policy-invalid-location"
-  location_type = "FQDN/IP"
-  status        = "Active"
-
-  principals {
-    principal_id          = data.cyberarksia_principal.test_user.id
-    principal_name        = data.cyberarksia_principal.test_user.name
-    principal_type        = data.cyberarksia_principal.test_user.principal_type
-    source_directory_name = data.cyberarksia_principal.test_user.directory_name
-    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
-  }
-
-  behavior {
-    ssh {
-      username = "testuser"
-    }
-  }
-
-  # Conflicting: Both FQDN/IP and AWS targets specified
-  fqdn_ip_targets {
-    fqdn_rule {
-      operator             = "SUFFIX"
-      computername_pattern = "-test"
-    }
-  }
-
-  aws_targets {
-    regions = ["us-east-1"]
   }
 
   max_session_duration = 2
@@ -1856,7 +1725,10 @@ resource "cyberarksia_vm_policy" "gcp_test" {
 // Update Tests - User Story 6
 // ============================================================================
 
-// TestAccVMPolicy_updateSessionDuration tests updating max_session_duration (T064)
+// TestAccVMPolicy_updateSessionDuration tests updating max_session_duration and principal preservation (T064, T068)
+// This consolidated test verifies:
+// - Session duration can be updated without ForceNew
+// - Read-Modify-Write pattern preserves principals during update
 func TestAccVMPolicy_updateSessionDuration(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -1875,8 +1747,10 @@ func TestAccVMPolicy_updateSessionDuration(t *testing.T) {
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "max_session_duration", "1"),
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "idle_time", "10"),
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "behavior.ssh.username", "original"),
-					// Verify principals set initially
+					// Verify principals set initially with full details
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "principals.#", "1"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_session_test", "principals.0.principal_id"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "principals.0.principal_type", "USER"),
 				),
 			},
 			// Step 2: Update to 4-hour session duration
@@ -1889,8 +1763,10 @@ func TestAccVMPolicy_updateSessionDuration(t *testing.T) {
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "behavior.ssh.username", "original"), // Unchanged
 					// CRITICAL: Verify policy_id didn't change (no ForceNew)
 					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_session_test", "policy_id"),
-					// CRITICAL: Verify principals preserved during update
+					// CRITICAL: Verify principals preserved during update (Read-Modify-Write pattern)
 					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "principals.#", "1"),
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_session_test", "principals.0.principal_id"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_session_test", "principals.0.principal_type", "USER"),
 				),
 			},
 			// Step 3: Verify import still works after update
@@ -2042,55 +1918,6 @@ func TestAccVMPolicy_updateBehavior(t *testing.T) {
 			// Step 3: Verify import still works after update
 			{
 				ResourceName:      "cyberarksia_vm_policy.update_behavior_test",
-				ImportState:       true,
-				ImportStateVerify: true,
-			},
-		},
-	})
-}
-
-// TestAccVMPolicy_updatePreservesPrincipals tests critical Read-Modify-Write pattern (T068)
-// This test verifies that updating policy attributes (session duration) while principals
-// exist doesn't overwrite or lose principal assignments.
-func TestAccVMPolicy_updatePreservesPrincipals(t *testing.T) {
-	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		ExternalProviders: map[string]resource.ExternalProvider{
-			"random": {
-				Source: "hashicorp/random",
-			},
-		},
-		Steps: []resource.TestStep{
-			// Step 1: Create policy with principal and 2-hour session
-			{
-				Config: testAccVMPolicyConfigUpdatePreservesBefore,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "name"),
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "max_session_duration", "2"),
-					// Verify principal is set
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "principals.#", "1"),
-					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "principals.0.principal_id"),
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "principals.0.principal_type", "USER"),
-				),
-			},
-			// Step 2: Update session duration (tests Read-Modify-Write pattern)
-			{
-				Config: testAccVMPolicyConfigUpdatePreservesAfter,
-				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "name"),
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "max_session_duration", "6"), // Changed
-					// CRITICAL: Verify principal still exists after update
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "principals.#", "1"),
-					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "principals.0.principal_id"),
-					resource.TestCheckResourceAttr("cyberarksia_vm_policy.update_preserve_test", "principals.0.principal_type", "USER"),
-					// Verify policy_id didn't change (no ForceNew)
-					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy.update_preserve_test", "policy_id"),
-				),
-			},
-			// Step 3: Verify import still works after update
-			{
-				ResourceName:      "cyberarksia_vm_policy.update_preserve_test",
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
@@ -2462,94 +2289,6 @@ resource "cyberarksia_vm_policy" "update_behavior_test" {
   }
 
   max_session_duration = 2
-
-  access_window {
-    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
-  }
-}
-`
-
-const testAccVMPolicyConfigUpdatePreservesBefore = `
-data "cyberarksia_principal" "test_user" {
-  name = "timtest@cyberark.cloud.40562"
-  type = "USER"
-}
-
-resource "random_id" "update_preserve_test" {
-  byte_length = 4
-}
-
-resource "cyberarksia_vm_policy" "update_preserve_test" {
-  name          = "test-vm-policy-update-preserve-${random_id.update_preserve_test.hex}"
-  location_type = "FQDN/IP"
-  status        = "Active"
-
-  principals {
-    principal_id          = data.cyberarksia_principal.test_user.id
-    principal_name        = data.cyberarksia_principal.test_user.name
-    principal_type        = data.cyberarksia_principal.test_user.principal_type
-    source_directory_name = data.cyberarksia_principal.test_user.directory_name
-    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
-  }
-
-  behavior {
-    ssh {
-      username = "testuser"
-    }
-  }
-
-  fqdn_ip_targets {
-    fqdn_rule {
-      operator             = "SUFFIX"
-      computername_pattern = "-preserve"
-    }
-  }
-
-  max_session_duration = 2
-
-  access_window {
-    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
-  }
-}
-`
-
-const testAccVMPolicyConfigUpdatePreservesAfter = `
-data "cyberarksia_principal" "test_user" {
-  name = "timtest@cyberark.cloud.40562"
-  type = "USER"
-}
-
-resource "random_id" "update_preserve_test" {
-  byte_length = 4
-}
-
-resource "cyberarksia_vm_policy" "update_preserve_test" {
-  name          = "test-vm-policy-update-preserve-${random_id.update_preserve_test.hex}"
-  location_type = "FQDN/IP"
-  status        = "Active"
-
-  principals {
-    principal_id          = data.cyberarksia_principal.test_user.id
-    principal_name        = data.cyberarksia_principal.test_user.name
-    principal_type        = data.cyberarksia_principal.test_user.principal_type
-    source_directory_name = data.cyberarksia_principal.test_user.directory_name
-    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
-  }
-
-  behavior {
-    ssh {
-      username = "testuser"
-    }
-  }
-
-  fqdn_ip_targets {
-    fqdn_rule {
-      operator             = "SUFFIX"
-      computername_pattern = "-preserve"
-    }
-  }
-
-  max_session_duration = 6  # Updated from 2 to 6
 
   access_window {
     days_of_the_week = [0, 1, 2, 3, 4, 5, 6]

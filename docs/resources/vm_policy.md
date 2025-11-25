@@ -169,11 +169,11 @@ Optional:
 
 Optional:
 
-- `regions` (List of String) Azure regions (e.g., eastus, westeurope). Empty means all regions.
-- `resource_groups` (List of String) Azure resource groups. Empty means all resource groups.
-- `subscriptions` (List of String) Azure subscription IDs. Empty means all subscriptions.
+- `regions` (Set of String) Azure regions (e.g., eastus, westeurope). Empty means all regions. Order is not significant.
+- `resource_groups` (Set of String) Azure resource groups. Empty means all resource groups. Order is not significant.
+- `subscriptions` (Set of String) Azure subscription IDs. Empty means all subscriptions. Order is not significant.
 - `tags` (Block List) Azure resource tags for target matching. (see [below for nested schema](#nestedblock--azure_targets--tags))
-- `vnet_ids` (List of String) Virtual Network IDs. Empty means all VNets.
+- `vnet_ids` (Set of String) Virtual Network IDs. Empty means all VNets. Order is not significant.
 
 <a id="nestedblock--azure_targets--tags"></a>
 ### Nested Schema for `azure_targets.tags`
@@ -271,9 +271,9 @@ Required:
 Optional:
 
 - `labels` (Block List) GCP resource labels for target matching. (see [below for nested schema](#nestedblock--gcp_targets--labels))
-- `projects` (List of String) GCP project IDs. Empty means all projects.
-- `regions` (List of String) GCP regions (e.g., us-central1, europe-west1). Empty means all regions.
-- `vpc_ids` (List of String) VPC network IDs. Empty means all VPCs.
+- `projects` (Set of String) GCP project IDs. Empty means all projects. Order is not significant.
+- `regions` (Set of String) GCP regions (e.g., us-central1, europe-west1). Empty means all regions. Order is not significant.
+- `vpc_ids` (Set of String) VPC network IDs. Empty means all VPCs. Order is not significant.
 
 <a id="nestedblock--gcp_targets--labels"></a>
 ### Nested Schema for `gcp_targets.labels`
