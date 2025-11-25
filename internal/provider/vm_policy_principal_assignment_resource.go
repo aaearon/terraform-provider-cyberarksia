@@ -601,6 +601,9 @@ func (r *VMPolicyPrincipalAssignmentResource) ImportState(ctx context.Context, r
 	}
 
 	// Fetch policy with retry
+	// WORKAROUND: Azure VM policies may fail with SDK due to "AZURE" vs "Azure" case sensitivity
+	// If SDK fails with "unsupported workspace type", fallback to direct API read
+	// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
 	var policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy
 	err = client.RetryWithBackoff(ctx, &client.RetryConfig{
 		MaxRetries: client.DefaultMaxRetries,
@@ -613,6 +616,22 @@ func (r *VMPolicyPrincipalAssignmentResource) ImportState(ctx context.Context, r
 		})
 		return retryErr
 	})
+
+	// If SDK fails with "unsupported workspace type", it's likely an Azure policy - try workaround
+	if err != nil && strings.Contains(err.Error(), "unsupported workspace type") {
+		tflog.Debug(ctx, "SDK failed with unsupported workspace type, trying Azure workaround for Import", map[string]interface{}{
+			"policy_id": policyID,
+		})
+		err = client.RetryWithBackoff(ctx, &client.RetryConfig{
+			MaxRetries: client.DefaultMaxRetries,
+			BaseDelay:  client.BaseDelay,
+			MaxDelay:   client.MaxDelay,
+		}, func() error {
+			var fetchErr error
+			policy, fetchErr = client.ReadAzureVMPolicyDirect(ctx, r.providerData.AuthContext, policyID)
+			return fetchErr
+		})
+	}
 
 	if err != nil {
 		resp.Diagnostics.Append(client.MapError(err, "fetch VM policy for import"))

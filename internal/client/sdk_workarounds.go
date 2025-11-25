@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"strconv"
 
 	"github.com/cyberark/ark-sdk-golang/pkg/common"
 	"github.com/cyberark/ark-sdk-golang/pkg/common/isp"
@@ -1379,7 +1378,8 @@ func UpdateAzureVMPolicyDirect(
 	// For UPDATE, the policy was READ from API so has full server-managed fields populated
 	if metadata, ok := policyMap["metadata"].(map[string]interface{}); ok {
 		// Remove server-managed fields (they exist with full data from API read, not just empty)
-		for _, key := range []string{"createdBy", "updatedOn", "timeFrame"} {
+		// CRITICAL: policyId must NOT be in the request body for UPDATE - it's in the URL only
+		for _, key := range []string{"createdBy", "updatedOn", "timeFrame", "policyId"} {
 			if _, exists := metadata[key]; exists {
 				delete(metadata, key)
 				tflog.Debug(ctx, "Removed server-managed metadata field for UPDATE", map[string]interface{}{
@@ -1403,18 +1403,17 @@ func UpdateAzureVMPolicyDirect(
 			}
 		}
 
-		// Fix status.statusCode: string "200" → integer 200
+		// Clean up status object - remove server-managed fields that should not be in UPDATE request
+		// The API returns statusCode and statusDescription, but CREATE only sends status: { status: "Active" }
 		if status, ok := metadata["status"].(map[string]interface{}); ok {
-			if statusCode, ok := status["statusCode"].(string); ok {
-				// Convert string to float64 (JSON numbers are float64)
-				if code, err := strconv.ParseFloat(statusCode, 64); err == nil {
-					status["statusCode"] = code
-					tflog.Debug(ctx, "Fixed statusCode: string → number", nil)
+			// Remove server-managed status fields (not present in CREATE, causes HTTP 500 in UPDATE)
+			for _, key := range []string{"statusCode", "statusDescription", "link"} {
+				if _, exists := status[key]; exists {
+					delete(status, key)
+					tflog.Debug(ctx, "Removed server-managed status field for UPDATE", map[string]interface{}{
+						"field": key,
+					})
 				}
-			}
-			// Remove link if empty/nil
-			if link, exists := status["link"]; exists && (link == nil || link == "") {
-				delete(status, "link")
 			}
 		}
 	}
@@ -1458,58 +1457,22 @@ func UpdateAzureVMPolicyDirect(
 			policyID, response.StatusCode, common.SerializeResponseToJSON(response.Body))
 	}
 
-	// Parse response - API returns camelCase JSON, SDK structs use snake_case mapstructure tags
-	// 1. Decode JSON to map (camelCase)
-	// 2. Convert to snake_case using SDK's ConvertToSnakeCase()
-	// 3. Use Deserialize() to populate struct
-	var responseMap map[string]interface{}
-	if err := json.NewDecoder(response.Body).Decode(&responseMap); err != nil {
-		tflog.Error(ctx, "Failed to decode UPDATE response to map", map[string]interface{}{
-			"policy_id":   policyID,
-			"policy_name": policy.Metadata.Name,
-			"error":       err.Error(),
-		})
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	tflog.Debug(ctx, "UPDATE response map (camelCase)", map[string]interface{}{
-		"response": fmt.Sprintf("%+v", responseMap),
+	// API returns 200 with empty body for PUT operations
+	// After successful UPDATE, fetch the updated policy using GET to return the current state
+	tflog.Debug(ctx, "Azure VM policy UPDATE successful, fetching updated policy via GET", map[string]interface{}{
+		"policy_id":   policyID,
+		"policy_name": policy.Metadata.Name,
 	})
 
-	// Fix Azure-related fields before conversion - SDK expects "AZURE" not "Azure"
-	// 1. Fix targets key
-	if targets, ok := responseMap["targets"].(map[string]interface{}); ok {
-		if azureTargets, exists := targets["Azure"]; exists {
-			delete(targets, "Azure")
-			targets["AZURE"] = azureTargets
-			tflog.Debug(ctx, "Fixed UPDATE response: Azure → AZURE targets key", nil)
-		}
-	}
-	// 2. Fix locationType in metadata.policyEntitlement
-	if metadata, ok := responseMap["metadata"].(map[string]interface{}); ok {
-		if entitlement, ok := metadata["policyEntitlement"].(map[string]interface{}); ok {
-			if locationType, ok := entitlement["locationType"].(string); ok && locationType == "Azure" {
-				entitlement["locationType"] = "AZURE"
-				tflog.Debug(ctx, "Fixed UPDATE response: Azure → AZURE locationType", nil)
-			}
-		}
-	}
-
-	// Convert from camelCase (API response) to snake_case (SDK mapstructure tags)
-	respType := reflect.TypeOf(uapsiavmmodels.ArkUAPSIAVMAccessPolicy{})
-	responseMapSnake, ok := common.ConvertToSnakeCase(responseMap, &respType).(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("failed to convert UPDATE response to snake_case")
-	}
-
-	var updatedPolicy uapsiavmmodels.ArkUAPSIAVMAccessPolicy
-	if err := updatedPolicy.Deserialize(responseMapSnake); err != nil {
-		tflog.Error(ctx, "Failed to deserialize UPDATE response", map[string]interface{}{
+	// Reuse ReadAzureVMPolicyDirect to fetch the updated policy
+	updatedPolicy, err := ReadAzureVMPolicyDirect(ctx, authCtx, policyID)
+	if err != nil {
+		tflog.Error(ctx, "Failed to fetch updated policy after UPDATE", map[string]interface{}{
 			"policy_id":   policyID,
 			"policy_name": policy.Metadata.Name,
 			"error":       err.Error(),
 		})
-		return nil, fmt.Errorf("failed to deserialize response: %w", err)
+		return nil, fmt.Errorf("update succeeded but failed to fetch updated policy: %w", err)
 	}
 
 	tflog.Debug(ctx, "Azure VM policy UPDATE workaround successful", map[string]interface{}{
@@ -1517,5 +1480,5 @@ func UpdateAzureVMPolicyDirect(
 		"policy_name": policy.Metadata.Name,
 	})
 
-	return &updatedPolicy, nil
+	return updatedPolicy, nil
 }

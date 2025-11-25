@@ -369,18 +369,7 @@ resource "cyberarksia_vm_policy_principal_assignment" "forcenew_test" {
 // TestAccVMPolicyPrincipalAssignment_azure tests principal assignment on Azure VM policies
 // This tests the Azure SDK workaround (fix C1) for "AZURE" vs "Azure" case sensitivity
 // GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
-//
-// KNOWN LIMITATION: Azure VM policy UPDATE operations return HTTP 500 from the API.
-// CREATE and READ operations work correctly with our SDK workarounds, but UPDATE
-// (which is required for adding principals) fails server-side. This appears to be
-// an API limitation, not a provider bug - the JSON payload is correct and matches
-// successful CREATE operations.
-//
-// SKIPPED: Until the CyberArk API supports Azure VM policy updates.
-// Provider code is correct (SDK serialization fixes applied), but feature unavailable server-side.
 func TestAccVMPolicyPrincipalAssignment_azure(t *testing.T) {
-	t.Skip("Azure VM policy UPDATE operations return HTTP 500 - API limitation, not provider bug")
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
