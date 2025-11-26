@@ -232,7 +232,13 @@ Typical configuration flow:
 1. cyberarksia_virtual_machine_secret (VM credentials)
      ↓
 2. cyberarksia_target_set (VM/server target grouping)
+     ↓
+3. cyberarksia_vm_policy (access policies with inline principals + cloud/on-prem targets)
+     ↓
+     └→ 4. cyberarksia_vm_policy_principal_assignment (optional: add more principals)
 ```
+
+**Important**: At least one principal MUST be defined inline in `cyberarksia_vm_policy` at creation time. The `cyberarksia_vm_policy_principal_assignment` resource is only for adding additional principals beyond those inline ones. VM policies can target cloud resources (AWS, Azure, GCP) or on-premises servers (FQDN/IP) independently of target sets.
 
 ## Architecture Patterns
 

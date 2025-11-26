@@ -34,11 +34,15 @@ This document summarizes the implementation of VM access policy management resou
 - `fqdn_ip_targets`, `aws_targets`, `azure_targets`, `gcp_targets`: Exactly one required (oneOf constraint)
 
 **CRUD Implementation**:
-- **CREATE**: Maps Terraform plan → SDK models, calls `AddPolicy()` with retry logic
-- **READ**: Fetches policy via `Policy()`, handles 404 as drift detection
-- **UPDATE**: Uses Read-Modify-Write pattern to preserve both inline and assigned principals
-- **DELETE**: Calls SDK `DeletePolicy()` directly (no workaround needed unlike database resources)
+- **CREATE**: Maps Terraform plan → SDK models. Azure policies use `CreateAzureVMPolicyDirect` workaround; others use `AddPolicy()`. All with retry logic.
+- **READ**: Azure policies use `ReadAzureVMPolicyDirect` workaround; others use `Policy()`. Handles 404 as drift detection.
+- **UPDATE**: Uses Read-Modify-Write pattern to preserve both inline and assigned principals. Azure policies use `UpdateAzureVMPolicyDirect` workaround.
+- **DELETE**: Uses `DeleteDatabasePolicyDirect` workaround (ARK SDK v1.5.0 nil body panic bug). See `internal/client/sdk_workarounds.go`.
 - **IMPORT**: Supports `terraform import` using `policy_id`
+
+**SDK Workarounds** (remove when ARK SDK v1.6.0+ fixes these bugs):
+- Azure policies: SDK uses "AZURE" but API expects "Azure" for targets key ([GitHub #32](https://github.com/cyberark/ark-sdk-golang/issues/32))
+- DELETE: SDK passes nil body causing panic in `doRequest()`
 
 **Critical Pattern - Principal Preservation**:
 ```go

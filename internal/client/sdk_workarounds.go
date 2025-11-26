@@ -50,7 +50,23 @@ import (
 //    Workaround: Bypass Serialize() and manually construct JSON with correct "Azure" key
 //    GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
 //
+// 4. TARGET SET OPERATIONS - DELETE panic + UPDATE omitempty issues
+//    Root Cause: Same nil body panic as #1, plus omitempty serialization drops required fields
+//    Affected SDK Methods:
+//      - DeleteTargetSet() - Nil body panic
+//      - UpdateTargetSet() - omitempty drops provision_format when empty string intended
+//    Workaround: Direct HTTP calls with proper body handling
+//
 // Pattern: All workarounds bypass SDK methods and make direct HTTP calls using ISP client
+//
+// REMOVAL CRITERIA (for LLM maintainers):
+// - Check ARK SDK changelog for v1.6.0+ release
+// - Verify fix by testing: DeleteDatabase(), DeleteSecret(), DeletePolicy() with nil body
+// - Verify Azure fix by creating Azure VM policy via SDK AddPolicy()
+// - Once verified, delete this file and update:
+//   - CLAUDE.md (remove workaround references)
+//   - docs/development/vm-policy-implementation.md (update CRUD section)
+//   - All resources using these helpers (switch to SDK methods)
 //
 // TODO: Remove this file when ARK SDK v1.6.0+ fixes these bugs
 
