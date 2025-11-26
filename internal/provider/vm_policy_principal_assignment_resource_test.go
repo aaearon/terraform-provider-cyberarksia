@@ -363,6 +363,47 @@ resource "cyberarksia_vm_policy_principal_assignment" "forcenew_test" {
 `
 
 // ============================================================================
+// Assignment Deletion Tests (T070)
+// ============================================================================
+
+// TestAccVMPolicyPrincipalAssignment_deleteAssignmentKeepsInline tests that deleting an assignment works
+// when the policy still has an inline principal (T070)
+// This validates the Delete method's read-modify-write pattern correctly preserves inline principals.
+func TestAccVMPolicyPrincipalAssignment_deleteAssignmentKeepsInline(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+			},
+		},
+		Steps: []resource.TestStep{
+			// Step 1: Create policy with 1 inline + 1 assigned principal (2 total)
+			{
+				Config: testAccVMPolicyPrincipalAssignmentConfigDeleteStep1,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("cyberarksia_vm_policy_principal_assignment.delete_test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy_principal_assignment.delete_test", "principal_type", "GROUP"),
+					// Policy has 1 inline principal
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.delete_test", "principals.#", "1"),
+				),
+			},
+			// Step 2: Remove assignment (keep inline) - should succeed
+			// Terraform will delete the assignment, leaving policy with just inline principal
+			{
+				Config: testAccVMPolicyPrincipalAssignmentConfigDeleteStep2,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					// Policy still exists with 1 inline principal
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.delete_test", "principals.#", "1"),
+					resource.TestCheckResourceAttr("cyberarksia_vm_policy.delete_test", "principals.0.principal_type", "USER"),
+				),
+			},
+		},
+	})
+}
+
+// ============================================================================
 // Azure Principal Assignment Tests (L1 - Code Review Fix)
 // ============================================================================
 
@@ -467,4 +508,124 @@ resource "cyberarksia_vm_policy_principal_assignment" "azure_test" {
   source_directory_name = data.cyberarksia_principal.azure_assigned_group.directory_name
   source_directory_id   = data.cyberarksia_principal.azure_assigned_group.directory_id
 }
+`
+
+// ============================================================================
+// Assignment Deletion Test Configurations (T070)
+// ============================================================================
+
+// Step 1: Policy with 1 inline principal + 1 assigned principal (2 total)
+const testAccVMPolicyPrincipalAssignmentConfigDeleteStep1 = `
+data "cyberarksia_principal" "delete_test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+data "cyberarksia_principal" "delete_test_group" {
+  name = "CyberArk Guardians"
+  type = "GROUP"
+}
+
+resource "random_id" "delete_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "delete_test" {
+  name          = "test-vm-policy-delete-${random_id.delete_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  # Inline principal (required by schema)
+  principals {
+    principal_id          = data.cyberarksia_principal.delete_test_user.id
+    principal_name        = data.cyberarksia_principal.delete_test_user.name
+    principal_type        = data.cyberarksia_principal.delete_test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.delete_test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.delete_test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-delete"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+# Assigned principal (will be deleted in Step 2)
+resource "cyberarksia_vm_policy_principal_assignment" "delete_test" {
+  policy_id             = cyberarksia_vm_policy.delete_test.policy_id
+  principal_id          = data.cyberarksia_principal.delete_test_group.id
+  principal_name        = data.cyberarksia_principal.delete_test_group.name
+  principal_type        = data.cyberarksia_principal.delete_test_group.principal_type
+  source_directory_name = data.cyberarksia_principal.delete_test_group.directory_name
+  source_directory_id   = data.cyberarksia_principal.delete_test_group.directory_id
+}
+`
+
+// Step 2: Assignment resource REMOVED - Terraform will delete it
+// Policy keeps its inline principal, so deletion should succeed
+const testAccVMPolicyPrincipalAssignmentConfigDeleteStep2 = `
+data "cyberarksia_principal" "delete_test_user" {
+  name = "timtest@cyberark.cloud.40562"
+  type = "USER"
+}
+
+data "cyberarksia_principal" "delete_test_group" {
+  name = "CyberArk Guardians"
+  type = "GROUP"
+}
+
+resource "random_id" "delete_test" {
+  byte_length = 4
+}
+
+resource "cyberarksia_vm_policy" "delete_test" {
+  name          = "test-vm-policy-delete-${random_id.delete_test.hex}"
+  location_type = "FQDN/IP"
+  status        = "Active"
+
+  # Inline principal remains
+  principals {
+    principal_id          = data.cyberarksia_principal.delete_test_user.id
+    principal_name        = data.cyberarksia_principal.delete_test_user.name
+    principal_type        = data.cyberarksia_principal.delete_test_user.principal_type
+    source_directory_name = data.cyberarksia_principal.delete_test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.delete_test_user.directory_id
+  }
+
+  behavior {
+    ssh {
+      username = "testuser"
+    }
+  }
+
+  fqdn_ip_targets {
+    fqdn_rule {
+      operator             = "SUFFIX"
+      computername_pattern = "-delete"
+    }
+  }
+
+  max_session_duration = 2
+
+  access_window {
+    days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+# Assignment resource REMOVED - Terraform will delete the GROUP assignment
+# This should succeed because inline USER principal remains
 `
