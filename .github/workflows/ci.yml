@@ -28,7 +28,7 @@ jobs:
       docs: ${{ steps.filter.outputs.docs }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Check what changed
         uses: dorny/paths-filter@v3
@@ -54,7 +54,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -116,7 +116,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -163,7 +163,7 @@ jobs:
     if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.code == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -201,7 +201,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'  # Run on code changes only
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Required for gitleaks to scan commit history
 
