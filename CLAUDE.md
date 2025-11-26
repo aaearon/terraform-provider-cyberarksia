@@ -445,6 +445,56 @@ updated, err := siaAPI.AccessPolicies().UpdatePolicy(policyID, newPolicy)
    - Reality: Required for ZSP/JIT access provisioning
    - Document this requirement in examples
 
+### Cloud VM Policy Target Format Requirements
+
+#### AWS (`aws_targets`)
+
+1. **Account IDs** - 12-digit number:
+   ```
+   123456789012
+   ```
+
+2. **VPC IDs** - `vpc-` prefix followed by 8 or 17-character alphanumeric string:
+   ```
+   vpc-12345678
+   vpc-1234567890abcdef0
+   ```
+
+#### Azure (`azure_targets`)
+
+1. **Subscription IDs** - UUID format (32 alphanumeric chars in 5 groups with hyphens):
+   ```
+   759a039e-dc44-4762-9f40-2696323c2fa5
+   ```
+
+2. **Resource Groups** - Full ARM path format:
+   ```
+   /subscriptions/<subscription-id>/resourceGroups/<resource-group-name>
+   ```
+   Example: `/subscriptions/759a039e-dc44-4762-9f40-2696323c2fa5/resourceGroups/my-rg`
+
+3. **VNet IDs** - Full ARM path format:
+   ```
+   /subscriptions/<subscription-id>/resourceGroups/<rg-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>
+   ```
+   Example: `/subscriptions/759a039e-dc44-4762-9f40-2696323c2fa5/resourceGroups/my-rg/providers/Microsoft.Network/virtualNetworks/my-vnet`
+
+**Common Error**: Using just the resource group name (e.g., `my-rg`) instead of the full ARM path will result in API validation error: `invalid azure resource group`.
+
+#### GCP (`gcp_targets`)
+
+1. **Project IDs** - 3-60 characters, lowercase letters/numbers/hyphens, must start with letter, end with letter or number:
+   ```
+   my-project-123
+   production-workloads
+   ```
+
+2. **VPC Network IDs** - Full VPC path format:
+   ```
+   projects/{project_id}/global/networks/{network_name}
+   ```
+   Example: `projects/my-project-123/global/networks/my-vpc`
+
 ### Policy Management Constraints
 
 1. **UpdatePolicy() Accepts ONE Workspace Type Only**

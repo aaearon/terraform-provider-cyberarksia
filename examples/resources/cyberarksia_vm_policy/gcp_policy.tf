@@ -1,5 +1,9 @@
 # GCP Cloud VM Access Policy Example
 # Demonstrates GCP-specific target criteria (note: uses "labels" not "tags")
+#
+# GCP Target Format Requirements:
+#   projects: 3-60 chars, lowercase letters/numbers/hyphens (e.g., "my-project-123")
+#   vpc_ids:  Full path format (e.g., "projects/<project>/global/networks/<network>")
 
 data "cyberarksia_principal" "gcp_admin" {
   name = "gcp-admin@example.com"
@@ -12,12 +16,12 @@ resource "cyberarksia_vm_policy" "gcp_production" {
   status        = "Active"
   description   = "Access policy for GCP production compute instances"
 
-  principal {
-    principal_id          = data.cyberarksia_principal.gcp_admin.principal_id
-    principal_name        = data.cyberarksia_principal.gcp_admin.principal_name
+  principals {
+    principal_id          = data.cyberarksia_principal.gcp_admin.id
+    principal_name        = data.cyberarksia_principal.gcp_admin.name
     principal_type        = data.cyberarksia_principal.gcp_admin.principal_type
-    source_directory_name = data.cyberarksia_principal.gcp_admin.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.gcp_admin.source_directory_id
+    source_directory_name = data.cyberarksia_principal.gcp_admin.directory_name
+    source_directory_id   = data.cyberarksia_principal.gcp_admin.directory_id
   }
 
   # SSH for GCE instances
