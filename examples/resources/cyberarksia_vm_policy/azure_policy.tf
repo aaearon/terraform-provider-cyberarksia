@@ -1,5 +1,10 @@
 # Azure Cloud VM Access Policy Example
 # Demonstrates Azure-specific target criteria
+#
+# Azure Target Format Requirements:
+#   subscriptions:   UUID format (e.g., "759a039e-dc44-4762-9f40-2696323c2fa5")
+#   resource_groups: Full ARM path (e.g., "/subscriptions/<id>/resourceGroups/<name>")
+#   vnet_ids:        Full ARM path (e.g., "/subscriptions/<id>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<name>")
 
 data "cyberarksia_principal" "azure_admin" {
   name = "azure-admin@example.com"
@@ -12,12 +17,12 @@ resource "cyberarksia_vm_policy" "azure_production" {
   status        = "Active"
   description   = "Access policy for Azure production virtual machines"
 
-  principal {
-    principal_id          = data.cyberarksia_principal.azure_admin.principal_id
-    principal_name        = data.cyberarksia_principal.azure_admin.principal_name
+  principals {
+    principal_id          = data.cyberarksia_principal.azure_admin.id
+    principal_name        = data.cyberarksia_principal.azure_admin.name
     principal_type        = data.cyberarksia_principal.azure_admin.principal_type
-    source_directory_name = data.cyberarksia_principal.azure_admin.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.azure_admin.source_directory_id
+    source_directory_name = data.cyberarksia_principal.azure_admin.directory_name
+    source_directory_id   = data.cyberarksia_principal.azure_admin.directory_id
   }
 
   # SSH for Linux VMs
@@ -42,10 +47,10 @@ resource "cyberarksia_vm_policy" "azure_production" {
       value = ["Engineering", "Operations"]
     }
 
-    # Resource groups
+    # Resource groups (MUST use full ARM path format)
     resource_groups = [
-      "rg-production-east",
-      "rg-production-west"
+      "/subscriptions/759a039e-dc44-4762-9f40-2696323c2fa5/resourceGroups/rg-production-east",
+      "/subscriptions/759a039e-dc44-4762-9f40-2696323c2fa5/resourceGroups/rg-production-west"
     ]
 
     # Virtual networks
@@ -54,8 +59,8 @@ resource "cyberarksia_vm_policy" "azure_production" {
       "/subscriptions/sub-123/resourceGroups/rg-prod/providers/Microsoft.Network/virtualNetworks/vnet-prod-west"
     ]
 
-    # Azure subscriptions
-    subscriptions = ["subscription-id-123", "subscription-id-456"]
+    # Azure subscriptions (UUID format)
+    subscriptions = ["759a039e-dc44-4762-9f40-2696323c2fa5", "a1b2c3d4-5678-90ab-cdef-1234567890ab"]
   }
 
   max_session_duration = 4

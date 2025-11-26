@@ -13,12 +13,12 @@ resource "cyberarksia_vm_policy" "windows_servers" {
   description   = "RDP access to Windows domain servers"
 
   # Initial principal
-  principal {
-    principal_id          = data.cyberarksia_principal.windows_admin.principal_id
-    principal_name        = data.cyberarksia_principal.windows_admin.principal_name
+  principals {
+    principal_id          = data.cyberarksia_principal.windows_admin.id
+    principal_name        = data.cyberarksia_principal.windows_admin.name
     principal_type        = data.cyberarksia_principal.windows_admin.principal_type
-    source_directory_name = data.cyberarksia_principal.windows_admin.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.windows_admin.source_directory_id
+    source_directory_name = data.cyberarksia_principal.windows_admin.directory_name
+    source_directory_id   = data.cyberarksia_principal.windows_admin.directory_id
   }
 
   # RDP behavior with domain ephemeral user
@@ -54,12 +54,12 @@ resource "cyberarksia_vm_policy" "workgroup_servers" {
   status        = "Active"
   description   = "RDP access to standalone Windows servers"
 
-  principal {
-    principal_id          = data.cyberarksia_principal.windows_admin.principal_id
-    principal_name        = data.cyberarksia_principal.windows_admin.principal_name
+  principals {
+    principal_id          = data.cyberarksia_principal.windows_admin.id
+    principal_name        = data.cyberarksia_principal.windows_admin.name
     principal_type        = data.cyberarksia_principal.windows_admin.principal_type
-    source_directory_name = data.cyberarksia_principal.windows_admin.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.windows_admin.source_directory_id
+    source_directory_name = data.cyberarksia_principal.windows_admin.directory_name
+    source_directory_id   = data.cyberarksia_principal.windows_admin.directory_id
   }
 
   # RDP with local ephemeral user
