@@ -1363,6 +1363,10 @@ The ARK SDK v1.5.0 analysis identified 9 SIA services. The Terraform provider cu
 **Last Updated**: 2025-11-25
 **Research Methodology**: Multi-perspective (Claude + Gemini + Codex) with SDK source code validation + **CyberArk ark CLI production testing** + **Dual independent PoCs**
 **Implementation Update**: Phase 1 VM Infrastructure complete (VM Secrets, Target Sets, VM Policies, VM Policy Principal Assignments)
+**PoC Validation (2025-11-15)**:
+- Primary PoC: `/tmp/target-sets-poc/` - Full CRUD validation, SDK method testing
+- Codex PoC: `/tmp/target-sets-poc-codex/` - Independent validation, partial update failure proof
+- Key Finding: UpdateTargetSet() SDK method works when all fields populated (workaround unnecessary for providers)
 **Azure Bug Fix (2025-11-25)**:
 - Identified and fixed Azure VM policy serialization issues (GitHub #32)
 - Created workarounds for CREATE/READ/UPDATE operations
