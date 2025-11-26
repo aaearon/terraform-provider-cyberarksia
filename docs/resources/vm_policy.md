@@ -41,12 +41,12 @@ resource "cyberarksia_vm_policy" "basic_servers" {
   description   = "Access policy for production on-premises servers"
 
   # Required: At least one principal assignment at policy creation
-  principal {
-    principal_id          = data.cyberarksia_principal.vm_admin.principal_id
-    principal_name        = data.cyberarksia_principal.vm_admin.principal_name
+  principals {
+    principal_id          = data.cyberarksia_principal.vm_admin.id
+    principal_name        = data.cyberarksia_principal.vm_admin.name
     principal_type        = data.cyberarksia_principal.vm_admin.principal_type
-    source_directory_name = data.cyberarksia_principal.vm_admin.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.vm_admin.source_directory_id
+    source_directory_name = data.cyberarksia_principal.vm_admin.directory_name
+    source_directory_id   = data.cyberarksia_principal.vm_admin.directory_id
   }
 
   # Connection behavior: SSH with specific username
@@ -331,6 +331,34 @@ Read-Only:
 
 - `timestamp` (String) Last update timestamp.
 - `user` (String) Last updater username.
+
+## Cloud Target Format Requirements
+
+When targeting cloud resources, use these exact formats:
+
+### AWS (`aws_targets`)
+
+| Field | Format | Example |
+|-------|--------|---------|
+| `account_ids` | 12-digit number | `123456789012` |
+| `vpc_ids` | `vpc-` + 8 or 17 alphanumeric chars | `vpc-12345678`, `vpc-1234567890abcdef0` |
+
+### Azure (`azure_targets`)
+
+| Field | Format | Example |
+|-------|--------|---------|
+| `subscriptions` | UUID (32 chars in 5 hyphen-separated groups) | `759a039e-dc44-4762-9f40-2696323c2fa5` |
+| `resource_groups` | Full ARM path | `/subscriptions/<id>/resourceGroups/<name>` |
+| `vnet_ids` | Full ARM path | `/subscriptions/<id>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<name>` |
+
+### GCP (`gcp_targets`)
+
+| Field | Format | Example |
+|-------|--------|---------|
+| `projects` | 3-60 chars, lowercase letters/numbers/hyphens, starts with letter | `my-project-123` |
+| `vpc_ids` | Full path format | `projects/<project>/global/networks/<network>` |
+
+~> **Common Error**: Using just the resource group name (e.g., `my-rg`) instead of the full ARM path results in: `invalid azure resource group`.
 
 ## Import
 

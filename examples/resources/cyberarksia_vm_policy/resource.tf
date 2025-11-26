@@ -14,12 +14,12 @@ resource "cyberarksia_vm_policy" "basic_servers" {
   description   = "Access policy for production on-premises servers"
 
   # Required: At least one principal assignment at policy creation
-  principal {
-    principal_id          = data.cyberarksia_principal.vm_admin.principal_id
-    principal_name        = data.cyberarksia_principal.vm_admin.principal_name
+  principals {
+    principal_id          = data.cyberarksia_principal.vm_admin.id
+    principal_name        = data.cyberarksia_principal.vm_admin.name
     principal_type        = data.cyberarksia_principal.vm_admin.principal_type
-    source_directory_name = data.cyberarksia_principal.vm_admin.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.vm_admin.source_directory_id
+    source_directory_name = data.cyberarksia_principal.vm_admin.directory_name
+    source_directory_id   = data.cyberarksia_principal.vm_admin.directory_id
   }
 
   # Connection behavior: SSH with specific username

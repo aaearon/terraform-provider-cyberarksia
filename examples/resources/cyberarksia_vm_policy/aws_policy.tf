@@ -1,5 +1,9 @@
-# AWS cloud VM access policy example
+# AWS Cloud VM Access Policy Example
 # Demonstrates AWS-specific target criteria: regions, tags, VPC IDs, account IDs
+#
+# IMPORTANT: AWS target format requirements:
+# - account_ids: 12-digit number (e.g., "123456789012")
+# - vpc_ids: "vpc-" followed by 8 or 17-character alphanumeric string (e.g., "vpc-12345678")
 
 data "cyberarksia_principal" "cloud_admin" {
   name = "cloud-admin@example.com"
@@ -12,13 +16,13 @@ resource "cyberarksia_vm_policy" "aws_production" {
   status        = "Active"
   description   = "Access policy for AWS production EC2 instances"
 
-  # Initial principal assignment
-  principal {
-    principal_id          = data.cyberarksia_principal.cloud_admin.principal_id
-    principal_name        = data.cyberarksia_principal.cloud_admin.principal_name
+  # Initial principal assignment (at least one required)
+  principals {
+    principal_id          = data.cyberarksia_principal.cloud_admin.id
+    principal_name        = data.cyberarksia_principal.cloud_admin.name
     principal_type        = data.cyberarksia_principal.cloud_admin.principal_type
-    source_directory_name = data.cyberarksia_principal.cloud_admin.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.cloud_admin.source_directory_id
+    source_directory_name = data.cyberarksia_principal.cloud_admin.directory_name
+    source_directory_id   = data.cyberarksia_principal.cloud_admin.directory_id
   }
 
   # SSH connection behavior

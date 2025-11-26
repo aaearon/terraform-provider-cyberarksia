@@ -20,20 +20,20 @@ resource "cyberarksia_vm_policy" "comprehensive" {
   time_zone     = "America/New_York"
 
   # Multiple initial principals (minimum 1 required)
-  principal {
-    principal_id          = data.cyberarksia_principal.admin.principal_id
-    principal_name        = data.cyberarksia_principal.admin.principal_name
+  principals {
+    principal_id          = data.cyberarksia_principal.admin.id
+    principal_name        = data.cyberarksia_principal.admin.name
     principal_type        = data.cyberarksia_principal.admin.principal_type
-    source_directory_name = data.cyberarksia_principal.admin.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.admin.source_directory_id
+    source_directory_name = data.cyberarksia_principal.admin.directory_name
+    source_directory_id   = data.cyberarksia_principal.admin.directory_id
   }
 
-  principal {
-    principal_id          = data.cyberarksia_principal.ops_team.principal_id
-    principal_name        = data.cyberarksia_principal.ops_team.principal_name
+  principals {
+    principal_id          = data.cyberarksia_principal.ops_team.id
+    principal_name        = data.cyberarksia_principal.ops_team.name
     principal_type        = data.cyberarksia_principal.ops_team.principal_type
-    source_directory_name = data.cyberarksia_principal.ops_team.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.ops_team.source_directory_id
+    source_directory_name = data.cyberarksia_principal.ops_team.directory_name
+    source_directory_id   = data.cyberarksia_principal.ops_team.directory_id
   }
 
   # Both SSH and RDP (supported simultaneously)
@@ -70,10 +70,11 @@ resource "cyberarksia_vm_policy" "comprehensive" {
       value = ["PCI-DSS", "SOC2"]
     }
 
+    # VPC IDs: vpc- followed by 8 or 17 alphanumeric chars
     vpc_ids = [
-      "vpc-prod-1",
-      "vpc-prod-2",
-      "vpc-staging-1"
+      "vpc-0a1b2c3d4e5f6789a",
+      "vpc-1b2c3d4e5f6789a0b",
+      "vpc-2c3d4e5f6789a0b1c"
     ]
 
     account_ids = ["123456789012", "210987654321"]
@@ -120,8 +121,8 @@ output "comprehensive_delegation" {
 
 output "comprehensive_created_by" {
   value = {
-    user = cyberarksia_vm_policy.comprehensive.created_by.user
-    date = cyberarksia_vm_policy.comprehensive.created_by.date
+    user      = cyberarksia_vm_policy.comprehensive.created_by.user
+    timestamp = cyberarksia_vm_policy.comprehensive.created_by.timestamp
   }
   description = "Policy creation metadata"
 }
