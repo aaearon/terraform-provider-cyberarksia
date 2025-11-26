@@ -1,0 +1,22 @@
+# CODEOWNERS - Defines code owners for pull request reviews
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @aaearon
+
+# Provider implementation
+/internal/provider/ @aaearon
+
+# Client and SDK integration
+/internal/client/ @aaearon
+
+# Documentation
+/docs/ @aaearon
+
+# Examples
+/examples/ @aaearon
+
+# CI/CD and build configuration
+/.github/ @aaearon
+/.goreleaser.yml @aaearon
+/Makefile @aaearon
