@@ -57,7 +57,8 @@ TF_ACC=1 go test ./... -v     # Run acceptance tests
 - Authentication: `internal/client/auth.go`
 - Profile Factory: `internal/provider/profile_factory.go` (centralized auth profile building)
 - Error Handling: `internal/client/errors.go`, `internal/client/retry.go`
-- DELETE Workaround: `internal/client/delete_workarounds.go` (ARK SDK bug fix)
+- SDK Workarounds: `internal/client/sdk_workarounds.go` (DELETE + Azure VM policy bug fixes)
+- Legacy DELETE Workaround: `internal/client/delete_workarounds.go` (ARK SDK bug fix)
 
 ## Environment Setup
 
@@ -176,6 +177,8 @@ terraform-provider-cyberarksia/
 | Resource | `cyberarksia_database_policy_workspace_assignment` | `internal/provider/database_policy_workspace_assignment_resource.go` | ✅ Stable | Assign database workspaces TO policies (WHAT they access) |
 | Resource | `cyberarksia_virtual_machine_secret` | `internal/provider/virtual_machine_secret_resource.go` | ✅ Stable | VM credentials (ProvisionerUser/PCloudAccount) |
 | Resource | `cyberarksia_target_set` | `internal/provider/target_set_resource.go` | ✅ Stable | VM/server target sets (Domain/Suffix/Target matching) |
+| Resource | `cyberarksia_vm_policy` | `internal/provider/vm_policy_resource.go` | ✅ Stable | VM access policies (FQDN/IP, AWS, Azure, GCP targets with SSH/RDP) |
+| Resource | `cyberarksia_vm_policy_principal_assignment` | `internal/provider/vm_policy_principal_assignment_resource.go` | ✅ Stable | Assign users/groups/roles TO VM policies (WHO gets access) |
 | Data Source | `cyberarksia_principal` | `internal/provider/principal_data_source.go` | ✅ Stable | Lookup users/groups/roles by name (no manual UUID needed) |
 
 ### Quick Reference: Resource Selection Guide
@@ -192,6 +195,8 @@ terraform-provider-cyberarksia/
 | Assign databases to policies | `cyberarksia_database_policy_workspace_assignment` | WHAT they access |
 | Store VM/server credentials | `cyberarksia_virtual_machine_secret` | ProvisionerUser or PCloudAccount |
 | Group VMs/servers by criteria | `cyberarksia_target_set` | Domain/Suffix/Target matching |
+| Define VM access policies | `cyberarksia_vm_policy` | Time-based access with cloud/on-prem targets |
+| Grant users access to VM policies | `cyberarksia_vm_policy_principal_assignment` | WHO gets VM access |
 | Look up user/group/role UUIDs | `cyberarksia_principal` (data source) | Avoids manual UUID lookup |
 
 **Common Tasks Quick Links:**
@@ -227,7 +232,13 @@ Typical configuration flow:
 1. cyberarksia_virtual_machine_secret (VM credentials)
      ↓
 2. cyberarksia_target_set (VM/server target grouping)
+     ↓
+3. cyberarksia_vm_policy (access policies with inline principals + cloud/on-prem targets)
+     ↓
+     └→ 4. cyberarksia_vm_policy_principal_assignment (optional: add more principals)
 ```
+
+**Important**: At least one principal MUST be defined inline in `cyberarksia_vm_policy` at creation time. The `cyberarksia_vm_policy_principal_assignment` resource is only for adding additional principals beyond those inline ones. VM policies can target cloud resources (AWS, Azure, GCP) or on-premises servers (FQDN/IP) independently of target sets.
 
 ## Architecture Patterns
 
@@ -390,15 +401,35 @@ updated, err := siaAPI.AccessPolicies().UpdatePolicy(policyID, newPolicy)
      ```
    - **TODO**: Remove workaround when ARK SDK v1.6.0+ fixes nil body handling
 
-2. **No Context Support in Authenticate()**
+2. **Azure VM Policy Serialization Bug** ⚠️ **CRITICAL**
+   - **Problem**: Azure VM policies fail with HTTP 500/400 errors on create/update/read
+   - **Root Cause**: SDK uses `"AZURE"` (uppercase) but API expects `"Azure"` (mixed case) for:
+     - `targets.Azure` key (API returns/expects mixed case)
+     - `metadata.policyEntitlement.locationType` value
+     - `behavior.connectAs.ssh` wrapper (SDK produces `behavior.sshProfile`)
+   - **Solution**: Use `internal/client/sdk_workarounds.go` functions:
+     ```go
+     // ✅ CORRECT - Use Azure workaround functions
+     created, err = client.CreateAzureVMPolicyDirect(ctx, providerData.AuthContext, policy)
+     policy, err = client.ReadAzureVMPolicyDirect(ctx, providerData.AuthContext, policyID)
+     updated, err = client.UpdateAzureVMPolicyDirect(ctx, providerData.AuthContext, policyID, policy)
+
+     // ❌ WRONG - Will fail with HTTP 500
+     created, err = vmService.AddPolicy(policy)  // For Azure policies
+     ```
+   - **Detection**: Check `plan.LocationType.ValueString() == "Azure"` before API calls
+   - **GitHub Issue**: https://github.com/cyberark/ark-sdk-golang/issues/32
+   - **TODO**: Remove workaround when ARK SDK v1.6.0+ fixes Azure serialization
+
+3. **No Context Support in Authenticate()**
    - Cannot cancel authentication mid-flight via context
    - First parameter is `*ArkProfile` (optional), NOT `context.Context`
 
-3. **No Structured Errors**
+4. **No Structured Errors**
    - SDK returns generic `error` interface with string messages
    - Use `internal/client.MapError()` for error classification
 
-4. **15-Minute Token Expiration**
+5. **15-Minute Token Expiration**
    - SDK handles automatic token refresh
    - In-memory profile pattern (stateless, container-friendly)
 
@@ -684,6 +715,7 @@ Track critical items as GitHub Issues for better visibility and prioritization:
 | Priority | TODO | File | Blocked By | Notes |
 |----------|------|------|------------|-------|
 | **P1** | Remove delete_workarounds.go | `internal/client/delete_workarounds.go` | ARK SDK v1.6.0+ release | Critical workaround for nil body panic bug |
+| **P1** | Remove Azure VM policy workarounds | `internal/client/sdk_workarounds.go` | ARK SDK v1.6.0+ release | Azure serialization bug (targets key + locationType casing) |
 | **P2** | Add conditional validators for secret auth types | `internal/provider/secret_resource.go` | SDK field verification | Enforce required fields per auth type |
 | **P3** | Add ParseAuthenticationProfile tests | `internal/provider/profile_factory_test.go` | - | Add tests for profile parsing and round-trip validation |
 
@@ -693,3 +725,9 @@ Track critical items as GitHub Issues for better visibility and prioritization:
 ```bash
 rg "TODO|FIXME" --glob "*.go" -A 2 -B 1
 ```
+
+## Active Technologies
+- Not applicable (stateless provider, Terraform state managed externally) (001-vm-access-policies)
+
+## Recent Changes
+- 001-vm-access-policies: Added Go 1.25.0

@@ -16,11 +16,14 @@ A Terraform provider for managing CyberArk Secure Infrastructure Access (SIA) re
 - **Multi-Cloud Support**: AWS RDS, Azure SQL, GCP Cloud SQL, MongoDB Atlas, and on-premise
 
 ### VM/Server Access Management
+- **VM Policy Management**: Create access policies for cloud (AWS, Azure, GCP) and on-premises servers (FQDN/IP)
+- **Principal Assignment**: Grant users, groups, or roles access to VM policies - inline or via separate resources
+- **Connection Behaviors**: Configure SSH usernames and RDP ephemeral users (local or domain-joined)
+- **Time-Based Access**: Restrict access to specific time windows and set session limits
 - **VM Secret Management**: Store VM/server credentials (username/password or PAM vault references)
 - **Target Set Configuration**: Define server groupings with Domain, Suffix, or Target matching patterns
 - **Ephemeral Account Provisioning**: Configure temporary account naming for JIT access
-- **Certificate Validation**: Toggle TLS/SSL validation for VM connections
-- **Credential Rotation**: Update VM secrets with automatic propagation to all target sets
+- **Multi-Cloud Targeting**: AWS (VPCs, regions, accounts, tags), Azure (VNets, subscriptions, resource groups), GCP (projects, VPCs, labels)
 
 ## Requirements
 
@@ -245,6 +248,49 @@ Manages server/VM target groupings for Just-In-Time privileged access.
 **Example use case:** Create a target set for all production Linux servers in a datacenter using Domain pattern, reference a VM secret for credentials, and configure ephemeral account naming for audit trails.
 
 See [examples/resources/cyberarksia_target_set/](examples/resources/cyberarksia_target_set/) for usage examples.
+
+#### `cyberarksia_vm_policy`
+
+Manages VM access policies that control who can access which servers and when.
+
+**Supported Location Types:**
+- **FQDN/IP**: On-premises servers matched by hostname patterns or IP addresses
+- **AWS**: EC2 instances filtered by regions, VPCs, accounts, and tags
+- **Azure**: Virtual machines filtered by subscriptions, VNets, resource groups, and tags
+- **GCP**: Compute instances filtered by projects, VPCs, and labels
+
+**Connection Behaviors:**
+- **SSH**: Specify connection username
+- **RDP**: Local ephemeral users (with group assignment) or domain-joined ephemeral users
+
+**Features:**
+- Time-based access windows (e.g., business hours only)
+- Session duration limits and idle timeouts
+- Policy validity periods (start/end dates)
+- At least one principal required at creation (inline)
+- Additional principals via `cyberarksia_vm_policy_principal_assignment`
+
+**Example use case:** Create a policy allowing your DevOps team SSH access to AWS EC2 instances in production VPCs during business hours, with 4-hour session limits.
+
+See [docs/resources/vm_policy.md](docs/resources/vm_policy.md) and [examples/resources/cyberarksia_vm_policy/](examples/resources/cyberarksia_vm_policy/) for usage examples.
+
+#### `cyberarksia_vm_policy_principal_assignment`
+
+Add additional principals to VM policies beyond the initial inline assignments.
+
+**What you can do:**
+- Add users, groups, or roles to existing VM policies
+- Manage principal assignments independently from policy definitions
+- Enable different teams to manage WHO vs WHAT (security team assigns users, infra team manages policies)
+
+**Key behaviors:**
+- All attributes are ForceNew (changes require destroy + recreate)
+- Duplicate detection prevents re-assigning existing principals
+- Removing the last principal is blocked (policies require at least one)
+
+**Example use case:** Your security team creates VM policies. Later, you need to grant a new contractor group access without modifying the original policy definition.
+
+See [docs/resources/vm_policy_principal_assignment.md](docs/resources/vm_policy_principal_assignment.md) and [examples/resources/cyberarksia_vm_policy_principal_assignment/](examples/resources/cyberarksia_vm_policy_principal_assignment/) for usage examples.
 
 ## Data Sources
 

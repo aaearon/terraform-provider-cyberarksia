@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/cyberark/ark-sdk-golang/pkg/common"
 	"github.com/cyberark/ark-sdk-golang/pkg/common/isp"
 	vmsecretsmodels "github.com/cyberark/ark-sdk-golang/pkg/services/sia/secrets/vm/models"
+	uapsiavmmodels "github.com/cyberark/ark-sdk-golang/pkg/services/uap/sia/vm/models"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -37,9 +39,36 @@ import (
 //      - ChangeSecret() - VM secret updates fail completely
 //    Workaround: Make PUT request directly with correct endpoint
 //
+// 3. AZURE VM POLICY SERIALIZATION - Wrong JSON key casing
+//    Root Cause: pkg/common/constants.go
+//      - WorkspaceTypeAzure = "AZURE" (uppercase) is used as JSON targets key
+//      - SIA API expects "Azure" (mixed case) for targets key
+//      - Result: HTTP 500 INTERNAL_SERVER_ERROR on policy creation
+//    Affected SDK Methods:
+//      - AddPolicy() - Azure VM policies fail completely
+//      - UpdatePolicy() - Azure VM policy updates fail completely
+//    Workaround: Bypass Serialize() and manually construct JSON with correct "Azure" key
+//    GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+//
+// 4. TARGET SET OPERATIONS - DELETE panic + UPDATE omitempty issues
+//    Root Cause: Same nil body panic as #1, plus omitempty serialization drops required fields
+//    Affected SDK Methods:
+//      - DeleteTargetSet() - Nil body panic
+//      - UpdateTargetSet() - omitempty drops provision_format when empty string intended
+//    Workaround: Direct HTTP calls with proper body handling
+//
 // Pattern: All workarounds bypass SDK methods and make direct HTTP calls using ISP client
 //
-// TODO: Remove this file when ARK SDK v1.6.0+ fixes these HTTP method bugs
+// REMOVAL CRITERIA (for LLM maintainers):
+// - Check ARK SDK changelog for v1.6.0+ release
+// - Verify fix by testing: DeleteDatabase(), DeleteSecret(), DeletePolicy() with nil body
+// - Verify Azure fix by creating Azure VM policy via SDK AddPolicy()
+// - Once verified, delete this file and update:
+//   - CLAUDE.md (remove workaround references)
+//   - docs/development/vm-policy-implementation.md (update CRUD section)
+//   - All resources using these helpers (switch to SDK methods)
+//
+// TODO: Remove this file when ARK SDK v1.6.0+ fixes these bugs
 
 const (
 	// Database workspace DELETE endpoint (from SDK source)
@@ -59,6 +88,12 @@ const (
 
 	// Target Set UPDATE endpoint (from SDK source)
 	targetSetUpdateURL = "/api/targetsets/%s"
+
+	// VM Policy CREATE endpoint (from SDK source)
+	vmPolicyCreateURL = "/api/policies"
+
+	// VM Policy UPDATE endpoint (from SDK source)
+	vmPolicyUpdateURL = "/api/policies/%s"
 )
 
 // DeleteDatabaseWorkspaceDirect bypasses SDK's buggy DeleteDatabase() method
@@ -757,4 +792,709 @@ func UpdateTargetSetDirect(ctx context.Context, authCtx *ISPAuthContext, oldName
 	})
 
 	return wrapper.TargetSet, nil
+}
+
+// CreateAzureVMPolicyDirect creates an Azure VM policy by bypassing SDK's Serialize()
+// and manually constructing JSON with "Azure" (mixed case) targets key.
+//
+// Bug: ARK SDK v1.5.0 uses uppercase "AZURE" constant (WorkspaceTypeAzure) as JSON key,
+// but SIA API expects mixed case "Azure". This causes HTTP 500 errors on policy creation.
+//
+// The workaround:
+// 1. Builds policy using SDK models (validation, defaults)
+// 2. Marshals to JSON
+// 3. Unmarshals to map[string]interface{}
+// 4. Fixes targets key: targets.AZURE → targets.Azure
+// 5. Makes direct POST request with corrected JSON
+//
+// API Endpoint: POST /api/policies
+// Success Response: HTTP 200/201 with created policy
+// Error Responses:
+//   - 500 Internal Server Error: Wrong targets key casing (AZURE vs Azure)
+//   - 400 Bad Request: Invalid policy structure
+//
+// Parameters:
+//   - ctx: Context for request cancellation
+//   - authCtx: ISPAuthContext for authentication
+//   - policy: SDK policy model (built by provider with correct structure)
+//
+// Returns:
+//   - *uapsiavmmodels.ArkUAPSIAVMAccessPolicy: Created policy with ID
+//   - error: nil on success, error on failure
+//
+// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+// TODO: Remove this workaround when ARK SDK v1.6.0+ fixes WorkspaceTypeAzure case sensitivity
+func CreateAzureVMPolicyDirect(
+	ctx context.Context,
+	authCtx *ISPAuthContext,
+	policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy,
+) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error) {
+	tflog.Debug(ctx, "Executing Azure VM policy CREATE workaround (ARK SDK bug bypass)", map[string]interface{}{
+		"resource_type": "vm_policy",
+		"policy_name":   policy.Metadata.Name,
+		"workaround":    "Azure_targets_key_casing_fix",
+	})
+
+	// Create ISP client for UAP service with token refresh callback
+	// VM policies use "uap" service: https://{subdomain}.uap.{domain}
+	client, err := isp.FromISPAuth(
+		authCtx.ISPAuth,
+		"uap", // Service name for UAP policies
+		".",   // Separator
+		"",    // Base path
+		func(ac *common.ArkClient) error {
+			return isp.RefreshClient(ac, authCtx.ISPAuth)
+		},
+	)
+	if err != nil {
+		tflog.Error(ctx, "Failed to create ISP client for Azure VM policy CREATE workaround", map[string]interface{}{
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("failed to create ISP client: %w", err)
+	}
+
+	// Build policy JSON - can't use policy.Serialize() because it rejects "Azure" location type
+	// Instead: Marshal → ConvertToCamelCase → Fix Azure key
+
+	// Step 1: Marshal to get basic JSON structure
+	policyJSON, err := json.Marshal(policy)
+	if err != nil {
+		tflog.Error(ctx, "Failed to marshal policy", map[string]interface{}{
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("failed to marshal policy: %w", err)
+	}
+
+	var policyMapSnakeCase map[string]interface{}
+	if err := json.Unmarshal(policyJSON, &policyMapSnakeCase); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal policy: %w", err)
+	}
+
+	// Step 2: Apply ConvertToCamelCase like the SDK does
+	policyType := uapsiavmmodels.ArkUAPSIAVMAccessPolicy{}
+	reflectType := reflect.TypeOf(policyType)
+	camelCaseMap := common.ConvertToCamelCase(policyMapSnakeCase, &reflectType)
+
+	policyMap, ok := camelCaseMap.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("failed to convert camelCase result to map")
+	}
+
+	// Step 3: Fix Azure key and ensure Azure targets have camelCase fields
+	// - ConvertToCamelCase converts azure_resource → azureResource, but we need "Azure"
+	// - Also need to ensure Azure targets have camelCase fields (resourceGroups, vnetIds)
+	if targets, ok := policyMap["targets"].(map[string]interface{}); ok {
+		// Get the properly serialized Azure targets with camelCase fields
+		if policy.Targets.AzureResource != nil {
+			azureTargetsSerialized := policy.Targets.AzureResource.Serialize()
+			delete(targets, "azureResource")          // Remove the camelCased version
+			targets["Azure"] = azureTargetsSerialized // Add with correct capitalization
+
+			tflog.Debug(ctx, "Fixed Azure targets: replaced azureResource with Azure (camelCase fields)", map[string]interface{}{
+				"policy_name": policy.Metadata.Name,
+			})
+		}
+	}
+
+	// Step 4: Fix behavior structure - API expects connectAs wrapper
+	// SDK: behavior.sshProfile → API: behavior.connectAs.ssh
+	tflog.Debug(ctx, "Before behavior fix", map[string]interface{}{
+		"behavior": fmt.Sprintf("%+v", policyMap["behavior"]),
+	})
+
+	if behavior, ok := policyMap["behavior"].(map[string]interface{}); ok {
+		tflog.Debug(ctx, "Behavior is a map, checking for profiles", map[string]interface{}{
+			"has_sshProfile": behavior["sshProfile"] != nil,
+			"has_rdpProfile": behavior["rdpProfile"] != nil,
+		})
+
+		connectAs := make(map[string]interface{})
+
+		if sshProfile, exists := behavior["sshProfile"]; exists {
+			connectAs["ssh"] = sshProfile
+			delete(behavior, "sshProfile")
+			tflog.Debug(ctx, "Moved sshProfile to connectAs.ssh", nil)
+		}
+
+		if rdpProfile, exists := behavior["rdpProfile"]; exists {
+			connectAs["rdp"] = rdpProfile
+			delete(behavior, "rdpProfile")
+			tflog.Debug(ctx, "Moved rdpProfile to connectAs.rdp", nil)
+		}
+
+		if len(connectAs) > 0 {
+			behavior["connectAs"] = connectAs
+			tflog.Debug(ctx, "Fixed behavior structure: wrapped profiles in connectAs", map[string]interface{}{
+				"connectAs": fmt.Sprintf("%+v", connectAs),
+			})
+		}
+	} else {
+		tflog.Error(ctx, "Behavior is not a map!", map[string]interface{}{
+			"type": fmt.Sprintf("%T", policyMap["behavior"]),
+		})
+	}
+
+	// Step 5: Clean up metadata - remove server-managed empty objects and fix policyTags
+	// Note: Keys are now camelCase after ConvertToCamelCase()
+	if metadata, ok := policyMap["metadata"].(map[string]interface{}); ok {
+		// Remove empty objects that the SDK emits but the API doesn't expect
+		for _, key := range []string{"createdBy", "updatedOn", "timeFrame"} {
+			if val, exists := metadata[key]; exists {
+				// Check if it's an empty map
+				if mapVal, isMap := val.(map[string]interface{}); isMap && len(mapVal) == 0 {
+					delete(metadata, key)
+					tflog.Debug(ctx, "Removed empty metadata field", map[string]interface{}{
+						"field": key,
+					})
+				}
+			}
+		}
+
+		// Remove duplicate policy_tags (snake_case version) and fix policyTags
+		delete(metadata, "policy_tags")
+		if metadata["policyTags"] == nil {
+			metadata["policyTags"] = []string{}
+			tflog.Debug(ctx, "Fixed policyTags from null to empty array", nil)
+		}
+	}
+
+	// Step 6: Make POST request with corrected JSON
+	// Log the full JSON being sent for debugging
+	if jsonBytes, err := json.MarshalIndent(policyMap, "", "  "); err == nil {
+		tflog.Debug(ctx, "Sending Azure VM policy JSON to API", map[string]interface{}{
+			"policy_name": policy.Metadata.Name,
+			"json":        string(jsonBytes),
+		})
+	}
+
+	response, err := client.Post(ctx, vmPolicyCreateURL, policyMap)
+	if err != nil {
+		tflog.Error(ctx, "Azure VM policy CREATE workaround request failed", map[string]interface{}{
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("POST request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	tflog.Debug(ctx, "Azure VM policy CREATE workaround response received", map[string]interface{}{
+		"policy_name": policy.Metadata.Name,
+		"status_code": response.StatusCode,
+	})
+
+	// Check response status (API returns 200 or 201 for successful creation)
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
+		tflog.Error(ctx, "Azure VM policy CREATE workaround failed with unexpected status", map[string]interface{}{
+			"policy_name": policy.Metadata.Name,
+			"status_code": response.StatusCode,
+		})
+		return nil, fmt.Errorf("failed to create Azure VM policy - [%d] - [%s]",
+			response.StatusCode, common.SerializeResponseToJSON(response.Body))
+	}
+
+	// Parse CREATE response - API only returns {"policyId": "xxx"}, not the full policy
+	// We need to make a GET request to fetch the full policy (like SDK's AddPolicy does)
+	var createResponse struct {
+		PolicyID string `json:"policyId"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&createResponse); err != nil {
+		tflog.Error(ctx, "Failed to decode CREATE response", map[string]interface{}{
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if createResponse.PolicyID == "" {
+		return nil, fmt.Errorf("CREATE response missing policyId")
+	}
+
+	tflog.Debug(ctx, "Azure VM policy created, fetching full policy", map[string]interface{}{
+		"policy_name": policy.Metadata.Name,
+		"policy_id":   createResponse.PolicyID,
+	})
+
+	// Step 7: GET the full policy to return complete data
+	getEndpoint := fmt.Sprintf(vmPolicyUpdateURL, createResponse.PolicyID) // Same endpoint for GET and PUT
+	getResponse, err := client.Get(ctx, getEndpoint, nil)
+	if err != nil {
+		tflog.Error(ctx, "Failed to fetch created Azure VM policy", map[string]interface{}{
+			"policy_id":   createResponse.PolicyID,
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("failed to fetch created policy: %w", err)
+	}
+	defer getResponse.Body.Close()
+
+	if getResponse.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch created Azure VM policy %s - [%d] - [%s]",
+			createResponse.PolicyID, getResponse.StatusCode, common.SerializeResponseToJSON(getResponse.Body))
+	}
+
+	// Parse GET response - convert camelCase to snake_case for SDK mapstructure
+	var responseMap map[string]interface{}
+	if err := json.NewDecoder(getResponse.Body).Decode(&responseMap); err != nil {
+		tflog.Error(ctx, "Failed to decode GET response", map[string]interface{}{
+			"policy_id":   createResponse.PolicyID,
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("failed to decode GET response: %w", err)
+	}
+
+	tflog.Debug(ctx, "GET response map (camelCase)", map[string]interface{}{
+		"response": fmt.Sprintf("%+v", responseMap),
+	})
+
+	// Fix Azure-related fields before conversion - SDK expects "AZURE" not "Azure"
+	// 1. Fix targets key
+	if targets, ok := responseMap["targets"].(map[string]interface{}); ok {
+		if azureTargets, exists := targets["Azure"]; exists {
+			delete(targets, "Azure")
+			targets["AZURE"] = azureTargets
+			tflog.Debug(ctx, "Fixed GET response: Azure → AZURE targets key", nil)
+		}
+	}
+	// 2. Fix locationType in metadata.policyEntitlement
+	if metadata, ok := responseMap["metadata"].(map[string]interface{}); ok {
+		if entitlement, ok := metadata["policyEntitlement"].(map[string]interface{}); ok {
+			if locationType, ok := entitlement["locationType"].(string); ok && locationType == "Azure" {
+				entitlement["locationType"] = "AZURE"
+				tflog.Debug(ctx, "Fixed GET response: Azure → AZURE locationType", nil)
+			}
+		}
+	}
+
+	// Convert from camelCase (API response) to snake_case (SDK mapstructure tags)
+	respType := reflect.TypeOf(uapsiavmmodels.ArkUAPSIAVMAccessPolicy{})
+	responseMapSnake, ok := common.ConvertToSnakeCase(responseMap, &respType).(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("failed to convert GET response to snake_case")
+	}
+
+	var createdPolicy uapsiavmmodels.ArkUAPSIAVMAccessPolicy
+	if err := createdPolicy.Deserialize(responseMapSnake); err != nil {
+		tflog.Error(ctx, "Failed to deserialize GET response", map[string]interface{}{
+			"policy_id":   createResponse.PolicyID,
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("failed to deserialize GET response: %w", err)
+	}
+
+	tflog.Debug(ctx, "Azure VM policy CREATE workaround successful", map[string]interface{}{
+		"policy_name": policy.Metadata.Name,
+		"policy_id":   createdPolicy.Metadata.PolicyID,
+	})
+
+	return &createdPolicy, nil
+}
+
+// ReadAzureVMPolicyDirect reads an Azure VM policy by fixing the API response
+// before deserializing (SDK's Deserialize() expects "AZURE" but API returns "Azure").
+//
+// Bug: ARK SDK v1.5.0 expects "AZURE" (uppercase) in both targets key and locationType,
+// but SIA API returns "Azure" (mixed case). This causes "unsupported workspace type" errors.
+//
+// The workaround:
+// 1. Makes GET request to fetch policy
+// 2. Fixes targets key: Azure → AZURE
+// 3. Fixes locationType: Azure → AZURE
+// 4. Converts to snake_case for SDK mapstructure
+// 5. Deserializes into SDK struct
+//
+// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+func ReadAzureVMPolicyDirect(
+	ctx context.Context,
+	authCtx *ISPAuthContext,
+	policyID string,
+) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error) {
+	tflog.Debug(ctx, "Executing Azure VM policy READ workaround (ARK SDK bug bypass)", map[string]interface{}{
+		"resource_type": "vm_policy",
+		"policy_id":     policyID,
+		"workaround":    "Azure_locationType_fix",
+	})
+
+	// Create ISP client for UAP service with token refresh callback
+	client, err := isp.FromISPAuth(
+		authCtx.ISPAuth,
+		"uap", // Service name for UAP policies
+		".",   // Separator
+		"",    // Base path
+		func(ac *common.ArkClient) error {
+			return isp.RefreshClient(ac, authCtx.ISPAuth)
+		},
+	)
+	if err != nil {
+		tflog.Error(ctx, "Failed to create ISP client for Azure VM policy READ workaround", map[string]interface{}{
+			"policy_id": policyID,
+			"error":     err.Error(),
+		})
+		return nil, fmt.Errorf("failed to create ISP client: %w", err)
+	}
+
+	// GET the policy
+	getEndpoint := fmt.Sprintf(vmPolicyUpdateURL, policyID)
+	getResponse, err := client.Get(ctx, getEndpoint, nil)
+	if err != nil {
+		tflog.Error(ctx, "Azure VM policy READ workaround request failed", map[string]interface{}{
+			"policy_id": policyID,
+			"error":     err.Error(),
+		})
+		return nil, fmt.Errorf("GET request failed: %w", err)
+	}
+	defer getResponse.Body.Close()
+
+	if getResponse.StatusCode == http.StatusNotFound {
+		// Policy doesn't exist - return nil without error for drift detection
+		return nil, nil
+	}
+
+	if getResponse.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to read Azure VM policy %s - [%d] - [%s]",
+			policyID, getResponse.StatusCode, common.SerializeResponseToJSON(getResponse.Body))
+	}
+
+	// Parse GET response
+	var responseMap map[string]interface{}
+	if err := json.NewDecoder(getResponse.Body).Decode(&responseMap); err != nil {
+		tflog.Error(ctx, "Failed to decode READ response", map[string]interface{}{
+			"policy_id": policyID,
+			"error":     err.Error(),
+		})
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Fix Azure-related fields before conversion - SDK expects "AZURE" not "Azure"
+	// 1. Fix targets key
+	if targets, ok := responseMap["targets"].(map[string]interface{}); ok {
+		if azureTargets, exists := targets["Azure"]; exists {
+			delete(targets, "Azure")
+			targets["AZURE"] = azureTargets
+			tflog.Debug(ctx, "Fixed READ response: Azure → AZURE targets key", nil)
+		}
+	}
+	// 2. Fix locationType in metadata.policyEntitlement
+	if metadata, ok := responseMap["metadata"].(map[string]interface{}); ok {
+		if entitlement, ok := metadata["policyEntitlement"].(map[string]interface{}); ok {
+			if locationType, ok := entitlement["locationType"].(string); ok && locationType == "Azure" {
+				entitlement["locationType"] = "AZURE"
+				tflog.Debug(ctx, "Fixed READ response: Azure → AZURE locationType", nil)
+			}
+		}
+	}
+
+	// Convert from camelCase (API response) to snake_case (SDK mapstructure tags)
+	respType := reflect.TypeOf(uapsiavmmodels.ArkUAPSIAVMAccessPolicy{})
+	responseMapSnake, ok := common.ConvertToSnakeCase(responseMap, &respType).(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("failed to convert READ response to snake_case")
+	}
+
+	var policy uapsiavmmodels.ArkUAPSIAVMAccessPolicy
+	if err := policy.Deserialize(responseMapSnake); err != nil {
+		tflog.Error(ctx, "Failed to deserialize READ response", map[string]interface{}{
+			"policy_id": policyID,
+			"error":     err.Error(),
+		})
+		return nil, fmt.Errorf("failed to deserialize response: %w", err)
+	}
+
+	tflog.Debug(ctx, "Azure VM policy READ workaround successful", map[string]interface{}{
+		"policy_id":   policyID,
+		"policy_name": policy.Metadata.Name,
+	})
+
+	return &policy, nil
+}
+
+// UpdateAzureVMPolicyDirect updates an Azure VM policy by bypassing SDK's Serialize()
+// and manually constructing JSON with "Azure" (mixed case) targets key.
+//
+// Bug: ARK SDK v1.5.0 uses uppercase "AZURE" constant (WorkspaceTypeAzure) as JSON key,
+// but SIA API expects mixed case "Azure". This causes HTTP 500 errors on policy updates.
+//
+// The workaround:
+// 1. Builds policy using SDK models (validation, defaults)
+// 2. Marshals to JSON
+// 3. Unmarshals to map[string]interface{}
+// 4. Fixes targets key: targets.AZURE → targets.Azure
+// 5. Makes direct PUT request with corrected JSON
+//
+// API Endpoint: PUT /api/policies/{id}
+// Success Response: HTTP 200 with updated policy
+// Error Responses:
+//   - 500 Internal Server Error: Wrong targets key casing (AZURE vs Azure)
+//   - 404 Not Found: Policy doesn't exist
+//   - 400 Bad Request: Invalid policy structure
+//
+// Parameters:
+//   - ctx: Context for request cancellation
+//   - authCtx: ISPAuthContext for authentication
+//   - policyID: Policy ID (UUID string)
+//   - policy: SDK policy model (built by provider with correct structure)
+//
+// Returns:
+//   - *uapsiavmmodels.ArkUAPSIAVMAccessPolicy: Updated policy
+//   - error: nil on success, error on failure
+//
+// GitHub Issue: https://github.com/cyberark/ark-sdk-golang/issues/32
+// TODO: Remove this workaround when ARK SDK v1.6.0+ fixes WorkspaceTypeAzure case sensitivity
+func UpdateAzureVMPolicyDirect(
+	ctx context.Context,
+	authCtx *ISPAuthContext,
+	policyID string,
+	policy *uapsiavmmodels.ArkUAPSIAVMAccessPolicy,
+) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error) {
+	tflog.Debug(ctx, "Executing Azure VM policy UPDATE workaround (ARK SDK bug bypass)", map[string]interface{}{
+		"resource_type": "vm_policy",
+		"policy_id":     policyID,
+		"policy_name":   policy.Metadata.Name,
+		"workaround":    "Azure_targets_key_casing_fix",
+	})
+
+	// Create ISP client for UAP service with token refresh callback
+	// VM policies use "uap" service: https://{subdomain}.uap.{domain}
+	client, err := isp.FromISPAuth(
+		authCtx.ISPAuth,
+		"uap", // Service name for UAP policies
+		".",   // Separator
+		"",    // Base path
+		func(ac *common.ArkClient) error {
+			return isp.RefreshClient(ac, authCtx.ISPAuth)
+		},
+	)
+	if err != nil {
+		tflog.Error(ctx, "Failed to create ISP client for Azure VM policy UPDATE workaround", map[string]interface{}{
+			"policy_id":   policyID,
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("failed to create ISP client: %w", err)
+	}
+
+	// Build policy JSON - can't use policy.Serialize() because it may fail with Azure policies
+	// that were read from API (workspace type "AZURE" vs SDK expectation)
+	// Instead: Marshal → ConvertToCamelCase → Fix Azure key (same as CreateAzureVMPolicyDirect)
+
+	// Step 1: Marshal to get basic JSON structure
+	policyJSON, err := json.Marshal(policy)
+	if err != nil {
+		tflog.Error(ctx, "Failed to marshal policy", map[string]interface{}{
+			"policy_id":   policyID,
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("failed to marshal policy: %w", err)
+	}
+
+	var policyMapSnakeCase map[string]interface{}
+	if err := json.Unmarshal(policyJSON, &policyMapSnakeCase); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal policy: %w", err)
+	}
+
+	// Step 2: Apply ConvertToCamelCase like the SDK does
+	policyType := uapsiavmmodels.ArkUAPSIAVMAccessPolicy{}
+	reflectType := reflect.TypeOf(policyType)
+	camelCaseMap := common.ConvertToCamelCase(policyMapSnakeCase, &reflectType)
+
+	policyMap, ok := camelCaseMap.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("failed to convert camelCase result to map")
+	}
+
+	// Step 3: Fix Azure key and ensure Azure targets have camelCase fields
+	// - ConvertToCamelCase converts azure_resource → azureResource, but we need "Azure"
+	// - Also need to ensure Azure targets have camelCase fields (resourceGroups, vnetIds)
+	// - Also need to ensure null arrays become empty arrays (API requires this)
+	if targets, ok := policyMap["targets"].(map[string]interface{}); ok {
+		// Get the properly serialized Azure targets with camelCase fields
+		if policy.Targets.AzureResource != nil {
+			azureTargetsSerialized := policy.Targets.AzureResource.Serialize()
+			delete(targets, "azureResource") // Remove the camelCased version
+
+			// Fix null arrays → empty arrays in Azure targets (API requires non-null arrays)
+			// Serialize() returns map[string]interface{} where nil slices become JSON null
+			// We need to ensure all array fields are non-null for the API
+			// Force all array fields to empty array if they would marshal to JSON null
+			for _, key := range []string{"regions", "resourceGroups", "subscriptions", "vnetIds", "tags"} {
+				val := azureTargetsSerialized[key]
+				needsFix := false
+
+				if val == nil {
+					needsFix = true
+				} else {
+					// Use reflection to check for nil slice
+					rv := reflect.ValueOf(val)
+					if rv.Kind() == reflect.Slice && rv.IsNil() {
+						needsFix = true
+					}
+				}
+
+				if needsFix {
+					azureTargetsSerialized[key] = []interface{}{}
+					tflog.Debug(ctx, "Fixed Azure target null → empty array", map[string]interface{}{
+						"field": key,
+					})
+				}
+			}
+
+			targets["Azure"] = azureTargetsSerialized // Add with correct capitalization
+
+			tflog.Debug(ctx, "Fixed Azure targets: replaced azureResource with Azure (camelCase fields)", map[string]interface{}{
+				"policy_id":   policyID,
+				"policy_name": policy.Metadata.Name,
+			})
+		}
+	}
+
+	// Step 4: Fix behavior structure - API expects connectAs wrapper
+	// SDK: behavior.sshProfile → API: behavior.connectAs.ssh
+	tflog.Debug(ctx, "Before behavior fix", map[string]interface{}{
+		"behavior": fmt.Sprintf("%+v", policyMap["behavior"]),
+	})
+
+	if behavior, ok := policyMap["behavior"].(map[string]interface{}); ok {
+		tflog.Debug(ctx, "Behavior is a map, checking for profiles", map[string]interface{}{
+			"has_sshProfile": behavior["sshProfile"] != nil,
+			"has_rdpProfile": behavior["rdpProfile"] != nil,
+		})
+
+		connectAs := make(map[string]interface{})
+
+		if sshProfile, exists := behavior["sshProfile"]; exists {
+			connectAs["ssh"] = sshProfile
+			delete(behavior, "sshProfile")
+			tflog.Debug(ctx, "Moved sshProfile to connectAs.ssh", nil)
+		}
+
+		if rdpProfile, exists := behavior["rdpProfile"]; exists {
+			connectAs["rdp"] = rdpProfile
+			delete(behavior, "rdpProfile")
+			tflog.Debug(ctx, "Moved rdpProfile to connectAs.rdp", nil)
+		}
+
+		if len(connectAs) > 0 {
+			behavior["connectAs"] = connectAs
+			tflog.Debug(ctx, "Fixed behavior structure: wrapped profiles in connectAs", map[string]interface{}{
+				"connectAs": fmt.Sprintf("%+v", connectAs),
+			})
+		}
+	} else {
+		tflog.Error(ctx, "Behavior is not a map!", map[string]interface{}{
+			"type": fmt.Sprintf("%T", policyMap["behavior"]),
+		})
+	}
+
+	// Step 5: Clean up metadata - remove server-managed fields and fix various issues
+	// Note: Keys are now camelCase after ConvertToCamelCase()
+	// For UPDATE, the policy was READ from API so has full server-managed fields populated
+	if metadata, ok := policyMap["metadata"].(map[string]interface{}); ok {
+		// Remove server-managed fields (they exist with full data from API read, not just empty)
+		// CRITICAL: policyId must NOT be in the request body for UPDATE - it's in the URL only
+		for _, key := range []string{"createdBy", "updatedOn", "timeFrame", "policyId"} {
+			if _, exists := metadata[key]; exists {
+				delete(metadata, key)
+				tflog.Debug(ctx, "Removed server-managed metadata field for UPDATE", map[string]interface{}{
+					"field": key,
+				})
+			}
+		}
+
+		// Remove duplicate policy_tags (snake_case version) and fix policyTags
+		delete(metadata, "policy_tags")
+		if metadata["policyTags"] == nil {
+			metadata["policyTags"] = []string{}
+			tflog.Debug(ctx, "Fixed policyTags from null to empty array", nil)
+		}
+
+		// Fix locationType: AZURE → Azure (ReadAzureVMPolicyDirect converts Azure→AZURE for SDK)
+		if entitlement, ok := metadata["policyEntitlement"].(map[string]interface{}); ok {
+			if locationType, ok := entitlement["locationType"].(string); ok && locationType == "AZURE" {
+				entitlement["locationType"] = "Azure"
+				tflog.Debug(ctx, "Fixed locationType: AZURE → Azure for API", nil)
+			}
+		}
+
+		// Clean up status object - remove server-managed fields that should not be in UPDATE request
+		// The API returns statusCode and statusDescription, but CREATE only sends status: { status: "Active" }
+		if status, ok := metadata["status"].(map[string]interface{}); ok {
+			// Remove server-managed status fields (not present in CREATE, causes HTTP 500 in UPDATE)
+			for _, key := range []string{"statusCode", "statusDescription", "link"} {
+				if _, exists := status[key]; exists {
+					delete(status, key)
+					tflog.Debug(ctx, "Removed server-managed status field for UPDATE", map[string]interface{}{
+						"field": key,
+					})
+				}
+			}
+		}
+	}
+
+	// Step 6: Make PUT request with corrected JSON
+	// Log the full JSON being sent for debugging
+	if jsonBytes, err := json.MarshalIndent(policyMap, "", "  "); err == nil {
+		tflog.Debug(ctx, "Sending Azure VM policy UPDATE JSON to API", map[string]interface{}{
+			"policy_id":   policyID,
+			"policy_name": policy.Metadata.Name,
+			"json":        string(jsonBytes),
+		})
+	}
+
+	endpoint := fmt.Sprintf(vmPolicyUpdateURL, policyID)
+	response, err := client.Put(ctx, endpoint, policyMap)
+	if err != nil {
+		tflog.Error(ctx, "Azure VM policy UPDATE workaround request failed", map[string]interface{}{
+			"policy_id":   policyID,
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("PUT request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	tflog.Debug(ctx, "Azure VM policy UPDATE workaround response received", map[string]interface{}{
+		"policy_id":   policyID,
+		"policy_name": policy.Metadata.Name,
+		"status_code": response.StatusCode,
+	})
+
+	// Check response status (API returns 200 for successful update)
+	if response.StatusCode != http.StatusOK {
+		tflog.Error(ctx, "Azure VM policy UPDATE workaround failed with unexpected status", map[string]interface{}{
+			"policy_id":   policyID,
+			"policy_name": policy.Metadata.Name,
+			"status_code": response.StatusCode,
+		})
+		return nil, fmt.Errorf("failed to update Azure VM policy %s - [%d] - [%s]",
+			policyID, response.StatusCode, common.SerializeResponseToJSON(response.Body))
+	}
+
+	// API returns 200 with empty body for PUT operations
+	// After successful UPDATE, fetch the updated policy using GET to return the current state
+	tflog.Debug(ctx, "Azure VM policy UPDATE successful, fetching updated policy via GET", map[string]interface{}{
+		"policy_id":   policyID,
+		"policy_name": policy.Metadata.Name,
+	})
+
+	// Reuse ReadAzureVMPolicyDirect to fetch the updated policy
+	updatedPolicy, err := ReadAzureVMPolicyDirect(ctx, authCtx, policyID)
+	if err != nil {
+		tflog.Error(ctx, "Failed to fetch updated policy after UPDATE", map[string]interface{}{
+			"policy_id":   policyID,
+			"policy_name": policy.Metadata.Name,
+			"error":       err.Error(),
+		})
+		return nil, fmt.Errorf("update succeeded but failed to fetch updated policy: %w", err)
+	}
+
+	tflog.Debug(ctx, "Azure VM policy UPDATE workaround successful", map[string]interface{}{
+		"policy_id":   policyID,
+		"policy_name": policy.Metadata.Name,
+	})
+
+	return updatedPolicy, nil
 }

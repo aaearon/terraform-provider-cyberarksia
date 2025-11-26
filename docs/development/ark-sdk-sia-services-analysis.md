@@ -112,11 +112,13 @@ These services are **already available** in the Terraform provider (v0.1.0).
 | **Database Secrets** | `cyberarksia_database_secret` | `SecretsDB()` | Database credentials (username/password, AWS IAM) | `database_secret_resource.go` |
 | **Certificates** | `cyberarksia_certificate` | Custom Client | TLS/mTLS certificates for database connections | `certificate_resource.go` |
 | **Database Policies** | `cyberarksia_database_policy` | `Db()` (UAP) | Access policies with time-based conditions | `database_policy_resource.go` |
-| **Policy Principal Assignments** | `cyberarksia_database_policy_principal_assignment` | `Db()` (UAP) | Assign users/groups/roles to policies (WHO) | `database_policy_principal_assignment_resource.go` |
-| **Policy Workspace Assignments** | `cyberarksia_database_policy_workspace_assignment` | `Db()` (UAP) | Assign database workspaces to policies (WHAT) | `database_policy_workspace_assignment_resource.go` |
+| **DB Policy Principal Assignments** | `cyberarksia_database_policy_principal_assignment` | `Db()` (UAP) | Assign users/groups/roles to DB policies (WHO) | `database_policy_principal_assignment_resource.go` |
+| **DB Policy Workspace Assignments** | `cyberarksia_database_policy_workspace_assignment` | `Db()` (UAP) | Assign database workspaces to policies (WHAT) | `database_policy_workspace_assignment_resource.go` |
 | **Principal Lookup** | `cyberarksia_principal` (data source) | Identity services | Look up users/groups/roles by name | `principal_data_source.go` |
 | **VM Secrets** ✅ | `cyberarksia_virtual_machine_secret` | `SecretsVM()` | VM credentials (ProvisionerUser, PCloudAccount) | `virtual_machine_secret_resource.go` |
 | **Target Sets** ✅ | `cyberarksia_target_set` | `WorkspacesTargetSets()` | VM/server target groupings with credentials | `target_set_resource.go` |
+| **VM Policies** ✅ | `cyberarksia_vm_policy` | `VM()` (UAP) | VM access policies (FQDN/IP, AWS, Azure, GCP) | `vm_policy_resource.go` |
+| **VM Policy Principal Assignments** ✅ | `cyberarksia_vm_policy_principal_assignment` | `VM()` (UAP) | Assign users/groups/roles to VM policies (WHO) | `vm_policy_principal_assignment_resource.go` |
 
 ### Implementation Notes (High-Level)
 
@@ -125,14 +127,20 @@ These services are **already available** in the Terraform provider (v0.1.0).
 - Secrets documented in [SDK Integration: Database Secrets](../sdk-integration.md#sia-database-secrets-crud-operations)
 - Policies documented in [SDK Integration: Policy Assignment Deletion Pattern](../sdk-integration.md#policy-assignment-deletion-pattern)
 
-**VM Resources** (Recently Implemented):
+**VM Resources** (Implemented):
 - VM Secrets: Full CRUD with DELETE workaround (`DeleteVMSecretDirect`), client-side filtering
   - Details: [SDK Integration: VM Secrets](../sdk-integration.md#sia-vm-secrets-crud-operations)
 - Target Sets: Name-as-ID pattern, DELETE and UPDATE workarounds
   - Details: [SDK Integration: Target Sets](../sdk-integration.md#sia-target-sets-crud-operations)
+- VM Policies: Full CRUD with Azure workarounds for CREATE/READ/UPDATE
+  - Supports all location types: FQDN/IP, AWS, Azure, GCP
+  - Azure policies use `sdk_workarounds.go` functions (see Priority 5 in SDK Issues)
+- VM Policy Principal Assignments: Full CRUD with Azure fallback pattern
+  - Uses Read-Modify-Write pattern for updates
+  - ImportState supports Azure policies via fallback
 
 **Critical SDK Workarounds**:
-All DELETE operations use workarounds from `internal/client/sdk_workarounds.go` to avoid nil pointer panic bug. See [SDK Integration: SDK Limitations](../sdk-integration.md#sdk-limitations-and-workarounds) for complete workaround reference
+All DELETE operations use workarounds from `internal/client/sdk_workarounds.go` to avoid nil pointer panic bug. Azure VM policies require additional workarounds for CREATE/READ/UPDATE operations. See [SDK Integration: SDK Limitations](../sdk-integration.md#sdk-limitations-and-workarounds) for complete workaround reference
 
 ---
 
@@ -199,6 +207,112 @@ PoliciesStats() (*models.ArkUAPPoliciesStats, error)
 
 **Discovery Credit**: Claude (primary), validated by Gemini and Codex
 **CLI Validation**: ✅ Confirmed via `ark exec uap vm` (all 8 operations present)
+
+#### PoC Validation Results (2025-11-16)
+
+**Validation Status**: ✅ **BASIC CRUD VALIDATED** - Happy-path scenario confirmed working
+**Validation Date**: 2025-11-16
+**Validation Scope**: ⚠️ **Single happy-path scenario only** (USER principal, FQDN/IP SUFFIX, SSH behavior)
+
+**Test Results Summary**:
+- ✅ **CREATE**: Policy created with USER principal, FQDN/IP SUFFIX rule, SSH behavior
+- ✅ **READ**: Policy retrieved, targets and behavior deserialized correctly
+- ✅ **UPDATE**: Description updated, targets/behavior preserved (read-modify-write pattern)
+- ✅ **DELETE**: DELETE workaround successful, no panic, 404 confirmed after deletion
+- ✅ **Principal UUID Lookup**: Identity API integration via `UserByName()` working
+- ✅ **Required Metadata**: status, timeZone, daysOfTheWeek, delegationClassification all identified
+
+**Critical Findings**:
+
+1. **Required Metadata Fields** ✅ (Discovered via HTTP 400 error)
+   - `TimeZone`: "GMT" (or other valid timezone)
+   - `Status.Status`: "Active"
+   - `DelegationClassification`: "Restricted" or "Unrestricted"
+   - `Conditions.AccessWindow.DaysOfTheWeek`: []int{0,1,2,3,4,5,6} (required array)
+   - `PolicyType`: "Recurring" or "OnDemand"
+   - **API Error**: `UAP1005: invalid status, timeZone, daysOfTheWeek, delegationClassification`
+
+2. **AccessWindow Type Discovery** ✅ (Compilation error revealed)
+   - **Field Type**: `uapcommonmodels.ArkUAPTimeCondition` (VALUE, not pointer)
+   - **Common Mistake**: Using `&uapcommonmodels.ArkUAPTimeCondition{...}` causes compilation error
+   - **Correct**: `AccessWindow: uapcommonmodels.ArkUAPTimeCondition{DaysOfTheWeek: [...]}`
+
+3. **LocationType Initialization** ⚠️
+   - Must be set BEFORE calling `Serialize()`
+   - Error if missing: "unsupported workspace type"
+   - Location: `pkg/services/uap/sia/vm/models/ark_uap_sia_vm_targets.go:404-417`
+
+4. **DELETE Workaround Confirmed** ✅
+   - Existing `DeleteDatabasePolicyDirect()` works for VM policies (uses same `BaseDeletePolicy`)
+   - Service: "uap", Endpoint: `/api/policies/{id}`
+   - No new workaround needed
+
+5. **Principal UUID Requirement** ✅
+   - API requires valid UUIDs (not usernames)
+   - Use Identity API: `users.UserByName(&usersmodels.ArkIdentityUserByName{Username: name})`
+   - Same pattern as database policies
+   - HTTP 500 error if username used instead of UUID
+
+6. **SDK Method Signatures Validated** ✅
+   ```go
+   AddPolicy(*uapsiavmmodels.ArkUAPSIAVMAccessPolicy) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error)
+   Policy(*uapcommonmodels.ArkUAPGetPolicyRequest) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error)
+   UpdatePolicy(*uapsiavmmodels.ArkUAPSIAVMAccessPolicy) (*uapsiavmmodels.ArkUAPSIAVMAccessPolicy, error)
+   DeletePolicy(*uapcommonmodels.ArkUAPDeletePolicyRequest) error // Uses BaseDeletePolicy
+   ```
+
+**Validated Patterns**:
+```go
+// Principal UUID Lookup (Identity API)
+usersService, err := users.NewArkIdentityUsersService(ispAuth)
+user, err := usersService.UserByName(&usersmodels.ArkIdentityUserByName{Username: username})
+principalUUID := user.UserID
+
+// Policy Construction with Required Fields
+policy := &uapsiavmmodels.ArkUAPSIAVMAccessPolicy{
+    ArkUAPSIACommonAccessPolicy: siacommonmodels.ArkUAPSIACommonAccessPolicy{
+        ArkUAPCommonAccessPolicy: uapcommonmodels.ArkUAPCommonAccessPolicy{
+            Metadata: uapcommonmodels.ArkUAPMetadata{
+                TimeZone: "GMT", // REQUIRED
+                PolicyEntitlement: uapcommonmodels.ArkUAPPolicyEntitlement{
+                    LocationType:   commonmodels.WorkspaceTypeFQDNIP, // REQUIRED
+                    PolicyType:     "Recurring", // REQUIRED
+                },
+                Status: uapcommonmodels.ArkUAPPolicyStatus{
+                    Status: "Active", // REQUIRED
+                },
+            },
+            DelegationClassification: "Unrestricted", // REQUIRED
+        },
+        Conditions: siacommonmodels.ArkUAPSIACommonConditions{
+            ArkUAPConditions: uapcommonmodels.ArkUAPConditions{
+                AccessWindow: uapcommonmodels.ArkUAPTimeCondition{ // VALUE, not pointer
+                    DaysOfTheWeek: []int{0, 1, 2, 3, 4, 5, 6}, // REQUIRED
+                },
+            },
+        },
+    },
+}
+
+// DELETE Workaround
+client, err := isp.FromISPAuth(ispAuth, "uap", ".", "", nil)
+response, err := client.Delete(ctx, fmt.Sprintf("/api/policies/%s", policyID), map[string]string{})
+```
+
+**Known Limitations** ⚠️ (NOT tested in PoC - require acceptance testing during implementation):
+- Multi-principal policies (GROUP/ROLE types, AD/LDAP directories)
+- IP rules, DOMAIN/TARGET operators, AWS/Azure/GCP location types
+- RDP profiles, combined SSH+RDP behaviors
+- Import/list operations for `terraform import`
+- OnDemand policy type, policy tag CRUD
+- Error scenarios (invalid UUIDs, network errors, token expiration)
+
+**Reusable Patterns** (from database policies):
+- ✅ Authentication (`internal/client/auth.go`)
+- ✅ DELETE workaround (`DeleteDatabasePolicyDirect`)
+- ✅ Error handling (`MapError`, `RetryWithBackoff`)
+- ✅ Principal lookup (via `cyberarksia_principal` data source or direct Identity API)
+- ✅ Read-modify-write for updates
 
 ---
 
@@ -788,6 +902,83 @@ updated, err := siaAPI.WorkspacesTargetSets().UpdateTargetSet(updateReq)
 
 ---
 
+### Priority 5: Azure VM Policy Serialization Bug ⚠️ **CRITICAL** - ✅ **FIXED**
+
+**Validation Status**: ✅ **REPRODUCED AND FIXED** (2025-11-25)
+**GitHub Issue**: https://github.com/cyberark/ark-sdk-golang/issues/32
+
+**Affected Services**: `VM().AddPolicy()`, `VM().Policy()`, `VM().UpdatePolicy()` for Azure location type
+
+**Root Cause**: Multiple SDK serialization issues with Azure VM policies:
+
+1. **Targets Key Casing**: SDK uses `"AZURE"` (uppercase) but API expects `"Azure"` (mixed case)
+   - SDK's `Serialize()` produces `targets.azureResource` or `targets.AZURE`
+   - API expects `targets.Azure` in JSON payload
+   - Causes HTTP 500 on CREATE/UPDATE
+
+2. **LocationType Casing**: Same issue in `metadata.policyEntitlement.locationType`
+   - SDK uses `"AZURE"`, API expects `"Azure"`
+
+3. **Behavior Structure**: SDK serializes SSH/RDP profiles incorrectly
+   - SDK produces: `behavior.sshProfile`
+   - API expects: `behavior.connectAs.ssh`
+
+4. **UPDATE Server-Managed Fields**: API returns HTTP 500 if UPDATE request includes:
+   - `metadata.policyId` (should be in URL only)
+   - `metadata.status.statusCode` (read-only)
+   - `metadata.status.statusDescription` (read-only)
+   - `metadata.createdBy`, `metadata.updatedOn` (server-managed timestamps)
+
+5. **UPDATE Empty Response**: API returns HTTP 200 with empty body for PUT requests
+   - SDK's `UpdatePolicy()` tries to decode empty body → EOF error
+
+**Impact**:
+- SDK's `AddPolicy()` fails for Azure location type (HTTP 500)
+- SDK's `Policy()` fails to deserialize Azure policies ("unsupported workspace type")
+- SDK's `UpdatePolicy()` fails for Azure policies (HTTP 500 or EOF)
+- Principal assignment resources fail for Azure policies
+
+**Workarounds Implemented** (`internal/client/sdk_workarounds.go`):
+
+```go
+// CREATE: Fix JSON structure before sending
+CreateAzureVMPolicyDirect(ctx, authCtx, policy *ArkUAPSIAVMAccessPolicy)
+// - Converts targets.azureResource → targets.Azure
+// - Fixes behavior.sshProfile → behavior.connectAs.ssh
+// - Fixes locationType: AZURE → Azure
+
+// READ: Fix response before deserialization
+ReadAzureVMPolicyDirect(ctx, authCtx, policyID string)
+// - Converts targets.Azure → targets.AZURE (for SDK compatibility)
+// - Fixes locationType: Azure → AZURE
+
+// UPDATE: Remove server-managed fields + handle empty response
+UpdateAzureVMPolicyDirect(ctx, authCtx, policyID string, policy *ArkUAPSIAVMAccessPolicy)
+// - Removes policyId, statusCode, statusDescription from request
+// - Removes createdBy, updatedOn, timeFrame
+// - Does follow-up GET after successful UPDATE (empty response handling)
+```
+
+**Principal Assignment Resource Pattern**:
+```go
+// All methods (Create/Read/Delete/ImportState) use fallback pattern:
+policy, err := vmService.Policy(...)
+if err != nil && strings.Contains(err.Error(), "unsupported workspace type") {
+    // Fallback to Azure workaround
+    policy, err = client.ReadAzureVMPolicyDirect(ctx, authCtx, policyID)
+}
+```
+
+**Detection Logic**: Check `plan.LocationType.ValueString() == "Azure"` before API calls
+
+**Test Validation**: `TestAccVMPolicyPrincipalAssignment_azure` - Full CRUD + ImportState passing
+
+**Long-term Solution**: Remove workarounds when ARK SDK v1.6.0+ fixes Azure serialization
+
+**Discovery Credit**: Claude (implementation debugging), validated via acceptance tests
+
+---
+
 ### Other Known Issues
 
 **No Context Support in Authenticate()**:
@@ -810,28 +1001,23 @@ updated, err := siaAPI.WorkspacesTargetSets().UpdateTargetSet(updateReq)
 
 ## Implementation Roadmap
 
-### Phase 1: VM Infrastructure (Partially Complete ✅)
+### Phase 1: VM Infrastructure (Complete ✅)
 
 **Goal**: Extend provider to VM/server management (mirrors existing DB resources)
 
 **Resources**:
 1. ✅ `cyberarksia_virtual_machine_secret` (VM credentials) - **COMPLETED** (commit 0fabb1c)
 2. ✅ `cyberarksia_target_set` (VM workspaces) - **COMPLETED** (commit e309c9a)
-3. 🚧 `cyberarksia_vm_policy` (VM access policies) - **IN PROGRESS**
-4. 🚧 `cyberarksia_vm_policy_principal_assignment` (WHO gets access) - **PLANNED**
-5. 🚧 `cyberarksia_vm_policy_target_assignment` (WHAT they access) - **PLANNED**
+3. ✅ `cyberarksia_vm_policy` (VM access policies) - **COMPLETED** (commit de11dda)
+4. ✅ `cyberarksia_vm_policy_principal_assignment` (WHO gets access) - **COMPLETED** (commit 4571f9c)
+5. ❌ `cyberarksia_vm_policy_target_assignment` - **NOT NEEDED** (targets managed inline via vm_policy resource)
 
 **Dependencies**:
 ```
-✅ VM Secrets → ✅ Target Sets → 🚧 VM Policies → 🚧 Assignments
+✅ VM Secrets → ✅ Target Sets → ✅ VM Policies → ✅ Principal Assignments
 ```
 
-**Progress**: 2 of 5 resources completed (40%)
-
-**Remaining Effort**: Low-Medium (2-4 weeks)
-- Can reuse patterns from database policy resources
-- Serialization quirks in VM policies
-- Read-Modify-Write pattern for assignments
+**Progress**: 4 of 4 resources completed (100%)
 
 **Completed Implementation Notes**:
 - ✅ DELETE workarounds implemented (`sdk_workarounds.go`)
@@ -839,15 +1025,15 @@ updated, err := siaAPI.WorkspacesTargetSets().UpdateTargetSet(updateReq)
   - `DeleteTargetSetDirect()` - Bypasses nil body panic
   - `UpdateTargetSetDirect()` - Bypasses omitempty serialization issues
   - `ChangeVMSecretDirect()` - Fixes POST→PUT bug
+- ✅ Azure VM policy workarounds implemented (`sdk_workarounds.go`)
+  - `CreateAzureVMPolicyDirect()` - Fixes Azure targets key casing ("AZURE" → "Azure")
+  - `ReadAzureVMPolicyDirect()` - Handles Azure response deserialization
+  - `UpdateAzureVMPolicyDirect()` - Removes server-managed fields, handles empty response
 - ✅ Target sets use string name as ID (ForceNew pattern implemented)
-- ✅ Full CRUD validation completed
+- ✅ Full CRUD validation completed (27 VM policy tests passing)
+- ✅ Azure fallback pattern in principal assignment Create/Read/Delete/ImportState
 
 **Note**: Client-side filtering not needed for VM secrets resource (uses single-secret reads only, not list operations)
-
-**Next Steps**:
-- Complete VM policy resource implementation
-- Add policy assignment resources (principal and target)
-- Verify serialization stability with set/hash functions
 
 ---
 
@@ -1157,31 +1343,35 @@ if err != nil {
 
 ## Conclusion
 
-The ARK SDK v1.5.0 analysis identified 9 SIA services. The Terraform provider currently implements **8 resources and 2 data sources** (10 total components) covering database management, VM/server management, access policies, and principal lookup. **2 services remain available** for implementation: VM policies + assignments (high priority) and SSH CA (medium priority).
+The ARK SDK v1.5.0 analysis identified 9 SIA services. The Terraform provider currently implements **11 resources and 1 data source** (12 total components) covering database management, VM/server management, access policies, and principal lookup. **1 service remains available** for implementation: SSH CA (medium priority).
 
 **Key Takeaways**:
-1. **Phase 1 progress**: VM Secrets and Target Sets implemented (40% complete). VM Policies + assignments remaining.
+1. **Phase 1 complete**: VM Secrets, Target Sets, VM Policies, and VM Policy Principal Assignments all implemented (100% complete).
 2. **Validation is critical**: Multi-perspective research identified 3 hallucinated services (K8s clusters, Accounts, Platforms)
-3. **SDK bugs are manageable**: Workarounds implemented in sdk_workarounds.go
+3. **SDK bugs are manageable**: Workarounds implemented in sdk_workarounds.go (including Azure serialization fix)
 4. **Clear implementation path**: Phase-based roadmap focused on verified services
-5. **Provider scope**: 8 resources + 2 data sources currently implemented across database and VM management. 2 services available for future implementation (VM policies, SSH CA). 3 CLI-only services excluded.
+5. **Provider scope**: 11 resources + 1 data source currently implemented across database and VM management. 1 service available for future implementation (SSH CA). 3 CLI-only services excluded.
 
 **Next Steps**:
-1. Complete VM policy resource implementation (Phase 1 remaining work)
-2. Add VM policy assignment resources (principal and target assignments)
-3. Create implementation specs using SpecKit for Phase 2 (SSH CA)
-4. Validate Phase 2/3 priorities with stakeholders
+1. Create implementation specs using SpecKit for Phase 2 (SSH CA)
+2. Validate Phase 2/3 priorities with stakeholders
+3. Monitor ARK SDK v1.6.0+ for bug fixes to potentially remove workarounds
 
 ---
 
-**Document Version**: 1.9 (PoC Validation & UPDATE Analysis)
-**Last Updated**: 2025-11-15
+**Document Version**: 2.0 (Phase 1 Complete + Azure Bug Fix)
+**Last Updated**: 2025-11-25
 **Research Methodology**: Multi-perspective (Claude + Gemini + Codex) with SDK source code validation + **CyberArk ark CLI production testing** + **Dual independent PoCs**
-**Implementation Update**: VM Secrets and Target Sets implemented and moved to "Currently Implemented" section
+**Implementation Update**: Phase 1 VM Infrastructure complete (VM Secrets, Target Sets, VM Policies, VM Policy Principal Assignments)
 **PoC Validation (2025-11-15)**:
 - Primary PoC: `/tmp/target-sets-poc/` - Full CRUD validation, SDK method testing
 - Codex PoC: `/tmp/target-sets-poc-codex/` - Independent validation, partial update failure proof
 - Key Finding: UpdateTargetSet() SDK method works when all fields populated (workaround unnecessary for providers)
+**Azure Bug Fix (2025-11-25)**:
+- Identified and fixed Azure VM policy serialization issues (GitHub #32)
+- Created workarounds for CREATE/READ/UPDATE operations
+- Added Azure fallback pattern to principal assignment resource
+- All 27 VM policy tests passing
 **ARK SDK Version Analyzed**: v1.5.0
 **Validation Status**:
 - ✅ All services confirmed against CyberArk's official `ark` CLI at `/home/tim/go/bin/ark`

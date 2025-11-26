@@ -53,6 +53,9 @@ type ProviderData struct {
 	// CertificatesClient handles certificate CRUD operations
 	// Initialized on-demand by certificate resource Configure()
 	CertificatesClient *client.CertificatesClient
+
+	// VMService provides access to VM policy CRUD operations
+	VMService interface{}
 }
 
 // New is a helper function to simplify provider server and testing implementation
@@ -192,12 +195,17 @@ func (p *CyberArkSIAProvider) Configure(ctx context.Context, req provider.Config
 	}
 	LogIdentityClientSuccess(ctx)
 
+	// Initialize VM Service for VM access policy management
+	// Retrieved from the UAPClient which is already initialized
+	vmService := uapAPI.VM()
+
 	// Create provider data for resource sharing
 	providerData := &ProviderData{
 		AuthContext:    authCtx,
 		SIAAPI:         siaAPI,
 		UAPClient:      uapAPI,
 		IdentityClient: identityAPI,
+		VMService:      vmService,
 	}
 
 	// Make provider data available to resources and data sources
@@ -216,6 +224,8 @@ func (p *CyberArkSIAProvider) Resources(ctx context.Context) []func() resource.R
 		NewDatabasePolicyPrincipalAssignmentResource,
 		NewDatabasePolicyWorkspaceAssignmentResource,
 		NewTargetSetResource,
+		NewVMPolicyResource,
+		NewVMPolicyPrincipalAssignmentResource,
 	}
 }
 
