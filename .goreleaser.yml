@@ -93,12 +93,12 @@ release:
 
     Download the appropriate binary for your platform from the assets below.
 
-    For detailed installation instructions, see the [README](https://github.com/aaearon/terraform-provider-cyberark-sia#installation).
+    For detailed installation instructions, see the [README](https://github.com/aaearon/terraform-provider-cyberarksia#installation).
 
   footer: |
     ---
 
-    **Full Changelog**: https://github.com/aaearon/terraform-provider-cyberark-sia/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/aaearon/terraform-provider-cyberarksia/compare/{{ .PreviousTag }}...{{ .Tag }}
 
 snapshot:
   name_template: '{{ incpatch .Version }}-next'

@@ -7,20 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-11-26
+
 ### BREAKING CHANGES
 
-1. **Resource Rename**: `cyberarksia_database_policy_database_assignment` has been renamed to `cyberarksia_database_policy_workspace_assignment` for better consistency with other resource names
+1. **Provider Schema**: Renamed provider attribute `client_secret` to `password` for improved clarity
+   - Update your provider configuration blocks: change `client_secret` to `password`
+   - Example: `provider "cyberarksia" { password = var.password }`
+
+2. **Environment Variable**: Renamed `CYBERARK_CLIENT_SECRET` to `CYBERARK_PASSWORD`
+   - Update environment variables in CI/CD pipelines and local development
+   - Update `.env` files and Terraform variable references
+
+3. **Resource Rename**: `cyberarksia_database_policy_database_assignment` has been renamed to `cyberarksia_database_policy_workspace_assignment` for better consistency with other resource names
    - **Rationale**: The new name follows the established pattern where assignment resources are named after their base resource (e.g., `cyberarksia_database_workspace`)
    - **Action Required**: Update Terraform state and configuration files (see migration guide below)
 
-2. **Resource Rename**: `cyberarksia_secret` has been renamed to `cyberarksia_database_secret` to accurately reflect that it manages database credentials only (not VM secrets)
+4. **Resource Rename**: `cyberarksia_secret` has been renamed to `cyberarksia_database_secret` to accurately reflect that it manages database credentials only (not VM secrets)
 
-3. **AWS IAM Schema**: New required fields for AWS IAM authentication:
+5. **AWS IAM Schema**: New required fields for AWS IAM authentication:
    - `aws_account` (string, 12 digits) - AWS account number
    - `aws_username` (string) - IAM username from ARN
    - These fields are now **required** when `authentication_type = "aws_iam"`
 
+### Added
+
+- **VM policy resource** (`cyberarksia_vm_policy`) with multi-cloud support
+  - AWS targets: Account IDs, VPC IDs
+  - Azure targets: Subscription IDs, Resource Groups, VNet IDs
+  - GCP targets: Project IDs, VPC Network IDs
+  - On-premises: FQDN/IP targets
+  - SSH and RDP protocol support
+  - Time-based access windows and session limits
+- **VM policy principal assignment resource** (`cyberarksia_vm_policy_principal_assignment`)
+  - Assign users, groups, or roles to VM policies
+  - Supports inline and separate assignment patterns
+- **Target set resource** (`cyberarksia_target_set`)
+  - Group VMs/servers by domain, suffix, or target matching
+  - Integration with VM secrets for credential management
+- **Virtual machine secret resource** (`cyberarksia_virtual_machine_secret`)
+  - ProvisionerUser: Username/password credentials for VM provisioning
+  - PCloudAccount: Reference to PAM vault accounts
+- **PR template**: Standardized pull request format
+- **CODEOWNERS**: Automated reviewer assignment
+
+### Changed
+
+- All examples updated to use `password` attribute
+- All documentation updated to reference `password` terminology
+- Error messages now use "username or password" terminology instead of "client_id or client_secret"
+- Renamed `cyberarksia_secret` resource to `cyberarksia_database_secret` in all:
+  - Resource implementation
+  - Examples and documentation
+  - Test files
+
+### Fixed
+
+- **database_policy_workspace_assignment**: Improved error messages when API rejects deletion due to constraint violations (≥1 target required). The Delete() method now translates cryptic API errors like "List should have at least 1 item" into clear, actionable guidance for users.
+- **database_policy_principal_assignment**: Improved error messages when API rejects deletion due to constraint violations (≥1 principal required). Provides clear resolution steps when attempting to remove the last principal from a policy.
+- **GoReleaser**: Fixed incorrect repository URLs in release notes
+
 ### Migration Guide
+
+#### Provider Configuration
+
+1. **Update Provider Configuration**: Change `client_secret` attribute to `password` in all `provider "cyberarksia"` blocks
+2. **Update Environment Variables**: Rename `CYBERARK_CLIENT_SECRET` to `CYBERARK_PASSWORD` in:
+   - Shell environment (`export CYBERARK_PASSWORD="..."`)
+   - CI/CD pipeline secrets
+   - Terraform Cloud/Enterprise workspace variables
+   - `.env` files
+3. **Update Terraform Variables**: Rename any variables like `cyberark_client_secret` to `cyberark_password`
+4. **Update Scripts**: Search for `CYBERARK_CLIENT_SECRET` in automation scripts and update to `CYBERARK_PASSWORD`
 
 #### Policy Database Assignment Rename
 
@@ -111,7 +169,7 @@ resource "cyberarksia_database_secret" "example" {
 
 #### Step 3: Update AWS IAM Secrets (If Applicable)
 
-⚠️ **IMPORTANT**: If you use AWS IAM authentication (`authentication_type = "aws_iam"`), you MUST add the new required fields or your configuration will fail validation.
+If you use AWS IAM authentication (`authentication_type = "aws_iam"`), you MUST add the new required fields or your configuration will fail validation.
 
 **Before (will fail validation):**
 ```hcl
@@ -120,7 +178,7 @@ resource "cyberarksia_database_secret" "rds_iam" {
   authentication_type   = "aws_iam"
   aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
   aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-  # ❌ Missing required fields - will cause error!
+  # Missing required fields - will cause error!
 }
 ```
 
@@ -131,50 +189,14 @@ resource "cyberarksia_database_secret" "rds_iam" {
   authentication_type   = "aws_iam"
   aws_access_key_id     = "AKIAIOSFODNN7EXAMPLE"
   aws_secret_access_key = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-  aws_account           = "123456789012"        # ✅ NEW: Your 12-digit AWS account number
-  aws_username          = "database-admin"      # ✅ NEW: IAM username from ARN
+  aws_account           = "123456789012"        # NEW: Your 12-digit AWS account number
+  aws_username          = "database-admin"      # NEW: IAM username from ARN
 }
 ```
 
 **Finding your AWS account and username:**
 - `aws_account`: Your 12-digit AWS account ID (e.g., "123456789012")
 - `aws_username`: The IAM username portion from your ARN (e.g., if ARN is `arn:aws:iam::123456789012:user/database-admin`, use `"database-admin"`)
-
-### Changed
-- Renamed `cyberarksia_secret` resource to `cyberarksia_database_secret` in all:
-  - Resource implementation
-  - Examples and documentation
-  - Test files
-
-### Fixed
-- **database_policy_workspace_assignment**: Improved error messages when API rejects deletion due to constraint violations (≥1 target required). The Delete() method now translates cryptic API errors like "List should have at least 1 item" into clear, actionable guidance for users.
-- **database_policy_principal_assignment**: Improved error messages when API rejects deletion due to constraint violations (≥1 principal required). Provides clear resolution steps when attempting to remove the last principal from a policy.
-
-## [0.2.0] - 2025-11-01
-
-### BREAKING CHANGES
-- **Provider Schema**: Renamed provider attribute `client_secret` to `password` for improved clarity
-  - Update your provider configuration blocks: change `client_secret` to `password`
-  - Example: `provider "cyberarksia" { password = var.password }`
-- **Environment Variable**: Renamed `CYBERARK_CLIENT_SECRET` to `CYBERARK_PASSWORD`
-  - Update environment variables in CI/CD pipelines and local development
-  - Update `.env` files and Terraform variable references
-- **Documentation**: Updated security recommendations to reference CyberArk Conjur instead of Terraform Cloud/HashiCorp Vault
-
-### Migration Guide
-1. **Update Provider Configuration**: Change `client_secret` attribute to `password` in all `provider "cyberarksia"` blocks
-2. **Update Environment Variables**: Rename `CYBERARK_CLIENT_SECRET` to `CYBERARK_PASSWORD` in:
-   - Shell environment (`export CYBERARK_PASSWORD="..."`)
-   - CI/CD pipeline secrets
-   - Terraform Cloud/Enterprise workspace variables
-   - `.env` files
-3. **Update Terraform Variables**: Rename any variables like `cyberark_client_secret` to `cyberark_password`
-4. **Update Scripts**: Search for `CYBERARK_CLIENT_SECRET` in automation scripts and update to `CYBERARK_PASSWORD`
-
-### Changed
-- All examples updated to use `password` attribute
-- All documentation updated to reference `password` terminology
-- Error messages now use "username or password" terminology instead of "client_id or client_secret"
 
 ## [0.1.2] - 2025-11-01
 
@@ -193,7 +215,6 @@ resource "cyberarksia_database_secret" "rds_iam" {
   - Shows both inline and modular assignment patterns
   - Includes comprehensive README with troubleshooting guide
 - Missing `examples/resources/database_workspace/` with multiple cloud provider examples
-- `.pre-commit-config.yaml` already existed (verified complete)
 
 ## [0.1.1] - 2025-10-30
 
@@ -204,24 +225,6 @@ resource "cyberarksia_database_secret" "rds_iam" {
 ## [0.1.0] - 2025-10-30
 
 ### Added
-- Comprehensive acceptance test coverage for policy resources
-  - `database_policy_resource_test.go`: 12 tests covering CRUD, conditions, time frames, inline assignments, validation, and ForceNew behavior
-  - `database_policy_principal_assignment_resource_test.go`: 10 tests covering principal types (USER, GROUP, ROLE), composite IDs, and assignments
-  - `policy_workspace_assignment_resource_test.go`: 14 tests covering all 6 authentication methods (db_auth, ldap_auth, oracle_auth, mongo_auth, sqlserver_auth, rds_iam_user_auth) and composite IDs
-- Complete profile factory test coverage
-  - Added tests for all 4 remaining authentication methods: OracleAuth, MongoAuth, SQLServerAuth, RDSIAMUserAuth
-  - Total coverage: 14 tests for all 6 authentication profile types
-- Complete validator test coverage (100% coverage)
-  - `policy_status_validator_test.go`: 16 test cases validating "active"/"suspended" status values
-  - `principal_type_validator_test.go`: 22 test cases validating USER/GROUP/ROLE types
-  - `location_type_validator_test.go`: 20 test cases validating "FQDN/IP" location type
-  - `database_engine_validator_test.go`: 67 test cases covering 60+ database engines (AWS, Azure, GCP, on-premise, Atlas)
-  - `uuid_validator_test.go`: 27 test cases validating UUID v4 format
-  - `email_like_validator_test.go`: 45 test cases validating email-like principal names
-- LLM Testing Guide in CLAUDE.md for automated CRUD operation validation
-  - Structured test plans for Certificate and Database Workspace resources
-  - Validation checklists and expected outputs
-  - Common testing patterns and automation sequences
 - Initial provider implementation
 - Certificate resource (`cyberarksia_certificate`)
   - Create, read, update, delete TLS/SSL certificates
@@ -253,14 +256,8 @@ resource "cyberarksia_database_secret" "rds_iam" {
 - Provider authentication using CyberArk Identity OAuth2
 - ARK SDK integration with automatic token refresh
 - Comprehensive error handling and retry logic with exponential backoff
-- Acceptance test suite with 69 tests
+- Acceptance test suite
 - Example configurations for common use cases
-
-### Changed
-- Increased total acceptance test count from 33 to 69 tests
-- Policy resource testing coverage increased from 0% to comprehensive (36 new tests)
-- Validator test coverage increased from 22.9% to 100.0% (197+ new test cases)
-- Total unit test functions increased from 34 to 47
 
 ### Security
 - All sensitive fields (passwords, secrets, certificate bodies) properly marked as sensitive
@@ -274,38 +271,10 @@ resource "cyberarksia_database_secret" "rds_iam" {
 - Troubleshooting guide
 - Multiple example configurations
 
-### Added
-- LLM Testing Guide in CLAUDE.md for automated CRUD operation validation
-  - Structured test plans for Certificate and Database Workspace resources
-  - Validation checklists and expected outputs
-  - Common testing patterns and automation sequences
-- Initial provider implementation
-- Certificate resource (`cyberarksia_certificate`)
-  - Create, read, update, delete TLS/SSL certificates
-  - Support for PEM and DER formats
-  - Automatic X.509 metadata extraction
-  - Label-based organization
-- Database workspace resource (`cyberarksia_database_workspace`)
-  - Configure database targets with 60+ supported engines
-  - Multi-cloud support (AWS, Azure, GCP, Atlas, on-premise)
-  - Certificate-based authentication
-  - Network segmentation support
-  - Authentication method configuration
-- Provider authentication using CyberArk Identity OAuth2
-- ARK SDK integration with automatic token refresh
-- Comprehensive error handling and retry logic with exponential backoff
-- Acceptance test suite
-- Example configurations for common use cases
-
 ---
 
 ## Version History Notes
 
 This provider was developed using a test-driven approach with comprehensive planning and specification documents available in the `specs/` directory.
-
-### Development Phases
-- **Phase 1**: Project foundation and authentication
-- **Phase 2**: Certificate resource implementation
-- **Phase 3**: Database workspace resource (renamed from database_target)
 
 For detailed architectural decisions and implementation insights, see [docs/development-history.md](docs/development-history.md).
