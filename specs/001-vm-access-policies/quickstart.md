@@ -736,9 +736,9 @@ func TestAccVMPolicy_basic(t *testing.T) {
 
 ### 4.2 CRUD Validation
 
-**Manual Testing**: Follow `examples/testing/TESTING-GUIDE.md`
+**Acceptance Tests**: `TF_ACC=1 go test ./internal/provider -v -run TestAccVMPolicy`
 
-**Automated**: Future enhancement - `make test-crud DESC=vm-policy`
+**All Resources**: `make testacc`
 
 ---
 

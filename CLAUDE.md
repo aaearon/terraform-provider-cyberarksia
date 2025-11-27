@@ -348,9 +348,9 @@ updated, err := siaAPI.AccessPolicies().UpdatePolicy(policyID, newPolicy)
    ```
 
 6. **CRUD Validation**:
-   - **Automated**: `make test-crud DESC=<resource-description>`
-   - **Manual**: Follow `examples/testing/TESTING-GUIDE.md` for detailed workflow
-   - Verify all validation checks pass (CREATE → READ → UPDATE → DELETE cycle)
+   - Run acceptance tests: `TF_ACC=1 go test ./internal/provider -v -run TestAccResourceName`
+   - Or run all: `make testacc`
+   - Verify CREATE → READ → UPDATE → DELETE cycle works correctly
 
 ### Fixing a Resource Bug
 
@@ -631,7 +631,6 @@ make clean                              # Clean build artifacts
 ```bash
 make test                               # Run unit tests
 make testacc                            # Run acceptance tests (requires TF_ACC=1)
-make test-crud DESC=policy-assignment   # Run automated CRUD validation
 ```
 
 ### Code Quality
@@ -719,7 +718,6 @@ go mod download
 Before creating a new release:
 
 - [ ] All tests passing (`make test && make testacc`)
-- [ ] CRUD validation complete for affected resources (`make test-crud DESC=...`)
 - [ ] Code formatted and linted (`make fmt && make lint`)
 - [ ] Documentation generated (`make generate` or `tfplugindocs generate`)
 - [ ] CHANGELOG.md updated with release notes

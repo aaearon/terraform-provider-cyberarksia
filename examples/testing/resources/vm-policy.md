@@ -611,5 +611,4 @@ EOF
 - [`examples/resources/cyberarksia_vm_policy_principal_assignment/`](../../resources/cyberarksia_vm_policy_principal_assignment/) - Assignment examples
 
 ### Automation
-- [`scripts/test-crud-resource.sh`](../../../scripts/test-crud-resource.sh) - Automated CRUD testing
-- [`Makefile`](../../../Makefile) - Build and test targets
+- [`Makefile`](../../../Makefile) - Build and test targets (`make testacc` for acceptance tests)

@@ -468,12 +468,10 @@ EOF
 - [`examples/resources/`](../resources/) - Per-resource usage examples
 
 ### Automation
-- [`scripts/test-crud-resource.sh`](../../scripts/test-crud-resource.sh) - Automated CRUD testing script
 - [`Makefile`](../../Makefile) - Build and test targets (`make help` for all commands)
-  - `make test-crud DESC=<description>` - Run automated CRUD validation
+  - `make testacc` - Run acceptance tests
   - `make check-env` - Verify environment variables
   - `make build && make install` - Build and install provider
-  - `make testacc` - Run acceptance tests
 
 ### Test Results
 - `/tmp/sia-azure-test-20251027-185657/TEST-RESULTS.md` - Azure PostgreSQL test results (2025-10-27)
