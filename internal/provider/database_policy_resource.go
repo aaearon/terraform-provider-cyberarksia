@@ -800,10 +800,16 @@ func (r *DatabasePolicyResource) Create(ctx context.Context, req resource.Create
 	// Set last_modified to empty string (API doesn't return this field on create)
 	data.LastModified = types.StringValue("")
 
-	// Explicitly set computed metadata fields to null to avoid "unknown value" errors
-	// These will be populated by the automatic Read() call after Create()
-	data.CreatedBy = types.ObjectNull(models.ChangeInfoAttrTypes())
-	data.UpdatedOn = types.ObjectNull(models.ChangeInfoAttrTypes())
+	// Populate computed metadata fields from API response
+	// CreateChangeInfoObject handles empty strings by returning ObjectNull
+	data.CreatedBy = models.CreateChangeInfoObject(
+		createdPolicy.Metadata.CreatedBy.User,
+		createdPolicy.Metadata.CreatedBy.Time,
+	)
+	data.UpdatedOn = models.CreateChangeInfoObject(
+		createdPolicy.Metadata.UpdatedOn.User,
+		createdPolicy.Metadata.UpdatedOn.Time,
+	)
 
 	tflog.Info(ctx, "Created database policy", map[string]interface{}{
 		"policy_id":        data.PolicyID.ValueString(),

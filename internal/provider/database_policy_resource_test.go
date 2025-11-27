@@ -47,7 +47,7 @@ func TestAccDatabasePolicy_basic(t *testing.T) {
 				ResourceName:            "cyberarksia_database_policy.test",
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"created_by", "updated_on", "last_modified"},
+				ImportStateVerifyIgnore: []string{"last_modified"},
 			},
 		},
 	})
