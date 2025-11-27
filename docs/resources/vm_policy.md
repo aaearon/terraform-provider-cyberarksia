@@ -118,7 +118,7 @@ output "delegation_classification" {
 - `idle_time` (Number) Session idle timeout in minutes (1-120). Default: 10.
 - `max_session_duration` (Number) Maximum session duration in hours (1-24). Default: 1.
 - `policy_type` (String) Policy type. Valid values: `Recurring` (default), `OnDemand`.
-- `principals` (Block List) Principal assignment (repeatable block). **Required**: At least 1 principal. (see [below for nested schema](#nestedblock--principals))
+- `principals` (Block Set) Principal assignment (repeatable block). **Required**: At least 1 principal. (see [below for nested schema](#nestedblock--principals))
 - `tags` (List of String) List of tags for policy organization (max 20 tags).
 - `time_frame` (Block, Optional) Policy validity period. Optional - if not specified, policy never expires. (see [below for nested schema](#nestedblock--time_frame))
 - `time_zone` (String) Timezone for access conditions (max 50 characters). Supports IANA names (e.g., `America/New_York`) or GMT offsets (e.g., `GMT+05:00`). Default: `GMT`.
