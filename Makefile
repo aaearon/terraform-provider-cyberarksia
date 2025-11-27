@@ -1,4 +1,4 @@
-.PHONY: build test testacc install lint fmt clean help check-env test-crud deps generate
+.PHONY: build test testacc install lint fmt clean help check-env deps generate
 .PHONY: validate validate-go validate-terraform validate-docs validate-security check-all
 .PHONY: pre-commit-install pre-commit-run tools-install
 
@@ -22,7 +22,6 @@ help:
 	@echo "Testing:"
 	@echo "  test        - Run unit tests"
 	@echo "  testacc     - Run acceptance tests (requires TF_ACC=1)"
-	@echo "  test-crud   - Run automated CRUD validation (usage: make test-crud DESC=resource-name)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  fmt         - Format Go code"
@@ -113,16 +112,6 @@ check-env:
 	@if [ -z "$(TF_ACC)" ]; then \
 		echo "⚠️  TF_ACC not set (recommended: export TF_ACC=1)"; \
 	fi
-
-# Run automated CRUD testing workflow
-test-crud: check-env
-	@if [ -z "$(DESC)" ]; then \
-		echo "Usage: make test-crud DESC=<resource-description>"; \
-		echo "Example: make test-crud DESC=policy-principal-assignment"; \
-		exit 1; \
-	fi
-	@echo "Running CRUD validation for: $(DESC)"
-	./scripts/test-crud-resource.sh "$(DESC)"
 
 # ============================================================================
 # Validation Targets (Mirror CI Checks)

@@ -309,7 +309,7 @@ Use this checklist before committing resource changes or releasing new provider 
 ### Troubleshooting Reference
 
 **Quick Diagnostics**:
-0. **Start with automated testing**: `make check-env && make test-crud DESC=test` - validates environment and runs basic CRUD cycle
+0. **Run acceptance tests**: `make check-env && TF_ACC=1 go test ./internal/provider -v -run TestAccDatabasePolicy`
 
 **Common Issues**:
 1. **Provider binary not found**: `make build && make install` or `make build && make install`

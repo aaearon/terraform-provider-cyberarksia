@@ -1185,8 +1185,8 @@ if err != nil {
 - CyberArk tenant with SIA enabled
 
 **CRUD Validation**:
-- Automated: `make test-crud DESC=<resource-description>`
-- Manual: Follow `examples/testing/TESTING-GUIDE.md` workflow
+- Run acceptance tests: `TF_ACC=1 go test ./internal/provider -v -run TestAccResourceName`
+- Or run all: `make testacc`
 - All validation checks must pass
 
 **Selective: Unit Tests**:

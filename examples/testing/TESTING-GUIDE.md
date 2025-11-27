@@ -4,7 +4,7 @@
 
 This guide is the **single source of truth** for CRUD testing of the CyberArk SIA Terraform provider.
 
-**Last Updated**: 2025-10-30 (Added automated CRUD testing via make test-crud + scripts/test-crud-resource.sh)
+**Last Updated**: 2025-11-27 (Simplified testing: use `make testacc` for acceptance tests)
 
 ---
 
@@ -129,8 +129,8 @@ resource "cyberarksia_database_policy" "example" {
 ### Document Authority
 
 - **Location**: `examples/testing/TESTING-GUIDE.md`
-- **Referenced by**: `CLAUDE.md`, `docs/testing-framework.md`, all template files
-- **Automation**: `scripts/test-crud-resource.sh`, `Makefile` (targets: `test-crud`, `check-env`)
+- **Referenced by**: `CLAUDE.md`, resource documentation
+- **Automation**: `Makefile` (targets: `testacc`, `check-env`)
 - **Maintainers**: Must update when resource schemas or testing requirements change
 - **Version**: See git history for changes
 
@@ -142,14 +142,13 @@ Update this guide when:
 3. ✅ Discovering new validation requirements
 4. ✅ Adding new troubleshooting scenarios
 5. ✅ Updating provider configuration requirements
-6. ✅ Modifying automation scripts (`scripts/test-crud-resource.sh`, Makefile targets)
 
 ### When NOT to Follow This Guide
 
 This guide is for **integration testing** (real API). For:
-- **Unit testing**: See `internal/*/` test files
-- **Acceptance testing**: See `tests/` (future)
-- **CI/CD testing**: See `.github/workflows/` (future)
+- **Unit testing**: See `internal/*_test.go` files
+- **Acceptance testing**: Run `make testacc` or `TF_ACC=1 go test ./internal/provider -v`
+- **CI/CD testing**: See `.github/workflows/`
 
 ### Reporting Issues
 
@@ -204,22 +203,11 @@ This test validates all CyberArk SIA Terraform provider resources:
 
 This guide supports two testing workflows:
 
-### ⚡ Automated Testing (Recommended)
+### ⚡ Acceptance Testing (Recommended)
 
-**Use this for**: Fast CRUD validation during development
+**Use this for**: CRUD validation during development
 
-**Tool**: `scripts/test-crud-resource.sh` (automated via `make test-crud`)
-
-**Time**: 5-10 minutes for full CREATE → READ → DELETE cycle
-
-**What it does**:
-- ✅ Automatically copies all templates to `/tmp/sia-crud-validation-{timestamp}/`
-- ✅ Runs `terraform init`
-- ✅ Executes CREATE test (`terraform apply`)
-- ✅ Executes READ test (`terraform plan` with drift detection)
-- ✅ Skips UPDATE test (requires manual modification)
-- ✅ Executes DELETE test (`terraform destroy`)
-- ✅ Provides detailed success/failure report
+**Tool**: Go acceptance tests in `internal/provider/*_test.go`
 
 **Prerequisites**:
 ```bash
@@ -229,45 +217,32 @@ make check-env
 # Should confirm:
 # ✅ CYBERARK_USERNAME
 # ✅ CYBERARK_PASSWORD
-# ⚠️  TF_ACC=1 (recommended)
 ```
 
 **Usage**:
 ```bash
-# From project root
-cd ~/terraform-provider-cyberarksia
+# Run all acceptance tests
+make testacc
 
-# Run automated CRUD test
-make test-crud DESC=policy-principal-assignment
+# Run specific resource tests
+TF_ACC=1 go test ./internal/provider -v -run TestAccDatabasePolicy
+TF_ACC=1 go test ./internal/provider -v -run TestAccVMPolicy
+TF_ACC=1 go test ./internal/provider -v -run TestAccTargetSet
 
-# Or run script directly
-./scripts/test-crud-resource.sh "my-test-description"
+# Run with timeout for long tests
+TF_ACC=1 go test ./internal/provider -v -run TestAccDatabasePolicy -timeout 30m
 ```
 
-**Output**:
-```
-╔════════════════════════════════════════════════════════════════════╗
-║  CRUD Test Summary                                                  ║
-╚════════════════════════════════════════════════════════════════════╝
-
-  CREATE:  ✅ PASSED
-  READ:    ✅ PASSED (no drift detected)
-  UPDATE:  ⏭️  SKIPPED (manual modification required)
-  DELETE:  ✅ PASSED
-
-Test directory preserved: /tmp/sia-crud-validation-my-test-{timestamp}/
-```
-
-**When to use automated testing**:
-- ✅ Quick validation during development
-- ✅ Verifying bug fixes (CREATE/DELETE cycle)
-- ✅ Pre-commit smoke testing
-- ✅ CI/CD pipeline integration (future)
+**What acceptance tests validate**:
+- ✅ CREATE - Resource created successfully
+- ✅ READ - Resource state matches API
+- ✅ UPDATE - Resource modifications work correctly
+- ✅ DELETE - Resource cleanup succeeds
+- ✅ ImportState - Resources can be imported
 
 **When to use manual testing** (see below):
-- 🔧 Testing UPDATE operations (requires template modification)
-- 🔧 Testing specific cloud providers (Azure/AWS/GCP)
-- 🔧 Complex policy assignment scenarios
+- 🔧 Testing specific cloud providers (Azure/AWS/GCP configurations)
+- 🔧 Complex multi-resource scenarios not covered by acceptance tests
 - 🔧 Debugging drift detection issues
 
 ---
@@ -392,7 +367,7 @@ For detailed testing procedures for specific resources, see the following guides
 
 ## Quick Navigation
 
-**For automation**: Use `make test-crud DESC=<description>` (see above)
+**For acceptance tests**: Use `make testacc` or `TF_ACC=1 go test ./internal/provider -v -run TestAccResourceName`
 
 **For manual testing**: See resource-specific guides above
 
