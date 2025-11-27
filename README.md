@@ -147,7 +147,7 @@ Manages database workspace configurations for secure access.
 - Network segmentation
 - Authentication method configuration
 
-See [examples/resources/database_workspace/](examples/resources/database_workspace/) for usage examples.
+See [examples/resources/cyberarksia_database_workspace/](examples/resources/cyberarksia_database_workspace/) for usage examples.
 
 #### `cyberarksia_database_secret`
 
@@ -372,13 +372,12 @@ For comprehensive CRUD testing, see [TESTING.md](TESTING.md) and [examples/testi
 terraform-provider-cyberarksia/
 ├── internal/
 │   ├── client/          # ARK SDK wrappers, retry logic, error handling
-│   ├── provider/        # Terraform provider implementation
+│   ├── provider/        # Terraform provider and resource implementations (tests in *_test.go)
 │   ├── models/          # Data models
 │   └── validators/      # Custom validators
 ├── examples/            # Terraform HCL examples
 ├── docs/                # Documentation
-├── specs/               # Feature specifications and planning docs
-└── tests/               # Additional test resources
+└── specs/               # Feature specifications and planning docs
 ```
 
 ## Contributing

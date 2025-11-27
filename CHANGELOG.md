@@ -214,7 +214,7 @@ resource "cyberarksia_database_secret" "rds_iam" {
   - Demonstrates secret management, database workspaces, policies, and assignments
   - Shows both inline and modular assignment patterns
   - Includes comprehensive README with troubleshooting guide
-- Missing `examples/resources/database_workspace/` with multiple cloud provider examples
+- Missing `examples/resources/cyberarksia_database_workspace/` with multiple cloud provider examples
 
 ## [0.1.1] - 2025-10-30
 
