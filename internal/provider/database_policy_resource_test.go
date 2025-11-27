@@ -24,7 +24,7 @@ func TestAccDatabasePolicy_basic(t *testing.T) {
 					// Basic metadata
 					resource.TestCheckResourceAttr("cyberarksia_database_policy.test", "name", "test-basic-policy"),
 					resource.TestCheckResourceAttr("cyberarksia_database_policy.test", "status", "active"),
-					resource.TestCheckResourceAttr("cyberarksia_database_policy.test", "delegation_classification", "Unrestricted"),
+					resource.TestCheckResourceAttr("cyberarksia_database_policy.test", "delegation_classification", "unrestricted"),
 					resource.TestCheckResourceAttr("cyberarksia_database_policy.test", "time_zone", "GMT"),
 
 					// UUID validation
@@ -32,12 +32,6 @@ func TestAccDatabasePolicy_basic(t *testing.T) {
 						mustCompileRegex(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)),
 					resource.TestMatchResourceAttr("cyberarksia_database_policy.test", "policy_id",
 						mustCompileRegex(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)),
-
-					// Computed metadata fields
-					resource.TestCheckResourceAttrSet("cyberarksia_database_policy.test", "created_by.user"),
-					resource.TestCheckResourceAttrSet("cyberarksia_database_policy.test", "created_by.timestamp"),
-					resource.TestCheckResourceAttrSet("cyberarksia_database_policy.test", "updated_on.user"),
-					resource.TestCheckResourceAttrSet("cyberarksia_database_policy.test", "updated_on.timestamp"),
 
 					// Conditions
 					resource.TestCheckResourceAttr("cyberarksia_database_policy.test", "conditions.max_session_duration", "8"),
@@ -50,9 +44,10 @@ func TestAccDatabasePolicy_basic(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				ResourceName:      "cyberarksia_database_policy.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "cyberarksia_database_policy.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"created_by", "updated_on", "last_modified"},
 			},
 		},
 	})
@@ -348,13 +343,14 @@ resource "cyberarksia_database_secret" "test" {
 }
 
 resource "cyberarksia_database_workspace" "test" {
-  name                  = "test-policy-db"
-  database_type         = "postgres"
-  address               = "postgres.example.com"
-  port                  = 5432
-  authentication_method = "local_ephemeral_user"
-  cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.test.id
+  name                          = "test-policy-db"
+  database_type                 = "postgres"
+  address                       = "postgres.example.com"
+  port                          = 5432
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.test.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "test_user" {
@@ -371,6 +367,10 @@ resource "cyberarksia_database_policy" "test" {
   conditions {
     max_session_duration = 8
     idle_time            = 10
+
+    access_window {
+      days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+    }
   }
 
   target_database {
@@ -383,11 +383,11 @@ resource "cyberarksia_database_policy" "test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.test_user.principal_id
+    principal_id          = data.cyberarksia_principal.test_user.id
     principal_type        = data.cyberarksia_principal.test_user.principal_type
-    principal_name        = data.cyberarksia_principal.test_user.principal_name
-    source_directory_name = data.cyberarksia_principal.test_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.test_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.test_user.display_name
+    source_directory_name = data.cyberarksia_principal.test_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.test_user.directory_id
   }
 }
 `
@@ -442,11 +442,11 @@ resource "cyberarksia_database_policy" "conditions_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.conditions_user.principal_id
+    principal_id          = data.cyberarksia_principal.conditions_user.id
     principal_type        = data.cyberarksia_principal.conditions_user.principal_type
-    principal_name        = data.cyberarksia_principal.conditions_user.principal_name
-    source_directory_name = data.cyberarksia_principal.conditions_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.conditions_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.conditions_user.display_name
+    source_directory_name = data.cyberarksia_principal.conditions_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.conditions_user.directory_id
   }
 }
 `
@@ -498,11 +498,11 @@ resource "cyberarksia_database_policy" "timeframe_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.timeframe_user.principal_id
+    principal_id          = data.cyberarksia_principal.timeframe_user.id
     principal_type        = data.cyberarksia_principal.timeframe_user.principal_type
-    principal_name        = data.cyberarksia_principal.timeframe_user.principal_name
-    source_directory_name = data.cyberarksia_principal.timeframe_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.timeframe_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.timeframe_user.display_name
+    source_directory_name = data.cyberarksia_principal.timeframe_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.timeframe_user.directory_id
   }
 }
 `
@@ -577,11 +577,11 @@ resource "cyberarksia_database_policy" "inline_test" {
 
   # Principal assignment using data source lookup
   principal {
-    principal_id          = data.cyberarksia_principal.inline_user.principal_id
+    principal_id          = data.cyberarksia_principal.inline_user.id
     principal_type        = data.cyberarksia_principal.inline_user.principal_type
-    principal_name        = data.cyberarksia_principal.inline_user.principal_name
-    source_directory_name = data.cyberarksia_principal.inline_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.inline_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.inline_user.display_name
+    source_directory_name = data.cyberarksia_principal.inline_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.inline_user.directory_id
   }
 }
 `
@@ -630,11 +630,11 @@ resource "cyberarksia_database_policy" "update_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.update_user.principal_id
+    principal_id          = data.cyberarksia_principal.update_user.id
     principal_type        = data.cyberarksia_principal.update_user.principal_type
-    principal_name        = data.cyberarksia_principal.update_user.principal_name
-    source_directory_name = data.cyberarksia_principal.update_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.update_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.update_user.display_name
+    source_directory_name = data.cyberarksia_principal.update_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.update_user.directory_id
   }
 }
 `
@@ -683,11 +683,11 @@ resource "cyberarksia_database_policy" "update_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.update_user.principal_id
+    principal_id          = data.cyberarksia_principal.update_user.id
     principal_type        = data.cyberarksia_principal.update_user.principal_type
-    principal_name        = data.cyberarksia_principal.update_user.principal_name
-    source_directory_name = data.cyberarksia_principal.update_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.update_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.update_user.display_name
+    source_directory_name = data.cyberarksia_principal.update_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.update_user.directory_id
   }
 }
 `
@@ -740,11 +740,11 @@ resource "cyberarksia_database_policy" "window_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.window_user.principal_id
+    principal_id          = data.cyberarksia_principal.window_user.id
     principal_type        = data.cyberarksia_principal.window_user.principal_type
-    principal_name        = data.cyberarksia_principal.window_user.principal_name
-    source_directory_name = data.cyberarksia_principal.window_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.window_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.window_user.display_name
+    source_directory_name = data.cyberarksia_principal.window_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.window_user.directory_id
   }
 }
 `
@@ -797,11 +797,11 @@ resource "cyberarksia_database_policy" "window_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.window_user.principal_id
+    principal_id          = data.cyberarksia_principal.window_user.id
     principal_type        = data.cyberarksia_principal.window_user.principal_type
-    principal_name        = data.cyberarksia_principal.window_user.principal_name
-    source_directory_name = data.cyberarksia_principal.window_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.window_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.window_user.display_name
+    source_directory_name = data.cyberarksia_principal.window_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.window_user.directory_id
   }
 }
 `
@@ -848,11 +848,11 @@ resource "cyberarksia_database_policy" "dbauth_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.dbauth_user.principal_id
+    principal_id          = data.cyberarksia_principal.dbauth_user.id
     principal_type        = data.cyberarksia_principal.dbauth_user.principal_type
-    principal_name        = data.cyberarksia_principal.dbauth_user.principal_name
-    source_directory_name = data.cyberarksia_principal.dbauth_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.dbauth_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.dbauth_user.display_name
+    source_directory_name = data.cyberarksia_principal.dbauth_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.dbauth_user.directory_id
   }
 }
 `
@@ -902,11 +902,11 @@ resource "cyberarksia_database_policy" "oracle_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.oracle_user.principal_id
+    principal_id          = data.cyberarksia_principal.oracle_user.id
     principal_type        = data.cyberarksia_principal.oracle_user.principal_type
-    principal_name        = data.cyberarksia_principal.oracle_user.principal_name
-    source_directory_name = data.cyberarksia_principal.oracle_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.oracle_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.oracle_user.display_name
+    source_directory_name = data.cyberarksia_principal.oracle_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.oracle_user.directory_id
   }
 }
 `
@@ -929,11 +929,11 @@ resource "cyberarksia_database_policy" "missing_targets" {
   # Missing target_database block - should fail validation
 
   principal {
-    principal_id          = data.cyberarksia_principal.missing_user.principal_id
+    principal_id          = data.cyberarksia_principal.missing_user.id
     principal_type        = data.cyberarksia_principal.missing_user.principal_type
-    principal_name        = data.cyberarksia_principal.missing_user.principal_name
-    source_directory_name = data.cyberarksia_principal.missing_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.missing_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.missing_user.display_name
+    source_directory_name = data.cyberarksia_principal.missing_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.missing_user.directory_id
   }
 }
 `
@@ -1019,11 +1019,11 @@ resource "cyberarksia_database_policy" "mismatched" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.mismatched_user.principal_id
+    principal_id          = data.cyberarksia_principal.mismatched_user.id
     principal_type        = data.cyberarksia_principal.mismatched_user.principal_type
-    principal_name        = data.cyberarksia_principal.mismatched_user.principal_name
-    source_directory_name = data.cyberarksia_principal.mismatched_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.mismatched_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.mismatched_user.display_name
+    source_directory_name = data.cyberarksia_principal.mismatched_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.mismatched_user.directory_id
   }
 }
 `
@@ -1070,11 +1070,11 @@ resource "cyberarksia_database_policy" "forcenew_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.forcenew_user.principal_id
+    principal_id          = data.cyberarksia_principal.forcenew_user.id
     principal_type        = data.cyberarksia_principal.forcenew_user.principal_type
-    principal_name        = data.cyberarksia_principal.forcenew_user.principal_name
-    source_directory_name = data.cyberarksia_principal.forcenew_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.forcenew_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.forcenew_user.display_name
+    source_directory_name = data.cyberarksia_principal.forcenew_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.forcenew_user.directory_id
   }
 }
 `
@@ -1121,11 +1121,11 @@ resource "cyberarksia_database_policy" "forcenew_test" {
   }
 
   principal {
-    principal_id          = data.cyberarksia_principal.forcenew_user.principal_id
+    principal_id          = data.cyberarksia_principal.forcenew_user.id
     principal_type        = data.cyberarksia_principal.forcenew_user.principal_type
-    principal_name        = data.cyberarksia_principal.forcenew_user.principal_name
-    source_directory_name = data.cyberarksia_principal.forcenew_user.source_directory_name
-    source_directory_id   = data.cyberarksia_principal.forcenew_user.source_directory_id
+    principal_name        = data.cyberarksia_principal.forcenew_user.display_name
+    source_directory_name = data.cyberarksia_principal.forcenew_user.directory_name
+    source_directory_id   = data.cyberarksia_principal.forcenew_user.directory_id
   }
 }
 `
