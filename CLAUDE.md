@@ -516,6 +516,28 @@ updated, err := siaAPI.AccessPolicies().UpdatePolicy(policyID, newPolicy)
 ❌ **Don't modify template files directly** - Copy to `/tmp` first, then customize
 ❌ **Don't skip Read-Modify-Write for policies** - Causes assignment overwrites
 ❌ **Don't assume SDK behavior** - Always verify in SDK source code
+❌ **Don't use ListAttribute for unordered collections** - Use SetAttribute instead (see below)
+
+## Set vs List Guidelines
+
+**Use SetAttribute when:**
+- Collection represents unordered items (tags, labels, SANs, IP addresses)
+- Order has no semantic meaning for the API or business logic
+- API may return items in non-deterministic order
+
+**Use ListAttribute when:**
+- Order has semantic meaning (priority lists, ordered sequences)
+- Items must be processed in specific order
+- API explicitly guarantees and preserves ordering
+
+**Why this matters:** Using List for unordered collections causes Terraform drift when the API returns items in different order than the config specified. For example, `["a", "b"]` != `["b", "a"]` for Lists but they are equal for Sets.
+
+**Evidence:** PRs #38, #39, and #40 demonstrate ordering drift bugs from incorrect List usage:
+- `services` (database_workspace): unordered service names
+- `subject_alternative_name` (certificate): X.509 SANs inherently unordered
+- `policy_tags` (database_policy): organizational labels
+- `tags` (vm_policy): organizational labels
+- `ip_addresses` (vm_policy ip_rule): IPs are OR'd together
 
 ## Code Style
 
