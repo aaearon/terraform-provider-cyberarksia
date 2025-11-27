@@ -19,7 +19,7 @@ type VMPolicyResourceModel struct {
 	DelegationClassification types.String `tfsdk:"delegation_classification"`
 
 	// Lists and Objects (larger types)
-	Tags          types.List   `tfsdk:"tags"`          // []string
+	Tags          types.Set    `tfsdk:"tags"`          // []string, order-independent
 	Principals    types.Set    `tfsdk:"principals"`    // []PrincipalModel, min 1 required, order-independent
 	AccessWindow  types.Object `tfsdk:"access_window"` // AccessWindowModel
 	TimeFrame     types.Object `tfsdk:"time_frame"`    // TimeFrameModel
@@ -91,7 +91,7 @@ type FQDNRuleModel struct {
 // IPRuleModel - IP address matching rule
 type IPRuleModel struct {
 	Operator    types.String `tfsdk:"operator"`
-	IPAddresses types.List   `tfsdk:"ip_addresses"` // []string
+	IPAddresses types.Set    `tfsdk:"ip_addresses"` // []string, order-independent
 	LogicalName types.String `tfsdk:"logical_name"`
 }
 

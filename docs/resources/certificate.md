@@ -40,7 +40,7 @@ Read-Only:
 - `issuer` (String) Certificate issuer Distinguished Name (DN).
 - `serial_number` (String) Certificate serial number in decimal format.
 - `subject` (String) Certificate subject Distinguished Name (DN).
-- `subject_alternative_name` (List of String) Subject Alternative Names (SANs). Empty array if none present.
+- `subject_alternative_name` (Set of String) Subject Alternative Names (SANs). Empty set if none present.
 - `valid_from` (String) Certificate validity start time (Unix timestamp as string).
 - `valid_to` (String) Certificate validity end time (Unix timestamp as string).
 

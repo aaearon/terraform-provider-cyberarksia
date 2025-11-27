@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -120,12 +119,12 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 					stringvalidator.LengthAtMost(50),
 				},
 			},
-			"policy_tags": schema.ListAttribute{
-				MarkdownDescription: "List of tags for policy organization (max 20 tags).",
+			"policy_tags": schema.SetAttribute{
+				MarkdownDescription: "Set of tags for policy organization (max 20 tags).",
 				Optional:            true,
 				ElementType:         types.StringType,
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(20),
+				Validators: []validator.Set{
+					setvalidator.SizeAtMost(20),
 				},
 			},
 			"last_modified": schema.StringAttribute{

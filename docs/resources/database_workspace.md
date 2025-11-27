@@ -30,14 +30,14 @@ Manages a database workspace in CyberArk SIA. Database workspaces represent exis
 - `address` (String) Hostname, IP address, or FQDN of the database server (ReadWriteEndpoint in SDK). Optional - some databases use service discovery.
 - `auth_database` (String) Authentication database name (AuthDatabase in SDK). Primarily used with MongoDB (default: 'admin'). Optional for other database types.
 - `authentication_method` (String) How SIA authenticates to the database (ConfiguredAuthMethodType in SDK). Optional - SDK uses database family defaults if not provided. Valid values: ad_ephemeral_user, local_ephemeral_user, rds_iam_authentication, atlas_ephemeral_user
-- `certificate_id` (String) Certificate ID for TLS/mTLS connections (Certificate in SDK). References a certificate stored in SIA's certificate service. Optional - used for mutual TLS (mTLS) or custom CA certificates. References cyberark_sia_certificate resource ID.
+- `certificate_id` (String) Certificate ID for TLS/mTLS connections (Certificate in SDK). References a certificate stored in SIA's certificate service. Optional - used for mutual TLS (mTLS) or custom CA certificates. References cyberarksia_certificate resource ID.
 - `cloud_provider` (String) Cloud provider hosting the database (Platform in SDK). Valid values: aws, azure, gcp, on_premise, atlas. Defaults to on_premise.
 - `enable_certificate_validation` (Boolean) Enforce TLS certificate validation for database connections (EnableCertificateValidation in SDK). When true, requires valid TLS certificates. Defaults to true for security. Set to false only if using self-signed certificates in non-production environments.
 - `network_name` (String) Network name where the database resides (NetworkName in SDK). Used for network segmentation and isolation. Defaults to 'ON-PREMISE' if not specified.
 - `port` (Number) TCP port for database connections (1-65535). Optional - SDK uses database family defaults if not provided.
 - `read_only_endpoint` (String) Read-only endpoint for the database (ReadOnlyEndpoint in SDK). Optional - used for read replica configurations to scale read operations.
 - `region` (String) Region of the database. Required for AWS RDS IAM authentication (rds_iam_authentication). Used in AWS Signature Version 4 signing for generating temporary RDS authentication tokens. Optional for other authentication methods and cloud providers.
-- `services` (List of String) List of service names for the database (Services in SDK). Used with Oracle and SQL Server for multi-service configurations. Optional - only needed for databases with multiple services.
+- `services` (Set of String) Set of service names for the database (Services in SDK). Used with Oracle and SQL Server for multi-service configurations. Optional - only needed for databases with multiple services.
 - `tags` (Map of String) Key-value tags for organizing and categorizing database workspaces. Maps to Tags in SDK.
 
 ### Read-Only

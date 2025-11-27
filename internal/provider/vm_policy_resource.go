@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -122,13 +121,13 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 					stringvalidator.LengthAtMost(50),
 				},
 			},
-			"tags": schema.ListAttribute{
-				MarkdownDescription: "List of tags for policy organization (max 20 tags).",
+			"tags": schema.SetAttribute{
+				MarkdownDescription: "Set of tags for policy organization (max 20 tags).",
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(20),
+				Validators: []validator.Set{
+					setvalidator.SizeAtMost(20),
 				},
 			},
 			"policy_type": schema.StringAttribute{
@@ -375,12 +374,12 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 										validators.IPOperator(),
 									},
 								},
-								"ip_addresses": schema.ListAttribute{
+								"ip_addresses": schema.SetAttribute{
 									MarkdownDescription: "IP addresses (max 1000 items).",
 									Required:            true,
 									ElementType:         types.StringType,
-									Validators: []validator.List{
-										listvalidator.SizeAtMost(1000),
+									Validators: []validator.Set{
+										setvalidator.SizeAtMost(1000),
 									},
 								},
 								"logical_name": schema.StringAttribute{
@@ -812,16 +811,16 @@ func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateReques
 	// Set computed fields that must be known after apply
 	plan.DelegationClassification = types.StringValue(created.DelegationClassification)
 
-	// Set tags (Optional+Computed) - use empty list if not provided
+	// Set tags (Optional+Computed) - use empty set if not provided
 	if len(created.Metadata.PolicyTags) > 0 {
-		tagsList, diagsTags := types.ListValueFrom(ctx, types.StringType, created.Metadata.PolicyTags)
+		tagsSet, diagsTags := types.SetValueFrom(ctx, types.StringType, created.Metadata.PolicyTags)
 		if diagsTags.HasError() {
 			resp.Diagnostics.Append(diagsTags...)
 		} else {
-			plan.Tags = tagsList
+			plan.Tags = tagsSet
 		}
 	} else {
-		plan.Tags = types.ListNull(types.StringType)
+		plan.Tags = types.SetNull(types.StringType)
 	}
 
 	// Explicitly set computed metadata fields to null to avoid "unknown value" errors
@@ -1909,14 +1908,14 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 	// Tags
 	if len(sdkPolicy.Metadata.PolicyTags) > 0 {
-		tagsList, diagsTags := types.ListValueFrom(ctx, types.StringType, sdkPolicy.Metadata.PolicyTags)
+		tagsSet, diagsTags := types.SetValueFrom(ctx, types.StringType, sdkPolicy.Metadata.PolicyTags)
 		if diagsTags.HasError() {
 			diags.Append(diagsTags...)
 		} else {
-			state.Tags = tagsList
+			state.Tags = tagsSet
 		}
 	} else {
-		state.Tags = types.ListNull(types.StringType)
+		state.Tags = types.SetNull(types.StringType)
 	}
 
 	// Time frame
@@ -2222,20 +2221,20 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		if len(sdkPolicy.Targets.FQDNIPResource.IPRules) > 0 {
 			ipRuleModels := make([]models.IPRuleModel, len(sdkPolicy.Targets.FQDNIPResource.IPRules))
 			for i, rule := range sdkPolicy.Targets.FQDNIPResource.IPRules {
-				ipAddressesList, diagsIPs := types.ListValueFrom(ctx, types.StringType, rule.IPAddresses)
+				ipAddressesSet, diagsIPs := types.SetValueFrom(ctx, types.StringType, rule.IPAddresses)
 				if diagsIPs.HasError() {
 					diags.Append(diagsIPs...)
 				}
 				ipRuleModels[i] = models.IPRuleModel{
 					Operator:    types.StringValue(rule.Operator),
-					IPAddresses: ipAddressesList,
+					IPAddresses: ipAddressesSet,
 					LogicalName: types.StringValue(rule.LogicalName),
 				}
 			}
 			ipRulesList, diagsIPRules := types.ListValueFrom(ctx, types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"operator":     types.StringType,
-					"ip_addresses": types.ListType{ElemType: types.StringType},
+					"ip_addresses": types.SetType{ElemType: types.StringType},
 					"logical_name": types.StringType,
 				},
 			}, ipRuleModels)
@@ -2249,7 +2248,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			fqdnIPTargets.IPRules = types.ListNull(types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"operator":     types.StringType,
-					"ip_addresses": types.ListType{ElemType: types.StringType},
+					"ip_addresses": types.SetType{ElemType: types.StringType},
 					"logical_name": types.StringType,
 				},
 			})
@@ -2257,7 +2256,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 
 		fqdnIPTargetsObj, diagsFQDNIP := types.ObjectValueFrom(ctx, map[string]attr.Type{
 			"fqdn_rule": types.SetType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "computername_pattern": types.StringType, "domain": types.StringType}}},
-			"ip_rule":   types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "ip_addresses": types.ListType{ElemType: types.StringType}, "logical_name": types.StringType}}},
+			"ip_rule":   types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "ip_addresses": types.SetType{ElemType: types.StringType}, "logical_name": types.StringType}}},
 		}, fqdnIPTargets)
 		if diagsFQDNIP.HasError() {
 			diags.Append(diagsFQDNIP...)
@@ -2268,7 +2267,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		// Set FQDN/IP targets to null when not present
 		state.FQDNIPTargets = types.ObjectNull(map[string]attr.Type{
 			"fqdn_rule": types.SetType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "computername_pattern": types.StringType, "domain": types.StringType}}},
-			"ip_rule":   types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "ip_addresses": types.ListType{ElemType: types.StringType}, "logical_name": types.StringType}}},
+			"ip_rule":   types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{"operator": types.StringType, "ip_addresses": types.SetType{ElemType: types.StringType}, "logical_name": types.StringType}}},
 		})
 	}
 
