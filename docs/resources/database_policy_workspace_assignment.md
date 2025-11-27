@@ -46,7 +46,7 @@ Policies can be created using the `cyberarksia_database_policy` resource or mana
 
 Optional:
 
-- `roles` (List of String) List of database roles to assign to the user. **Required** when this profile is used.
+- `roles` (Set of String) Set of database roles to assign to the user. **Required** when this profile is used.
 
 
 <a id="nestedblock--ldap_auth_profile"></a>
@@ -54,7 +54,7 @@ Optional:
 
 Optional:
 
-- `assign_groups` (List of String) List of LDAP groups to assign to the user. **Required** when this profile is used.
+- `assign_groups` (Set of String) Set of LDAP groups to assign to the user. **Required** when this profile is used.
 
 
 <a id="nestedblock--mongo_auth_profile"></a>
@@ -64,7 +64,7 @@ Optional:
 
 - `database_builtin_roles` (Map of List of String) Map of database names to their built-in roles.
 - `database_custom_roles` (Map of List of String) Map of database names to their custom roles.
-- `global_builtin_roles` (List of String) List of global built-in roles to assign.
+- `global_builtin_roles` (Set of String) Set of global built-in roles to assign.
 
 
 <a id="nestedblock--oracle_auth_profile"></a>
@@ -73,7 +73,7 @@ Optional:
 Optional:
 
 - `dba_role` (Boolean) Grant DBA role to the user.
-- `roles` (List of String) List of Oracle roles to assign to the user. **Required** when this profile is used.
+- `roles` (Set of String) Set of Oracle roles to assign to the user. **Required** when this profile is used.
 - `sysdba_role` (Boolean) Grant SYSDBA role to the user.
 - `sysoper_role` (Boolean) Grant SYSOPER role to the user.
 
@@ -93,5 +93,5 @@ Optional:
 
 - `database_builtin_roles` (Map of List of String) Map of database names to their built-in roles.
 - `database_custom_roles` (Map of List of String) Map of database names to their custom roles.
-- `global_builtin_roles` (List of String) List of global built-in roles to assign.
-- `global_custom_roles` (List of String) List of global custom roles to assign.
+- `global_builtin_roles` (Set of String) Set of global built-in roles to assign.
+- `global_custom_roles` (Set of String) Set of global custom roles to assign.

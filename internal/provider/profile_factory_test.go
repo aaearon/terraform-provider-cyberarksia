@@ -19,7 +19,7 @@ func TestBuildAuthenticationProfile_DBAuth(t *testing.T) {
 	// Create test data with db_auth profile
 	data := &models.DatabasePolicyWorkspaceAssignmentModel{
 		DBAuthProfile: &models.DBAuthProfileModel{
-			Roles: types.ListValueMust(types.StringType, []attr.Value{
+			Roles: types.SetValueMust(types.StringType, []attr.Value{
 				types.StringValue("db_reader"),
 				types.StringValue("db_writer"),
 			}),
@@ -92,7 +92,7 @@ func TestBuildAuthenticationProfile_LDAPAuth(t *testing.T) {
 	// Create test data with ldap_auth profile
 	data := &models.DatabasePolicyWorkspaceAssignmentModel{
 		LDAPAuthProfile: &models.LDAPAuthProfileModel{
-			AssignGroups: types.ListValueMust(types.StringType, []attr.Value{
+			AssignGroups: types.SetValueMust(types.StringType, []attr.Value{
 				types.StringValue("admins"),
 				types.StringValue("developers"),
 			}),
@@ -247,7 +247,7 @@ func TestBuildAuthenticationProfile_OracleAuth(t *testing.T) {
 	// Create test data with oracle_auth profile
 	data := &models.DatabasePolicyWorkspaceAssignmentModel{
 		OracleAuthProfile: &models.OracleAuthProfileModel{
-			Roles: types.ListValueMust(types.StringType, []attr.Value{
+			Roles: types.SetValueMust(types.StringType, []attr.Value{
 				types.StringValue("oracle_reader"),
 				types.StringValue("oracle_writer"),
 			}),
@@ -332,7 +332,7 @@ func TestBuildAuthenticationProfile_MongoAuth(t *testing.T) {
 	// Create test data with mongo_auth profile
 	data := &models.DatabasePolicyWorkspaceAssignmentModel{
 		MongoAuthProfile: &models.MongoAuthProfileModel{
-			GlobalBuiltinRoles: types.ListValueMust(types.StringType, []attr.Value{
+			GlobalBuiltinRoles: types.SetValueMust(types.StringType, []attr.Value{
 				types.StringValue("readAnyDatabase"),
 				types.StringValue("readWriteAnyDatabase"),
 			}),
@@ -441,11 +441,11 @@ func TestBuildAuthenticationProfile_SQLServerAuth(t *testing.T) {
 	// Create test data with sqlserver_auth profile
 	data := &models.DatabasePolicyWorkspaceAssignmentModel{
 		SQLServerAuthProfile: &models.SQLServerAuthProfileModel{
-			GlobalBuiltinRoles: types.ListValueMust(types.StringType, []attr.Value{
+			GlobalBuiltinRoles: types.SetValueMust(types.StringType, []attr.Value{
 				types.StringValue("sysadmin"),
 				types.StringValue("serveradmin"),
 			}),
-			GlobalCustomRoles: types.ListValueMust(types.StringType, []attr.Value{
+			GlobalCustomRoles: types.SetValueMust(types.StringType, []attr.Value{
 				types.StringValue("customGlobalRole"),
 			}),
 			DatabaseBuiltinRoles: types.MapValueMust(

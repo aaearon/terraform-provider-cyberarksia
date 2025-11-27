@@ -36,7 +36,7 @@ Manages a CyberArk SIA database access policy including metadata and access cond
 - `description` (String) Policy description (max 200 characters).
 - `last_modified` (String) Timestamp of the last modification to the policy.
 - `policy_tags` (List of String) List of tags for policy organization (max 20 tags).
-- `principal` (Block List) Principal assignment (repeatable block). **Required**: At least 1 principal block is required. Follows familiar Terraform patterns (aws_security_group ingress/egress). Use `lifecycle { ignore_changes = [principal] }` if managing assignments via separate `cyberarksia_database_policy_principal_assignment` resources. (see [below for nested schema](#nestedblock--principal))
+- `principal` (Block Set) Principal assignment (repeatable block). **Required**: At least 1 principal block is required. Follows familiar Terraform patterns (aws_security_group ingress/egress). Order-independent (principals may be returned in any order by the API). Use `lifecycle { ignore_changes = [principal] }` if managing assignments via separate `cyberarksia_database_policy_principal_assignment` resources. (see [below for nested schema](#nestedblock--principal))
 - `target_database` (Block List) Database workspace assignment (repeatable block). **Required**: At least 1 target_database block is required. Follows familiar Terraform patterns (aws_security_group ingress/egress). Use `lifecycle { ignore_changes = [target_database] }` if managing assignments via separate `cyberarksia_policy_database_assignment` resources. (see [below for nested schema](#nestedblock--target_database))
 - `time_frame` (Block, Optional) Policy validity period. **Optional**: If not specified, policy never expires (valid indefinitely). When specified, both `from_time` and `to_time` must be provided. (see [below for nested schema](#nestedblock--time_frame))
 - `time_zone` (String) Timezone for access window conditions (max 50 characters). Supports IANA timezone names (e.g., `America/New_York`) or GMT offsets (e.g., `GMT+05:00`). Default: `GMT`.
@@ -111,7 +111,7 @@ Optional:
 
 Optional:
 
-- `roles` (List of String) List of database roles to assign.
+- `roles` (Set of String) Set of database roles to assign.
 
 
 <a id="nestedblock--target_database--ldap_auth_profile"></a>
@@ -119,7 +119,7 @@ Optional:
 
 Optional:
 
-- `assign_groups` (List of String) List of LDAP groups to assign.
+- `assign_groups` (Set of String) Set of LDAP groups to assign.
 
 
 <a id="nestedblock--target_database--mongo_auth_profile"></a>
@@ -129,7 +129,7 @@ Optional:
 
 - `database_builtin_roles` (Map of List of String) Map of database names to built-in roles.
 - `database_custom_roles` (Map of List of String) Map of database names to custom roles.
-- `global_builtin_roles` (List of String) List of global built-in roles.
+- `global_builtin_roles` (Set of String) Set of global built-in roles.
 
 
 <a id="nestedblock--target_database--oracle_auth_profile"></a>
@@ -138,7 +138,7 @@ Optional:
 Optional:
 
 - `dba_role` (Boolean) Grant DBA role.
-- `roles` (List of String) List of Oracle roles to assign.
+- `roles` (Set of String) Set of Oracle roles to assign.
 - `sysdba_role` (Boolean) Grant SYSDBA role.
 - `sysoper_role` (Boolean) Grant SYSOPER role.
 
@@ -158,8 +158,8 @@ Optional:
 
 - `database_builtin_roles` (Map of List of String) Map of database names to built-in roles.
 - `database_custom_roles` (Map of List of String) Map of database names to custom roles.
-- `global_builtin_roles` (List of String) List of global built-in roles.
-- `global_custom_roles` (List of String) List of global custom roles.
+- `global_builtin_roles` (Set of String) Set of global built-in roles.
+- `global_custom_roles` (Set of String) Set of global custom roles.
 
 
 

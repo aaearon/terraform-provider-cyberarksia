@@ -50,8 +50,9 @@ func (m *PolicyPrincipalAssignmentModel) FromSDKPrincipal(policyID string, princ
 	m.PrincipalID = types.StringValue(principal.ID)
 	m.PrincipalType = types.StringValue(principal.Type)
 	m.PrincipalName = types.StringValue(principal.Name)
-	m.SourceDirectoryName = types.StringValue(principal.SourceDirectoryName)
-	m.SourceDirectoryID = types.StringValue(principal.SourceDirectoryID)
+	// Use null for empty strings - API returns null for ROLE principals which Go unmarshals to ""
+	m.SourceDirectoryName = stringValueOrNull(principal.SourceDirectoryName)
+	m.SourceDirectoryID = stringValueOrNull(principal.SourceDirectoryID)
 	m.LastModified = types.StringValue(time.Now().Format(time.RFC3339))
 }
 

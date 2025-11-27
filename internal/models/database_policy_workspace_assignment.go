@@ -27,17 +27,17 @@ type DatabasePolicyWorkspaceAssignmentModel struct {
 
 // DBAuthProfileModel represents the db_auth authentication profile
 type DBAuthProfileModel struct {
-	Roles types.List `tfsdk:"roles"` // list(string)
+	Roles types.Set `tfsdk:"roles"` // set(string) - order doesn't matter
 }
 
 // LDAPAuthProfileModel represents the ldap_auth authentication profile
 type LDAPAuthProfileModel struct {
-	AssignGroups types.List `tfsdk:"assign_groups"` // list(string)
+	AssignGroups types.Set `tfsdk:"assign_groups"` // set(string) - order doesn't matter
 }
 
 // OracleAuthProfileModel represents the oracle_auth authentication profile
 type OracleAuthProfileModel struct {
-	Roles       types.List `tfsdk:"roles"`        // list(string)
+	Roles       types.Set  `tfsdk:"roles"`        // set(string) - order doesn't matter
 	DbaRole     types.Bool `tfsdk:"dba_role"`     // bool
 	SysdbaRole  types.Bool `tfsdk:"sysdba_role"`  // bool
 	SysoperRole types.Bool `tfsdk:"sysoper_role"` // bool
@@ -45,17 +45,17 @@ type OracleAuthProfileModel struct {
 
 // MongoAuthProfileModel represents the mongo_auth authentication profile
 type MongoAuthProfileModel struct {
-	GlobalBuiltinRoles   types.List `tfsdk:"global_builtin_roles"`   // list(string)
-	DatabaseBuiltinRoles types.Map  `tfsdk:"database_builtin_roles"` // map(list(string))
-	DatabaseCustomRoles  types.Map  `tfsdk:"database_custom_roles"`  // map(list(string))
+	GlobalBuiltinRoles   types.Set `tfsdk:"global_builtin_roles"`   // set(string) - order doesn't matter
+	DatabaseBuiltinRoles types.Map `tfsdk:"database_builtin_roles"` // map(list(string))
+	DatabaseCustomRoles  types.Map `tfsdk:"database_custom_roles"`  // map(list(string))
 }
 
 // SQLServerAuthProfileModel represents the sqlserver_auth authentication profile
 type SQLServerAuthProfileModel struct {
-	GlobalBuiltinRoles   types.List `tfsdk:"global_builtin_roles"`   // list(string)
-	GlobalCustomRoles    types.List `tfsdk:"global_custom_roles"`    // list(string)
-	DatabaseBuiltinRoles types.Map  `tfsdk:"database_builtin_roles"` // map(list(string))
-	DatabaseCustomRoles  types.Map  `tfsdk:"database_custom_roles"`  // map(list(string))
+	GlobalBuiltinRoles   types.Set `tfsdk:"global_builtin_roles"`   // set(string) - order doesn't matter
+	GlobalCustomRoles    types.Set `tfsdk:"global_custom_roles"`    // set(string) - order doesn't matter
+	DatabaseBuiltinRoles types.Map `tfsdk:"database_builtin_roles"` // map(list(string))
+	DatabaseCustomRoles  types.Map `tfsdk:"database_custom_roles"`  // map(list(string))
 }
 
 // RDSIAMUserAuthProfileModel represents the rds_iam_user_auth authentication profile

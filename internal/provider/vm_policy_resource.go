@@ -648,22 +648,27 @@ func (r *VMPolicyResource) ValidateConfig(ctx context.Context, req resource.Vali
 		resp.Diagnostics.Append(diags...)
 
 		if !resp.Diagnostics.HasError() {
+			// Skip validation if values are unknown (will be resolved at apply time from data sources)
 			for i, p := range principals {
 				principalType := p.PrincipalType.ValueString()
 				if principalType == "USER" || principalType == "GROUP" {
-					if p.SourceDirectoryName.IsNull() || p.SourceDirectoryName.ValueString() == "" {
-						resp.Diagnostics.AddAttributeError(
-							path.Root("principals").AtListIndex(i).AtName("source_directory_name"),
-							"Missing Required Field",
-							fmt.Sprintf("source_directory_name is required for %s principals", principalType),
-						)
+					if !p.SourceDirectoryName.IsUnknown() {
+						if p.SourceDirectoryName.IsNull() || p.SourceDirectoryName.ValueString() == "" {
+							resp.Diagnostics.AddAttributeError(
+								path.Root("principals").AtListIndex(i).AtName("source_directory_name"),
+								"Missing Required Field",
+								fmt.Sprintf("source_directory_name is required for %s principals", principalType),
+							)
+						}
 					}
-					if p.SourceDirectoryID.IsNull() || p.SourceDirectoryID.ValueString() == "" {
-						resp.Diagnostics.AddAttributeError(
-							path.Root("principals").AtListIndex(i).AtName("source_directory_id"),
-							"Missing Required Field",
-							fmt.Sprintf("source_directory_id is required for %s principals", principalType),
-						)
+					if !p.SourceDirectoryID.IsUnknown() {
+						if p.SourceDirectoryID.IsNull() || p.SourceDirectoryID.ValueString() == "" {
+							resp.Diagnostics.AddAttributeError(
+								path.Root("principals").AtListIndex(i).AtName("source_directory_id"),
+								"Missing Required Field",
+								fmt.Sprintf("source_directory_id is required for %s principals", principalType),
+							)
+						}
 					}
 				}
 			}
