@@ -129,11 +129,7 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 			},
 			"last_modified": schema.StringAttribute{
 				MarkdownDescription: "Timestamp of the last modification to the policy.",
-				Optional:            true,
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"created_by": schema.SingleNestedAttribute{
 				MarkdownDescription: "Metadata about policy creation (set by API).",
@@ -797,9 +793,6 @@ func (r *DatabasePolicyResource) Create(ctx context.Context, req resource.Create
 	data.ID = types.StringValue(createdPolicy.Metadata.PolicyID)
 	data.PolicyID = types.StringValue(createdPolicy.Metadata.PolicyID)
 
-	// Set last_modified to empty string (API doesn't return this field on create)
-	data.LastModified = types.StringValue("")
-
 	// Populate computed metadata fields from API response
 	// CreateChangeInfoObject handles empty strings by returning ObjectNull
 	data.CreatedBy = models.CreateChangeInfoObject(
@@ -810,6 +803,7 @@ func (r *DatabasePolicyResource) Create(ctx context.Context, req resource.Create
 		createdPolicy.Metadata.UpdatedOn.User,
 		createdPolicy.Metadata.UpdatedOn.Time,
 	)
+	data.LastModified = types.StringValue(createdPolicy.Metadata.UpdatedOn.Time)
 
 	tflog.Info(ctx, "Created database policy", map[string]interface{}{
 		"policy_id":        data.PolicyID.ValueString(),
