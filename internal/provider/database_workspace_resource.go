@@ -144,8 +144,8 @@ func (r *databaseWorkspaceResource) Schema(ctx context.Context, req resource.Sch
 					stringvalidator.LengthAtMost(255),
 				},
 			},
-			"services": schema.ListAttribute{
-				Description: "List of service names for the database (Services in SDK). " +
+			"services": schema.SetAttribute{
+				Description: "Set of service names for the database (Services in SDK). " +
 					"Used with Oracle and SQL Server for multi-service configurations. " +
 					"Optional - only needed for databases with multiple services.",
 				ElementType: types.StringType,
@@ -204,7 +204,7 @@ func (r *databaseWorkspaceResource) Schema(ctx context.Context, req resource.Sch
 				Description: "Certificate ID for TLS/mTLS connections (Certificate in SDK). " +
 					"References a certificate stored in SIA's certificate service. " +
 					"Optional - used for mutual TLS (mTLS) or custom CA certificates. " +
-					"References cyberark_sia_certificate resource ID.",
+					"References cyberarksia_certificate resource ID.",
 				Optional: true,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1),
@@ -298,7 +298,7 @@ func handleCertificateError(certificateID types.String, err error, resp interfac
 				"The specified certificate (ID: %s) does not exist or is invalid.\n\n"+
 					"Ensure the certificate exists before associating it with this database workspace.\n"+
 					"You can verify the certificate exists with:\n"+
-					"  terraform state show cyberark_sia_certificate.<name>\n\n"+
+					"  terraform state show cyberarksia_certificate.<name>\n\n"+
 					"Original error: %s",
 				certificateID.ValueString(),
 				err.Error(),
@@ -333,7 +333,7 @@ func (r *databaseWorkspaceResource) Create(ctx context.Context, req resource.Cre
 		"name": plan.Name.ValueString(),
 	})
 
-	// Convert services list from Terraform to Go []string
+	// Convert services set from Terraform to Go []string
 	var services []string
 	if !plan.Services.IsNull() {
 		diag := plan.Services.ElementsAs(ctx, &services, false)
@@ -522,14 +522,16 @@ func (r *databaseWorkspaceResource) Read(ctx context.Context, req resource.ReadR
 	state.CertificateID = stringValueOrNullWorkspace(database.Certificate)
 	state.Region = stringValueOrNullWorkspace(database.Region)
 
-	// Convert services []string from SDK to types.List
+	// Convert services []string from SDK to types.Set
 	if len(database.Services) > 0 {
-		servicesList, diag := types.ListValueFrom(ctx, types.StringType, database.Services)
+		servicesSet, diag := types.SetValueFrom(ctx, types.StringType, database.Services)
 		if diag.HasError() {
 			resp.Diagnostics.Append(diag...)
 			return
 		}
-		state.Services = servicesList
+		state.Services = servicesSet
+	} else {
+		state.Services = types.SetNull(types.StringType)
 	}
 
 	// Convert tags from map[string]string to types.Map
@@ -586,7 +588,7 @@ func (r *databaseWorkspaceResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	// Convert services list from Terraform to Go []string
+	// Convert services set from Terraform to Go []string
 	var services []string
 	if !plan.Services.IsNull() {
 		diag := plan.Services.ElementsAs(ctx, &services, false)

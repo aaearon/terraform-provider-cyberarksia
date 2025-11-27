@@ -68,7 +68,7 @@ type CertificateMetadataModel struct {
 	ValidFrom              types.String `tfsdk:"valid_from"`               // Validity start (Unix timestamp)
 	ValidTo                types.String `tfsdk:"valid_to"`                 // Validity end (Unix timestamp)
 	SerialNumber           types.String `tfsdk:"serial_number"`            // Certificate serial number
-	SubjectAlternativeName types.List   `tfsdk:"subject_alternative_name"` // SANs (string list)
+	SubjectAlternativeName types.Set    `tfsdk:"subject_alternative_name"` // SANs (string set)
 }
 
 // Metadata returns the resource type name
@@ -189,8 +189,8 @@ func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaReq
 						Description: "Certificate serial number in decimal format.",
 						Computed:    true,
 					},
-					"subject_alternative_name": schema.ListAttribute{
-						Description: "Subject Alternative Names (SANs). Empty array if none present.",
+					"subject_alternative_name": schema.SetAttribute{
+						Description: "Subject Alternative Names (SANs). Empty set if none present.",
 						ElementType: types.StringType,
 						Computed:    true,
 					},
@@ -291,16 +291,16 @@ func mapCertificateToState(ctx context.Context, cert *client.Certificate, model 
 
 	// Map metadata object if present
 	if cert.Metadata != nil {
-		// Convert SANs to types.List
-		var sansList types.List
+		// Convert SANs to types.Set
+		var sansSet types.Set
 		if cert.Metadata.SubjectAlternativeName != nil {
-			sansListVal, sansDiags := types.ListValueFrom(ctx, types.StringType, cert.Metadata.SubjectAlternativeName)
+			sansSetVal, sansDiags := types.SetValueFrom(ctx, types.StringType, cert.Metadata.SubjectAlternativeName)
 			diags.Append(sansDiags...)
 			if !diags.HasError() {
-				sansList = sansListVal
+				sansSet = sansSetVal
 			}
 		} else {
-			sansList = types.ListNull(types.StringType)
+			sansSet = types.SetNull(types.StringType)
 		}
 
 		// Build metadata object
@@ -310,7 +310,7 @@ func mapCertificateToState(ctx context.Context, cert *client.Certificate, model 
 			ValidFrom:              types.StringValue(cert.Metadata.ValidFrom),
 			ValidTo:                types.StringValue(cert.Metadata.ValidTo),
 			SerialNumber:           types.StringValue(cert.Metadata.SerialNumber),
-			SubjectAlternativeName: sansList,
+			SubjectAlternativeName: sansSet,
 		}
 
 		// Convert to types.Object
@@ -320,7 +320,7 @@ func mapCertificateToState(ctx context.Context, cert *client.Certificate, model 
 			"valid_from":               types.StringType,
 			"valid_to":                 types.StringType,
 			"serial_number":            types.StringType,
-			"subject_alternative_name": types.ListType{ElemType: types.StringType},
+			"subject_alternative_name": types.SetType{ElemType: types.StringType},
 		}, metadataModel)
 		diags.Append(metaDiags...)
 		if !diags.HasError() {
@@ -675,7 +675,7 @@ func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteReq
 // ImportState imports an existing certificate into Terraform state
 func (r *CertificateResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Use passthrough pattern: Import by certificate_id, then call Read() to populate state
-	// Import syntax: terraform import cyberark_sia_certificate.example <certificate_id>
+	// Import syntax: terraform import cyberarksia_certificate.example <certificate_id>
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
 	tflog.Info(ctx, "Importing certificate", map[string]interface{}{

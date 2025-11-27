@@ -24,8 +24,8 @@ func TestAccCertificate_delete(t *testing.T) {
 			{
 				Config: testAccCertificateConfigBasic("test-delete-cert"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("cyberark_sia_certificate.test", "id"),
-					resource.TestCheckResourceAttr("cyberark_sia_certificate.test", "cert_name", "test-delete-cert"),
+					resource.TestCheckResourceAttrSet("cyberarksia_certificate.test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_certificate.test", "cert_name", "test-delete-cert"),
 				),
 			},
 			// Destroy (delete) certificate - implicit via destroy step
@@ -59,8 +59,8 @@ func TestAccCertificate_deleteInUse(t *testing.T) {
 			{
 				Config: testAccCertificateConfigWithDatabaseWorkspace("test-inuse-cert", "test-db-workspace"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("cyberark_sia_certificate.test", "id"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.test", "name", "test-db-workspace"),
+					resource.TestCheckResourceAttrSet("cyberarksia_certificate.test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.test", "name", "test-db-workspace"),
 				),
 			},
 			// Attempt to delete only certificate (should fail with 409)
@@ -96,13 +96,13 @@ func TestAccCertificate_import(t *testing.T) {
 			{
 				Config: testAccCertificateConfigBasic("test-import-cert"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttrSet("cyberark_sia_certificate.test", "id"),
-					resource.TestCheckResourceAttr("cyberark_sia_certificate.test", "cert_name", "test-import-cert"),
+					resource.TestCheckResourceAttrSet("cyberarksia_certificate.test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_certificate.test", "cert_name", "test-import-cert"),
 				),
 			},
 			// Import certificate by ID
 			{
-				ResourceName:      "cyberark_sia_certificate.test",
+				ResourceName:      "cyberarksia_certificate.test",
 				ImportState:       true,
 				ImportStateVerify: true,
 				// cert_password is write-only, so exclude from verification

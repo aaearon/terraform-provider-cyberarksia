@@ -164,7 +164,7 @@ func TestAccPrincipalDataSource_WithPolicyAssignment(t *testing.T) {
 					resource.TestCheckResourceAttrSet("data.cyberarksia_principal.policy_user", "id"),
 					resource.TestCheckResourceAttr("data.cyberarksia_principal.policy_user", "principal_type", "USER"),
 					// Policy assignment using principal data
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_policy_principal_assignment.test", "id"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_policy_principal_assignment.test", "id"),
 				),
 			},
 		},
@@ -236,12 +236,12 @@ data "cyberarksia_principal" "policy_user" {
   name = "tim.schindler@cyberark.cloud.40562"
 }
 
-data "cyberark_sia_access_policy" "existing_policy" {
+data "cyberarksia_access_policy" "existing_policy" {
   name = "Production Database Policy"
 }
 
-resource "cyberark_sia_database_policy_principal_assignment" "test" {
-  policy_id               = data.cyberark_sia_access_policy.existing_policy.id
+resource "cyberarksia_database_policy_principal_assignment" "test" {
+  policy_id               = data.cyberarksia_access_policy.existing_policy.id
   principal_id            = data.cyberarksia_principal.policy_user.id
   principal_type          = data.cyberarksia_principal.policy_user.principal_type
   principal_name          = data.cyberarksia_principal.policy_user.name

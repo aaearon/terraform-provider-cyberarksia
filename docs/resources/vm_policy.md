@@ -119,7 +119,7 @@ output "delegation_classification" {
 - `max_session_duration` (Number) Maximum session duration in hours (1-24). Default: 1.
 - `policy_type` (String) Policy type. Valid values: `Recurring` (default), `OnDemand`.
 - `principals` (Block Set) Principal assignment (repeatable block). **Required**: At least 1 principal. (see [below for nested schema](#nestedblock--principals))
-- `tags` (List of String) List of tags for policy organization (max 20 tags).
+- `tags` (Set of String) Set of tags for policy organization (max 20 tags).
 - `time_frame` (Block, Optional) Policy validity period. Optional - if not specified, policy never expires. (see [below for nested schema](#nestedblock--time_frame))
 - `time_zone` (String) Timezone for access conditions (max 50 characters). Supports IANA names (e.g., `America/New_York`) or GMT offsets (e.g., `GMT+05:00`). Default: `GMT`.
 
@@ -262,7 +262,7 @@ Optional:
 
 Required:
 
-- `ip_addresses` (List of String) IP addresses (max 1000 items).
+- `ip_addresses` (Set of String) IP addresses (max 1000 items).
 - `logical_name` (String) Logical name for IP rule (1-256 chars).
 - `operator` (String) IP operator. Valid: `EXACTLY`, `WILDCARD`.
 

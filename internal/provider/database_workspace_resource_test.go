@@ -17,20 +17,21 @@ func TestAccDatabaseWorkspace_basic(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigBasic,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.test", "name", "test-postgres-db"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.test", "database_type", "postgres"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.test", "address", "postgres.example.com"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.test", "port", "5432"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.test", "authentication_method", "local_ephemeral_user"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.test", "cloud_provider", "on_premise"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.test", "name", "test-postgres-db"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.test", "database_type", "postgres"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.test", "address", "postgres.example.com"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.test", "port", "5432"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.test", "authentication_method", "local_ephemeral_user"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.test", "cloud_provider", "on_premise"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.test", "id"),
 				),
 			},
 			// ImportState testing
 			{
-				ResourceName:      "cyberark_sia_database_workspace.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "cyberarksia_database_workspace.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"authentication_method"},
 			},
 		},
 	})
@@ -45,11 +46,11 @@ func TestAccDatabaseWorkspace_awsRDS(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigAwsRDS,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.aws_rds", "name", "aws-rds-postgres"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.aws_rds", "database_type", "postgres-aws-rds"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.aws_rds", "cloud_provider", "aws"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.aws_rds", "region", "us-east-1"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.aws_rds", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.aws_rds", "name", "aws-rds-postgres"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.aws_rds", "database_type", "postgres-aws-rds"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.aws_rds", "cloud_provider", "aws"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.aws_rds", "region", "us-east-1"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.aws_rds", "id"),
 				),
 			},
 		},
@@ -65,11 +66,11 @@ func TestAccDatabaseWorkspace_azureSQL(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigAzureSQL,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.azure_sql", "name", "azure-sqlserver"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.azure_sql", "database_type", "mssql"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.azure_sql", "cloud_provider", "azure"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.azure_sql", "authentication_method", "ad_ephemeral_user"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.azure_sql", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.azure_sql", "name", "azure-sqlserver"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.azure_sql", "database_type", "mssql"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.azure_sql", "cloud_provider", "azure"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.azure_sql", "authentication_method", "ad_ephemeral_user"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.azure_sql", "id"),
 				),
 			},
 		},
@@ -85,12 +86,12 @@ func TestAccDatabaseWorkspace_onPremise(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigOnPremise,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.oracle", "name", "onprem-oracle-db"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.oracle", "database_type", "oracle"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.oracle", "address", "oracle.internal.example.com"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.oracle", "port", "1521"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.oracle", "cloud_provider", "on_premise"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.oracle", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.oracle", "name", "onprem-oracle-db"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.oracle", "database_type", "oracle"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.oracle", "address", "oracle.internal.example.com"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.oracle", "port", "1521"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.oracle", "cloud_provider", "on_premise"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.oracle", "id"),
 				),
 			},
 		},
@@ -109,9 +110,10 @@ func TestAccDatabaseWorkspace_import(t *testing.T) {
 			},
 			// Test import
 			{
-				ResourceName:      "cyberark_sia_database_workspace.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "cyberarksia_database_workspace.test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"authentication_method"},
 			},
 		},
 	})
@@ -127,26 +129,26 @@ func TestAccDatabaseWorkspace_multipleDatabaseTypes(t *testing.T) {
 				Config: testAccDatabaseWorkspaceConfigMultipleTypes,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// PostgreSQL
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.postgres", "database_type", "postgres"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.postgres", "port", "5432"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.postgres", "database_type", "postgres"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.postgres", "port", "5432"),
 					// MySQL
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.mysql", "database_type", "mysql"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.mysql", "port", "3306"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.mysql", "database_type", "mysql"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.mysql", "port", "3306"),
 					// MariaDB
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.mariadb", "database_type", "mariadb"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.mariadb", "port", "3306"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.mariadb", "database_type", "mariadb"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.mariadb", "port", "3306"),
 					// MongoDB
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.mongodb", "database_type", "mongo"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.mongodb", "port", "27017"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.mongodb", "database_type", "mongo"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.mongodb", "port", "27017"),
 					// Oracle
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.oracle", "database_type", "oracle"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.oracle", "port", "1521"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.oracle", "database_type", "oracle"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.oracle", "port", "1521"),
 					// SQL Server
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.sqlserver", "database_type", "mssql"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.sqlserver", "port", "1433"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.sqlserver", "database_type", "mssql"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.sqlserver", "port", "1433"),
 					// Db2
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.db2", "database_type", "db2"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.db2", "port", "50000"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.db2", "database_type", "db2"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.db2", "port", "50000"),
 				),
 			},
 		},
@@ -156,112 +158,169 @@ func TestAccDatabaseWorkspace_multipleDatabaseTypes(t *testing.T) {
 // Test configurations
 
 const testAccDatabaseWorkspaceConfigBasic = `
-resource "cyberark_sia_database_workspace" "test" {
-  name                  = "test-postgres-db"
-  database_type         = "postgres"
-  address               = "postgres.example.com"
-  port                  = 5432
-  authentication_method = "local_ephemeral_user"
-  cloud_provider        = "on_premise"
+resource "cyberarksia_database_secret" "test" {
+  name                = "test-db-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
+
+resource "cyberarksia_database_workspace" "test" {
+  name                          = "test-postgres-db"
+  database_type                 = "postgres"
+  address                       = "postgres.example.com"
+  port                          = 5432
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.test.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigAwsRDS = `
-resource "cyberark_sia_database_workspace" "aws_rds" {
-  name                  = "aws-rds-postgres"
-  database_type         = "postgres-aws-rds"
-  address               = "mydb.abc123.us-east-1.rds.amazonaws.com"
-  port                  = 5432
-  authentication_method = "rds_iam_authentication"
-  cloud_provider        = "aws"
-  region                = "us-east-1"
+resource "cyberarksia_database_secret" "aws_rds" {
+  name                = "test-aws-rds-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
+
+resource "cyberarksia_database_workspace" "aws_rds" {
+  name                          = "aws-rds-postgres"
+  database_type                 = "postgres-aws-rds"
+  address                       = "mydb.abc123.us-east-1.rds.amazonaws.com"
+  port                          = 5432
+  authentication_method         = "rds_iam_authentication"
+  cloud_provider                = "aws"
+  region                        = "us-east-1"
+  secret_id                     = cyberarksia_database_secret.aws_rds.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigAzureSQL = `
-resource "cyberark_sia_database_workspace" "azure_sql" {
-  name                  = "azure-sqlserver"
-  database_type         = "mssql"
-  address               = "sqlserver-prod.database.windows.net"
-  port                  = 1433
-  authentication_method = "ad_ephemeral_user"
-  cloud_provider        = "azure"
+resource "cyberarksia_database_secret" "azure_sql" {
+  name                = "test-azure-sql-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
+
+resource "cyberarksia_database_workspace" "azure_sql" {
+  name                          = "azure-sqlserver"
+  database_type                 = "mssql"
+  address                       = "sqlserver-prod.database.windows.net"
+  port                          = 1433
+  authentication_method         = "ad_ephemeral_user"
+  cloud_provider                = "azure"
+  secret_id                     = cyberarksia_database_secret.azure_sql.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigOnPremise = `
-resource "cyberark_sia_database_workspace" "oracle" {
-  name                  = "onprem-oracle-db"
-  database_type         = "oracle"
-  address               = "oracle.internal.example.com"
-  port                  = 1521
-  authentication_method = "local_ephemeral_user"
-  cloud_provider        = "on_premise"
+resource "cyberarksia_database_secret" "oracle" {
+  name                = "test-oracle-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
+
+resource "cyberarksia_database_workspace" "oracle" {
+  name                          = "onprem-oracle-db"
+  database_type                 = "oracle"
+  address                       = "oracle.internal.example.com"
+  port                          = 1521
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.oracle.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigMultipleTypes = `
-resource "cyberark_sia_database_workspace" "postgres" {
-  name              = "test-postgres"
-  database_type     = "postgres"
-  address           = "postgres.example.com"
-  port              = 5432
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_secret" "multi" {
+  name                = "test-multi-db-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
 }
 
-resource "cyberark_sia_database_workspace" "mysql" {
-  name              = "test-mysql"
-  database_type     = "mysql"
-  address           = "mysql.example.com"
-  port              = 3306
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "postgres" {
+  name                          = "test-postgres"
+  database_type                 = "postgres"
+  address                       = "postgres.example.com"
+  port                          = 5432
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.multi.id
+  enable_certificate_validation = true
 }
 
-resource "cyberark_sia_database_workspace" "mariadb" {
-  name              = "test-mariadb"
-  database_type     = "mariadb"
-  address           = "mariadb.example.com"
-  port              = 3306
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "mysql" {
+  name                          = "test-mysql"
+  database_type                 = "mysql"
+  address                       = "mysql.example.com"
+  port                          = 3306
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.multi.id
+  enable_certificate_validation = true
 }
 
-resource "cyberark_sia_database_workspace" "mongo" {
-  name              = "test-mongodb"
-  database_type     = "mongo"
-  address           = "mongodb.example.com"
-  port              = 27017
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "mariadb" {
+  name                          = "test-mariadb"
+  database_type                 = "mariadb"
+  address                       = "mariadb.example.com"
+  port                          = 3306
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.multi.id
+  enable_certificate_validation = true
 }
 
-resource "cyberark_sia_database_workspace" "oracle" {
-  name              = "test-oracle"
-  database_type     = "oracle"
-  address           = "oracle.example.com"
-  port              = 1521
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "mongodb" {
+  name                          = "test-mongodb"
+  database_type                 = "mongo"
+  address                       = "mongodb.example.com"
+  port                          = 27017
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.multi.id
+  enable_certificate_validation = true
 }
 
-resource "cyberark_sia_database_workspace" "mssql" {
-  name              = "test-sqlserver"
-  database_type     = "mssql"
-  address           = "sqlserver.example.com"
-  port              = 1433
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "oracle" {
+  name                          = "test-oracle"
+  database_type                 = "oracle"
+  address                       = "oracle.example.com"
+  port                          = 1521
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.multi.id
+  enable_certificate_validation = true
 }
 
-resource "cyberark_sia_database_workspace" "db2" {
-  name              = "test-db2"
-  database_type     = "db2"
-  address           = "db2.example.com"
-  port              = 50000
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "sqlserver" {
+  name                          = "test-sqlserver"
+  database_type                 = "mssql"
+  address                       = "sqlserver.example.com"
+  port                          = 1433
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.multi.id
+  enable_certificate_validation = true
+}
+
+resource "cyberarksia_database_workspace" "db2" {
+  name                          = "test-db2"
+  database_type                 = "db2"
+  address                       = "db2.example.com"
+  port                          = 50000
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.multi.id
+  enable_certificate_validation = true
 }
 `
 
@@ -279,24 +338,25 @@ func TestAccDatabaseWorkspace_update(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigBeforeUpdate,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.update_test", "name", "update-test-db"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.update_test", "port", "5432"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.update_test", "authentication_method", "local"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.update_test", "name", "update-test-db"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.update_test", "port", "5432"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.update_test", "authentication_method", "local_ephemeral_user"),
 				),
 			},
 			{
 				Config: testAccDatabaseWorkspaceConfigAfterUpdate,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.update_test", "name", "update-test-db"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.update_test", "port", "5433"),                                  // Changed
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.update_test", "authentication_method", "local_ephemeral_user"), // Changed
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.update_test", "name", "update-test-db"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.update_test", "port", "5433"),                                  // Changed
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.update_test", "authentication_method", "local_ephemeral_user"), // Changed
 				),
 			},
 			// Step 3: Verify import still works after update
 			{
-				ResourceName:      "cyberark_sia_database_workspace.update_test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "cyberarksia_database_workspace.update_test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"authentication_method"},
 			},
 		},
 	})
@@ -312,8 +372,8 @@ func TestAccDatabaseWorkspace_forceNew(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigForceNewBefore,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.forcenew_test", "database_type", "postgres"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.forcenew_test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.forcenew_test", "database_type", "postgres"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.forcenew_test", "id"),
 				),
 			},
 			// Step 2: Change database_type (should trigger replacement)
@@ -321,9 +381,9 @@ func TestAccDatabaseWorkspace_forceNew(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigForceNewAfter,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.forcenew_test", "database_type", "mysql"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.forcenew_test", "database_type", "mysql"),
 					// ID should be different due to resource replacement
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.forcenew_test", "id"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.forcenew_test", "id"),
 				),
 			},
 		},
@@ -340,8 +400,8 @@ func TestAccDatabaseWorkspace_noOpUpdate(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigNoop,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.noop_test", "name", "noop-test-db"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.noop_test", "port", "5432"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.noop_test", "name", "noop-test-db"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.noop_test", "port", "5432"),
 				),
 			},
 			// Step 2: Apply same config again (should be no-op)
@@ -369,17 +429,17 @@ func TestAccDatabaseWorkspace_concurrent(t *testing.T) {
 				Config: testAccDatabaseWorkspaceConfigConcurrent,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// Verify all resources created successfully
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.concurrent1", "id"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.concurrent2", "id"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.concurrent3", "id"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.concurrent4", "id"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.concurrent5", "id"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.concurrent1", "id"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.concurrent2", "id"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.concurrent3", "id"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.concurrent4", "id"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.concurrent5", "id"),
 					// Verify each has correct type
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.concurrent1", "database_type", "postgres"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.concurrent2", "database_type", "mysql"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.concurrent3", "database_type", "mariadb"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.concurrent4", "database_type", "mongo"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.concurrent5", "database_type", "oracle"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.concurrent1", "database_type", "postgres"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.concurrent2", "database_type", "mysql"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.concurrent3", "database_type", "mariadb"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.concurrent4", "database_type", "mongo"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.concurrent5", "database_type", "oracle"),
 				),
 			},
 		},
@@ -396,9 +456,9 @@ func TestAccDatabaseWorkspace_driftDetection(t *testing.T) {
 			{
 				Config: testAccDatabaseWorkspaceConfigDrift,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.drift_test", "name", "drift-test-db"),
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.drift_test", "port", "5432"),
-					resource.TestCheckResourceAttrSet("cyberark_sia_database_workspace.drift_test", "id"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.drift_test", "name", "drift-test-db"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.drift_test", "port", "5432"),
+					resource.TestCheckResourceAttrSet("cyberarksia_database_workspace.drift_test", "id"),
 				),
 			},
 			// Step 2: Refresh state (should detect if resource was modified outside Terraform)
@@ -408,7 +468,7 @@ func TestAccDatabaseWorkspace_driftDetection(t *testing.T) {
 				Config:   testAccDatabaseWorkspaceConfigDrift,
 				PlanOnly: true,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("cyberark_sia_database_workspace.drift_test", "name", "drift-test-db"),
+					resource.TestCheckResourceAttr("cyberarksia_database_workspace.drift_test", "name", "drift-test-db"),
 				),
 			},
 		},
@@ -418,121 +478,186 @@ func TestAccDatabaseWorkspace_driftDetection(t *testing.T) {
 // Test configurations for Phase 5 (User Story 3)
 
 const testAccDatabaseWorkspaceConfigBeforeUpdate = `
-resource "cyberark_sia_database_workspace" "update_test" {
-  name              = "update-test-db"
-  database_type     = "postgres"
-  address           = "postgres-update.example.com"
-  port              = 5432
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_secret" "update" {
+  name                = "test-update-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
 
+resource "cyberarksia_database_workspace" "update_test" {
+  name                          = "update-test-db"
+  database_type                 = "postgres"
+  address                       = "postgres-update.example.com"
+  port                          = 5432
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.update.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigAfterUpdate = `
-resource "cyberark_sia_database_workspace" "update_test" {
-  name              = "update-test-db"
-  database_type     = "postgres"
-  address           = "postgres-update.example.com"
-  port              = 5433
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_secret" "update" {
+  name                = "test-update-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
 
+resource "cyberarksia_database_workspace" "update_test" {
+  name                          = "update-test-db"
+  database_type                 = "postgres"
+  address                       = "postgres-update.example.com"
+  port                          = 5433
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.update.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigForceNewBefore = `
-resource "cyberark_sia_database_workspace" "forcenew_test" {
-  name              = "forcenew-test-db"
-  database_type     = "postgres"
-  address           = "db-forcenew.example.com"
-  port              = 5432
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_secret" "forcenew" {
+  name                = "test-forcenew-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
+
+resource "cyberarksia_database_workspace" "forcenew_test" {
+  name                          = "forcenew-test-db"
+  database_type                 = "postgres"
+  address                       = "db-forcenew.example.com"
+  port                          = 5432
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.forcenew.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigForceNewAfter = `
-resource "cyberark_sia_database_workspace" "forcenew_test" {
-  name              = "forcenew-test-db"
-  database_type     = "mysql"
-  address           = "db-forcenew.example.com"
-  port              = 3306
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_secret" "forcenew" {
+  name                = "test-forcenew-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
+
+resource "cyberarksia_database_workspace" "forcenew_test" {
+  name                          = "forcenew-test-db"
+  database_type                 = "mysql"
+  address                       = "db-forcenew.example.com"
+  port                          = 3306
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.forcenew.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigNoop = `
-resource "cyberark_sia_database_workspace" "noop_test" {
-  name              = "noop-test-db"
-  database_type     = "postgres"
-  address           = "postgres-noop.example.com"
-  port              = 5432
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_secret" "noop" {
+  name                = "test-noop-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
 
-
+resource "cyberarksia_database_workspace" "noop_test" {
+  name                          = "noop-test-db"
+  database_type                 = "postgres"
+  address                       = "postgres-noop.example.com"
+  port                          = 5432
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.noop.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigConcurrent = `
-resource "cyberark_sia_database_workspace" "concurrent1" {
-  name              = "concurrent-postgres"
-  database_type     = "postgres"
-  address           = "postgres-concurrent.example.com"
-  port              = 5432
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_secret" "concurrent" {
+  name                = "test-concurrent-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
 }
 
-resource "cyberark_sia_database_workspace" "concurrent2" {
-  name              = "concurrent-mysql"
-  database_type     = "mysql"
-  address           = "mysql-concurrent.example.com"
-  port              = 3306
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "concurrent1" {
+  name                          = "concurrent-postgres"
+  database_type                 = "postgres"
+  address                       = "postgres-concurrent.example.com"
+  port                          = 5432
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.concurrent.id
+  enable_certificate_validation = true
 }
 
-resource "cyberark_sia_database_workspace" "concurrent3" {
-  name              = "concurrent-mariadb"
-  database_type     = "mariadb"
-  address           = "mariadb-concurrent.example.com"
-  port              = 3306
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "concurrent2" {
+  name                          = "concurrent-mysql"
+  database_type                 = "mysql"
+  address                       = "mysql-concurrent.example.com"
+  port                          = 3306
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.concurrent.id
+  enable_certificate_validation = true
 }
 
-resource "cyberark_sia_database_workspace" "concurrent4" {
-  name              = "concurrent-mongodb"
-  database_type     = "mongo"
-  address           = "mongodb-concurrent.example.com"
-  port              = 27017
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "concurrent3" {
+  name                          = "concurrent-mariadb"
+  database_type                 = "mariadb"
+  address                       = "mariadb-concurrent.example.com"
+  port                          = 3306
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.concurrent.id
+  enable_certificate_validation = true
 }
 
-resource "cyberark_sia_database_workspace" "concurrent5" {
-  name              = "concurrent-oracle"
-  database_type     = "oracle"
-  address           = "oracle-concurrent.example.com"
-  port              = 1521
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_workspace" "concurrent4" {
+  name                          = "concurrent-mongodb"
+  database_type                 = "mongo"
+  address                       = "mongodb-concurrent.example.com"
+  port                          = 27017
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.concurrent.id
+  enable_certificate_validation = true
+}
+
+resource "cyberarksia_database_workspace" "concurrent5" {
+  name                          = "concurrent-oracle"
+  database_type                 = "oracle"
+  address                       = "oracle-concurrent.example.com"
+  port                          = 1521
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.concurrent.id
+  enable_certificate_validation = true
 }
 `
 
 const testAccDatabaseWorkspaceConfigDrift = `
-resource "cyberark_sia_database_workspace" "drift_test" {
-  name              = "drift-test-db"
-  database_type     = "postgres"
-  address           = "postgres-drift.example.com"
-  port              = 5432
-  authentication_method = "local_ephemeral_user"
-  cloud_provider    = "on_premise"
+resource "cyberarksia_database_secret" "drift" {
+  name                = "test-drift-secret"
+  authentication_type = "local"
+  username            = "db_admin"
+  password            = "TestPassword123!"
+}
 
-
+resource "cyberarksia_database_workspace" "drift_test" {
+  name                          = "drift-test-db"
+  database_type                 = "postgres"
+  address                       = "postgres-drift.example.com"
+  port                          = 5432
+  authentication_method         = "local_ephemeral_user"
+  cloud_provider                = "on_premise"
+  secret_id                     = cyberarksia_database_secret.drift.id
+  enable_certificate_validation = true
 }
 `
 
@@ -556,15 +681,15 @@ func TestAccDatabaseWorkspace_withCertificate(t *testing.T) {
 	// 4. Verify enable_certificate_validation is true
 
 	// Expected config:
-	// resource "cyberark_sia_certificate" "test" {
+	// resource "cyberarksia_certificate" "test" {
 	//   cert_name = "test-db-cert"
 	//   cert_body = file("testdata/test-cert.pem")
 	// }
 	//
-	// resource "cyberark_sia_database_workspace" "test" {
+	// resource "cyberarksia_database_workspace" "test" {
 	//   name                          = "test-postgres-with-cert"
 	//   database_type                 = "postgres"
-	//   certificate_id                = cyberark_sia_certificate.test.id
+	//   certificate_id                = cyberarksia_certificate.test.id
 	//   enable_certificate_validation = true
 	// }
 }
@@ -585,21 +710,21 @@ func TestAccDatabaseWorkspace_updateCertificate(t *testing.T) {
 
 	// Expected configs:
 	// Initial:
-	// resource "cyberark_sia_database_workspace" "test" {
+	// resource "cyberarksia_database_workspace" "test" {
 	//   name          = "test-postgres"
 	//   database_type = "postgres"
 	// }
 	//
 	// Updated:
-	// resource "cyberark_sia_certificate" "test" {
+	// resource "cyberarksia_certificate" "test" {
 	//   cert_name = "test-cert"
 	//   cert_body = file("testdata/test-cert.pem")
 	// }
 	//
-	// resource "cyberark_sia_database_workspace" "test" {
+	// resource "cyberarksia_database_workspace" "test" {
 	//   name           = "test-postgres"
 	//   database_type  = "postgres"
-	//   certificate_id = cyberark_sia_certificate.test.id  # Added
+	//   certificate_id = cyberarksia_certificate.test.id  # Added
 	// }
 }
 
@@ -619,19 +744,19 @@ func TestAccDatabaseWorkspace_removeCertificate(t *testing.T) {
 
 	// Expected configs:
 	// Initial:
-	// resource "cyberark_sia_certificate" "test" {
+	// resource "cyberarksia_certificate" "test" {
 	//   cert_name = "test-cert"
 	//   cert_body = file("testdata/test-cert.pem")
 	// }
 	//
-	// resource "cyberark_sia_database_workspace" "test" {
+	// resource "cyberarksia_database_workspace" "test" {
 	//   name           = "test-postgres"
 	//   database_type  = "postgres"
-	//   certificate_id = cyberark_sia_certificate.test.id
+	//   certificate_id = cyberarksia_certificate.test.id
 	// }
 	//
 	// Updated:
-	// resource "cyberark_sia_database_workspace" "test" {
+	// resource "cyberarksia_database_workspace" "test" {
 	//   name          = "test-postgres"
 	//   database_type = "postgres"
 	//   # certificate_id removed
@@ -653,7 +778,7 @@ func TestAccDatabaseWorkspace_invalidCertificateID(t *testing.T) {
 	// 4. Verify error message includes certificate ID
 
 	// Expected config (should fail):
-	// resource "cyberark_sia_database_workspace" "test" {
+	// resource "cyberarksia_database_workspace" "test" {
 	//   name           = "test-postgres"
 	//   database_type  = "postgres"
 	//   certificate_id = "non-existent-cert-id-12345"

@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -120,12 +119,12 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 					stringvalidator.LengthAtMost(50),
 				},
 			},
-			"policy_tags": schema.ListAttribute{
-				MarkdownDescription: "List of tags for policy organization (max 20 tags).",
+			"policy_tags": schema.SetAttribute{
+				MarkdownDescription: "Set of tags for policy organization (max 20 tags).",
 				Optional:            true,
 				ElementType:         types.StringType,
-				Validators: []validator.List{
-					listvalidator.SizeAtMost(20),
+				Validators: []validator.Set{
+					setvalidator.SizeAtMost(20),
 				},
 			},
 			"last_modified": schema.StringAttribute{
@@ -801,10 +800,16 @@ func (r *DatabasePolicyResource) Create(ctx context.Context, req resource.Create
 	// Set last_modified to empty string (API doesn't return this field on create)
 	data.LastModified = types.StringValue("")
 
-	// Explicitly set computed metadata fields to null to avoid "unknown value" errors
-	// These will be populated by the automatic Read() call after Create()
-	data.CreatedBy = types.ObjectNull(models.ChangeInfoAttrTypes())
-	data.UpdatedOn = types.ObjectNull(models.ChangeInfoAttrTypes())
+	// Populate computed metadata fields from API response
+	// CreateChangeInfoObject handles empty strings by returning ObjectNull
+	data.CreatedBy = models.CreateChangeInfoObject(
+		createdPolicy.Metadata.CreatedBy.User,
+		createdPolicy.Metadata.CreatedBy.Time,
+	)
+	data.UpdatedOn = models.CreateChangeInfoObject(
+		createdPolicy.Metadata.UpdatedOn.User,
+		createdPolicy.Metadata.UpdatedOn.Time,
+	)
 
 	tflog.Info(ctx, "Created database policy", map[string]interface{}{
 		"policy_id":        data.PolicyID.ValueString(),

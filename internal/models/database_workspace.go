@@ -9,7 +9,7 @@ import (
 // This model maps to the cyberark_sia_database_workspace resource schema.
 // Note: SIA API uses integer IDs internally, we store as string in Terraform for consistency
 type DatabaseWorkspaceModel struct {
-	Services                    types.List   `tfsdk:"services"`
+	Services                    types.Set    `tfsdk:"services"`
 	Tags                        types.Map    `tfsdk:"tags"`
 	AuthDatabase                types.String `tfsdk:"auth_database"`
 	Account                     types.String `tfsdk:"account"`

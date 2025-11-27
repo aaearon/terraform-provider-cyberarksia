@@ -38,9 +38,9 @@ func ChangeInfoAttrTypes() map[string]attr.Type {
 	return changeInfoAttrTypes
 }
 
-// createChangeInfoObject creates a types.Object from user and timestamp strings
+// CreateChangeInfoObject creates a types.Object from user and timestamp strings
 // Returns ObjectNull if user is empty, otherwise returns ObjectValue with the provided data
-func createChangeInfoObject(user, timestamp string) types.Object {
+func CreateChangeInfoObject(user, timestamp string) types.Object {
 	if user == "" {
 		return types.ObjectNull(changeInfoAttrTypes)
 	}
@@ -64,7 +64,7 @@ func createChangeInfoObject(user, timestamp string) types.Object {
 type DatabasePolicyModel struct {
 	Conditions               *ConditionsModel                `tfsdk:"conditions"`
 	TimeFrame                *TimeFrameModel                 `tfsdk:"time_frame"`
-	PolicyTags               types.List                      `tfsdk:"policy_tags"`
+	PolicyTags               types.Set                       `tfsdk:"policy_tags"`
 	UpdatedOn                types.Object                    `tfsdk:"updated_on"`
 	CreatedBy                types.Object                    `tfsdk:"created_by"`
 	ID                       types.String                    `tfsdk:"id"`
@@ -197,13 +197,13 @@ func (m *DatabasePolicyModel) FromSDK(ctx context.Context, policy *uapsiadbmodel
 		for i, tag := range policy.Metadata.PolicyTags {
 			tagValues[i] = types.StringValue(tag)
 		}
-		tagList, diags := types.ListValue(types.StringType, tagValues)
+		tagSet, diags := types.SetValue(types.StringType, tagValues)
 		if diags.HasError() {
 			return fmt.Errorf("failed to convert policy tags: %v", diags.Errors())
 		}
-		m.PolicyTags = tagList
+		m.PolicyTags = tagSet
 	} else {
-		m.PolicyTags = types.ListNull(types.StringType)
+		m.PolicyTags = types.SetNull(types.StringType)
 	}
 
 	// Convert time frame
@@ -248,8 +248,8 @@ func (m *DatabasePolicyModel) FromSDK(ctx context.Context, policy *uapsiadbmodel
 	}
 
 	// Computed fields - convert to types.Object to handle unknown values properly
-	m.CreatedBy = createChangeInfoObject(policy.Metadata.CreatedBy.User, policy.Metadata.CreatedBy.Time)
-	m.UpdatedOn = createChangeInfoObject(policy.Metadata.UpdatedOn.User, policy.Metadata.UpdatedOn.Time)
+	m.CreatedBy = CreateChangeInfoObject(policy.Metadata.CreatedBy.User, policy.Metadata.CreatedBy.Time)
+	m.UpdatedOn = CreateChangeInfoObject(policy.Metadata.UpdatedOn.User, policy.Metadata.UpdatedOn.Time)
 
 	return nil
 }
