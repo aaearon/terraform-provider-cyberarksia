@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# CRUD Testing Automation for terraform-provider-cyberark-sia
+# CRUD Testing Automation for terraform-provider-cyberarksia
 #
 # Purpose: Automates the CRUD validation workflow from examples/testing/TESTING-GUIDE.md
 # Usage: ./scripts/test-crud-resource.sh [resource_description]
@@ -23,7 +23,7 @@ TESTDIR="/tmp/sia-crud-validation-${RESOURCE_DESC}-${TIMESTAMP}"
 TEMPLATE_DIR="./examples/testing"
 
 echo "╔════════════════════════════════════════════════════════════════════╗"
-echo "║  CRUD Test Automation for terraform-provider-cyberark-sia          ║"
+echo "║  CRUD Test Automation for terraform-provider-cyberarksia          ║"
 echo "╚════════════════════════════════════════════════════════════════════╝"
 echo ""
 echo "Resource: ${RESOURCE_DESC}"

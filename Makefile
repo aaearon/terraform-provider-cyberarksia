@@ -2,7 +2,7 @@
 .PHONY: validate validate-go validate-terraform validate-docs validate-security check-all
 .PHONY: pre-commit-install pre-commit-run tools-install
 
-BINARY_NAME=terraform-provider-cyberark-sia
+BINARY_NAME=terraform-provider-cyberarksia
 VERSION?=dev
 
 # Detect OS and architecture for cross-platform support
