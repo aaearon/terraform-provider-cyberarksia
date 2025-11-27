@@ -34,7 +34,6 @@ Manages a CyberArk SIA database access policy including metadata and access cond
 - `conditions` (Block, Optional) Policy access conditions (session limits, idle timeouts, time windows). (see [below for nested schema](#nestedblock--conditions))
 - `delegation_classification` (String) Delegation classification. Valid values: `restricted`, `unrestricted`. Default: `unrestricted`. **Note**: Currently, SIA only supports `unrestricted` for database policies regardless of the value set. This attribute is available for future compatibility.
 - `description` (String) Policy description (max 200 characters).
-- `last_modified` (String) Timestamp of the last modification to the policy.
 - `policy_tags` (Set of String) Set of tags for policy organization (max 20 tags).
 - `principal` (Block Set) Principal assignment (repeatable block). **Required**: At least 1 principal block is required. Follows familiar Terraform patterns (aws_security_group ingress/egress). Order-independent (principals may be returned in any order by the API). Use `lifecycle { ignore_changes = [principal] }` if managing assignments via separate `cyberarksia_database_policy_principal_assignment` resources. (see [below for nested schema](#nestedblock--principal))
 - `target_database` (Block List) Database workspace assignment (repeatable block). **Required**: At least 1 target_database block is required. Follows familiar Terraform patterns (aws_security_group ingress/egress). Use `lifecycle { ignore_changes = [target_database] }` if managing assignments via separate `cyberarksia_policy_database_assignment` resources. (see [below for nested schema](#nestedblock--target_database))
@@ -45,6 +44,7 @@ Manages a CyberArk SIA database access policy including metadata and access cond
 
 - `created_by` (Attributes) Metadata about policy creation (set by API). (see [below for nested schema](#nestedatt--created_by))
 - `id` (String) Policy identifier (same as policy_id).
+- `last_modified` (String) Timestamp of the last modification to the policy.
 - `policy_id` (String) Unique policy identifier (UUID, API-generated).
 - `updated_on` (Attributes) Metadata about the last policy update (set by API). (see [below for nested schema](#nestedatt--updated_on))
 

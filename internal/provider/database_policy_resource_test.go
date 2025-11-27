@@ -44,10 +44,9 @@ func TestAccDatabasePolicy_basic(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				ResourceName:            "cyberarksia_database_policy.test",
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"last_modified"},
+				ResourceName:      "cyberarksia_database_policy.test",
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -80,10 +79,9 @@ func TestAccDatabasePolicy_withConditions(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				ResourceName:            "cyberarksia_database_policy.conditions_test",
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"last_modified"}, // TODO: Remove after fixing #43
+				ResourceName:      "cyberarksia_database_policy.conditions_test",
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -176,10 +174,9 @@ func TestAccDatabasePolicy_update(t *testing.T) {
 			},
 			// Step 3: Verify import still works after update
 			{
-				ResourceName:            "cyberarksia_database_policy.update_test",
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"last_modified"}, // TODO: Remove after fixing #43
+				ResourceName:      "cyberarksia_database_policy.update_test",
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

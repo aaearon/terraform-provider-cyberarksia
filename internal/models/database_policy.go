@@ -250,6 +250,7 @@ func (m *DatabasePolicyModel) FromSDK(ctx context.Context, policy *uapsiadbmodel
 	// Computed fields - convert to types.Object to handle unknown values properly
 	m.CreatedBy = CreateChangeInfoObject(policy.Metadata.CreatedBy.User, policy.Metadata.CreatedBy.Time)
 	m.UpdatedOn = CreateChangeInfoObject(policy.Metadata.UpdatedOn.User, policy.Metadata.UpdatedOn.Time)
+	m.LastModified = types.StringValue(policy.Metadata.UpdatedOn.Time)
 
 	return nil
 }
