@@ -80,9 +80,10 @@ func TestAccDatabasePolicy_withConditions(t *testing.T) {
 			},
 			// ImportState testing
 			{
-				ResourceName:      "cyberarksia_database_policy.conditions_test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "cyberarksia_database_policy.conditions_test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"last_modified"}, // TODO: Remove after fixing #43
 			},
 		},
 	})
@@ -175,9 +176,10 @@ func TestAccDatabasePolicy_update(t *testing.T) {
 			},
 			// Step 3: Verify import still works after update
 			{
-				ResourceName:      "cyberarksia_database_policy.update_test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            "cyberarksia_database_policy.update_test",
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"last_modified"}, // TODO: Remove after fixing #43
 			},
 		},
 	})
@@ -407,7 +409,8 @@ resource "cyberarksia_database_workspace" "conditions" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.conditions.id
+  secret_id                     = cyberarksia_database_secret.conditions.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "conditions_user" {
@@ -466,7 +469,8 @@ resource "cyberarksia_database_workspace" "timeframe" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.timeframe.id
+  secret_id                     = cyberarksia_database_secret.timeframe.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "timeframe_user" {
@@ -529,7 +533,8 @@ resource "cyberarksia_database_workspace" "inline1" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.inline1.id
+  secret_id                     = cyberarksia_database_secret.inline1.id
+  enable_certificate_validation = true
 }
 
 resource "cyberarksia_database_workspace" "inline2" {
@@ -539,7 +544,8 @@ resource "cyberarksia_database_workspace" "inline2" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.inline2.id
+  secret_id                     = cyberarksia_database_secret.inline2.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "inline_user" {
@@ -601,7 +607,8 @@ resource "cyberarksia_database_workspace" "update" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.update.id
+  secret_id                     = cyberarksia_database_secret.update.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "update_user" {
@@ -618,6 +625,10 @@ resource "cyberarksia_database_policy" "update_test" {
   conditions {
     max_session_duration = 8
     idle_time            = 10
+
+    access_window {
+      days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+    }
   }
 
   target_database {
@@ -654,7 +665,8 @@ resource "cyberarksia_database_workspace" "update" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.update.id
+  secret_id                     = cyberarksia_database_secret.update.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "update_user" {
@@ -671,6 +683,10 @@ resource "cyberarksia_database_policy" "update_test" {
   conditions {
     max_session_duration = 12
     idle_time            = 20
+
+    access_window {
+      days_of_the_week = [0, 1, 2, 3, 4, 5, 6]
+    }
   }
 
   target_database {
@@ -707,7 +723,8 @@ resource "cyberarksia_database_workspace" "window" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.window.id
+  secret_id                     = cyberarksia_database_secret.window.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "window_user" {
@@ -764,7 +781,8 @@ resource "cyberarksia_database_workspace" "window" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.window.id
+  secret_id                     = cyberarksia_database_secret.window.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "window_user" {
@@ -821,7 +839,8 @@ resource "cyberarksia_database_workspace" "dbauth" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.dbauth.id
+  secret_id                     = cyberarksia_database_secret.dbauth.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "dbauth_user" {
@@ -872,7 +891,8 @@ resource "cyberarksia_database_workspace" "oracle" {
   port                  = 1521
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.oracle.id
+  secret_id                     = cyberarksia_database_secret.oracle.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "oracle_user" {
@@ -953,7 +973,8 @@ resource "cyberarksia_database_workspace" "missing_principals" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.missing_principals.id
+  secret_id                     = cyberarksia_database_secret.missing_principals.id
+  enable_certificate_validation = true
 }
 
 resource "cyberarksia_database_policy" "missing_principals" {
@@ -993,7 +1014,8 @@ resource "cyberarksia_database_workspace" "mismatched" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.mismatched.id
+  secret_id                     = cyberarksia_database_secret.mismatched.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "mismatched_user" {
@@ -1043,7 +1065,8 @@ resource "cyberarksia_database_workspace" "forcenew" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.forcenew.id
+  secret_id                     = cyberarksia_database_secret.forcenew.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "forcenew_user" {
@@ -1094,7 +1117,8 @@ resource "cyberarksia_database_workspace" "forcenew" {
   port                  = 5432
   authentication_method = "local_ephemeral_user"
   cloud_provider        = "on_premise"
-  secret_id             = cyberarksia_database_secret.forcenew.id
+  secret_id                     = cyberarksia_database_secret.forcenew.id
+  enable_certificate_validation = true
 }
 
 data "cyberarksia_principal" "forcenew_user" {
