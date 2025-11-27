@@ -20,7 +20,7 @@ type VMPolicyResourceModel struct {
 
 	// Lists and Objects (larger types)
 	Tags          types.List   `tfsdk:"tags"`          // []string
-	Principals    types.List   `tfsdk:"principals"`    // []PrincipalModel, min 1 required
+	Principals    types.Set    `tfsdk:"principals"`    // []PrincipalModel, min 1 required, order-independent
 	AccessWindow  types.Object `tfsdk:"access_window"` // AccessWindowModel
 	TimeFrame     types.Object `tfsdk:"time_frame"`    // TimeFrameModel
 	Behavior      types.Object `tfsdk:"behavior"`      // BehaviorModel

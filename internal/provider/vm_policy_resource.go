@@ -193,10 +193,10 @@ func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaReques
 		},
 
 		Blocks: map[string]schema.Block{
-			"principals": schema.ListNestedBlock{
+			"principals": schema.SetNestedBlock{
 				MarkdownDescription: "Principal assignment (repeatable block). **Required**: At least 1 principal.",
-				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
+				Validators: []validator.Set{
+					setvalidator.SizeAtLeast(1),
 				},
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{
@@ -1425,7 +1425,7 @@ func buildSDKMetadata(plan models.VMPolicyResourceModel, diags *diag.Diagnostics
 }
 
 // buildSDKPrincipals converts Terraform principals to SDK principals
-func buildSDKPrincipals(ctx context.Context, tfPrincipals types.List, diags *diag.Diagnostics) []uapcommonmodels.ArkUAPPrincipal {
+func buildSDKPrincipals(ctx context.Context, tfPrincipals types.Set, diags *diag.Diagnostics) []uapcommonmodels.ArkUAPPrincipal {
 	if tfPrincipals.IsNull() || tfPrincipals.IsUnknown() {
 		return []uapcommonmodels.ArkUAPPrincipal{}
 	}
@@ -1966,7 +1966,7 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 		})
 
 		if len(principalModels) > 0 {
-			principalsList, diagsPrincipals := types.ListValueFrom(ctx, types.ObjectType{
+			principalsList, diagsPrincipals := types.SetValueFrom(ctx, types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"principal_id":          types.StringType,
 					"principal_name":        types.StringType,
@@ -1981,8 +1981,8 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 				state.Principals = principalsList
 			}
 		} else {
-			// No matching principals - set to typed null list
-			state.Principals = types.ListNull(types.ObjectType{
+			// No matching principals - set to typed null set
+			state.Principals = types.SetNull(types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"principal_id":          types.StringType,
 					"principal_name":        types.StringType,
@@ -1993,8 +1993,8 @@ func mapSDKPolicyToState(ctx context.Context, sdkPolicy *uapsiavmmodels.ArkUAPSI
 			})
 		}
 	} else {
-		// No principals from API - set to typed null list
-		state.Principals = types.ListNull(types.ObjectType{
+		// No principals from API - set to typed null set
+		state.Principals = types.SetNull(types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"principal_id":          types.StringType,
 				"principal_name":        types.StringType,
