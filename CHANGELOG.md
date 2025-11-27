@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-11-27
+
+### BREAKING CHANGES
+
+1. **Resource Rename**: `cyberarksia_virtual_machine_secret` has been renamed to `cyberarksia_vm_secret` for consistency with other VM resources (`vm_policy`, `vm_policy_principal_assignment`)
+
+**Migration:**
+```bash
+# 1. Update .tf files: change resource type name
+#    cyberarksia_virtual_machine_secret → cyberarksia_vm_secret
+
+# 2. Update Terraform state
+terraform state mv 'cyberarksia_virtual_machine_secret.example' 'cyberarksia_vm_secret.example'
+```
+
+### Fixed
+
+- **vm_policy**: Populate `created_by` and `updated_by` from API response instead of null (#46)
+- **database_policy**: Populate `last_modified` from API response (#45)
+- **Ordering drift**: Changed List to Set for order-independent attributes across multiple resources (#40):
+  - `database_workspace.services`
+  - `certificate.subject_alternative_name`
+  - `database_policy.policy_tags`
+  - `vm_policy.tags`, `vm_policy.ip_rule.ip_addresses`
+- **vm_policy**: Changed `principals` block from List to Set to prevent ordering drift (#39)
+- **Validation/null handling**: Fixed multiple issues causing perpetual Terraform drift (#38):
+  - Handle `IsUnknown()` values in principal directory validation (enables data source references)
+  - Null handling for optional policy fields (description, from_hour, to_hour, source_directory)
+  - Null handling for optional database_workspace fields (network_name, auth_database, account, etc.)
+  - List→Set for roles, assign_groups, principals in authentication profiles
+
+### Changed
+
+- Removed `scripts/test-crud-resource.sh` in favor of Go acceptance tests (`make testacc`) (#52)
+- Fixed binary name in Makefile to match project name (`cyberarksia`) (#50)
+
+### Documentation
+
+- Fixed README accuracy and consolidated specs (#51)
+- Documented timestamp precision API inconsistency for `database_secret` imports (#49)
+
 ## [0.2.0] - 2025-11-26
 
 ### BREAKING CHANGES
