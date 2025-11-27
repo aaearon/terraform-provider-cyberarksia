@@ -32,8 +32,10 @@ func TestAccSecret_basic(t *testing.T) {
 				ResourceName:      "cyberarksia_database_secret.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Password is sensitive and won't be in state
-				// Timestamps may have precision differences between API responses
+				// password: sensitive, not returned by API
+				// created_at, last_modified: API returns different timestamp precision
+				//   between Create ("...T12:00:00.123456Z") and Read ("...T12:00:00Z")
+				//   This is an upstream API inconsistency, not a provider bug. See #48.
 				ImportStateVerifyIgnore: []string{"password", "created_at", "last_modified"},
 			},
 		},
@@ -163,8 +165,10 @@ func TestAccSecret_import(t *testing.T) {
 				ResourceName:      "cyberarksia_database_secret.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Password is sensitive and won't be in state
-				// Timestamps may have precision differences between API responses
+				// password: sensitive, not returned by API
+				// created_at, last_modified: API returns different timestamp precision
+				//   between Create ("...T12:00:00.123456Z") and Read ("...T12:00:00Z")
+				//   This is an upstream API inconsistency, not a provider bug. See #48.
 				ImportStateVerifyIgnore: []string{"password", "created_at", "last_modified"},
 			},
 		},
@@ -204,8 +208,10 @@ func TestAccSecret_updateCredentials(t *testing.T) {
 				ResourceName:      "cyberarksia_database_secret.update_test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// Password is sensitive and won't be in state
-				// Timestamps may have precision differences between API responses
+				// password: sensitive, not returned by API
+				// created_at, last_modified: API returns different timestamp precision
+				//   between Create ("...T12:00:00.123456Z") and Read ("...T12:00:00Z")
+				//   This is an upstream API inconsistency, not a provider bug. See #48.
 				ImportStateVerifyIgnore: []string{"password", "created_at", "last_modified"},
 			},
 		},
