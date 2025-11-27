@@ -823,16 +823,45 @@ func (r *VMPolicyResource) Create(ctx context.Context, req resource.CreateReques
 		plan.Tags = types.SetNull(types.StringType)
 	}
 
-	// Explicitly set computed metadata fields to null to avoid "unknown value" errors
-	// These will be populated by the automatic Read() call after Create()
-	plan.CreatedBy = types.ObjectNull(map[string]attr.Type{
-		"user":      types.StringType,
-		"timestamp": types.StringType,
-	})
-	plan.UpdatedBy = types.ObjectNull(map[string]attr.Type{
-		"user":      types.StringType,
-		"timestamp": types.StringType,
-	})
+	// Populate computed metadata fields from API response
+	if created.Metadata.CreatedBy.User != "" {
+		createdByObj, diagsCreated := types.ObjectValueFrom(ctx, map[string]attr.Type{
+			"user":      types.StringType,
+			"timestamp": types.StringType,
+		}, models.UserTimestampModel{
+			User:      types.StringValue(created.Metadata.CreatedBy.User),
+			Timestamp: types.StringValue(created.Metadata.CreatedBy.Time),
+		})
+		if diagsCreated.HasError() {
+			resp.Diagnostics.Append(diagsCreated...)
+		} else {
+			plan.CreatedBy = createdByObj
+		}
+	} else {
+		plan.CreatedBy = types.ObjectNull(map[string]attr.Type{
+			"user":      types.StringType,
+			"timestamp": types.StringType,
+		})
+	}
+	if created.Metadata.UpdatedOn.User != "" {
+		updatedByObj, diagsUpdated := types.ObjectValueFrom(ctx, map[string]attr.Type{
+			"user":      types.StringType,
+			"timestamp": types.StringType,
+		}, models.UserTimestampModel{
+			User:      types.StringValue(created.Metadata.UpdatedOn.User),
+			Timestamp: types.StringValue(created.Metadata.UpdatedOn.Time),
+		})
+		if diagsUpdated.HasError() {
+			resp.Diagnostics.Append(diagsUpdated...)
+		} else {
+			plan.UpdatedBy = updatedByObj
+		}
+	} else {
+		plan.UpdatedBy = types.ObjectNull(map[string]attr.Type{
+			"user":      types.StringType,
+			"timestamp": types.StringType,
+		})
+	}
 
 	tflog.Info(ctx, "Created VM policy", map[string]interface{}{
 		"policy_id":   plan.PolicyID.ValueString(),
