@@ -122,7 +122,7 @@ data "cyberarksia_principal" "role" {
 terraform {
   required_providers {
     cyberarksia = {
-      source = "terraform.local/local/cyberark-sia"
+      source = "terraform.local/local/cyberarksia"
       version = "~> 0.1"
     }
   }

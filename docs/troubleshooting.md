@@ -531,7 +531,7 @@ cat > main.tf << 'EOF'
 terraform {
   required_providers {
     cyberarksia = {
-      source  = "terraform.local/local/cyberark-sia"
+      source  = "terraform.local/local/cyberarksia"
       version = "0.1.0"
     }
   }

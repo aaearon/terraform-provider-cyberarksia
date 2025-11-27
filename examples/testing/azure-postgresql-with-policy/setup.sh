@@ -40,9 +40,9 @@ if ! az account show &> /dev/null; then
 fi
 
 # Check provider installed
-if ! terraform providers 2>/dev/null | grep -q "terraform.local/local/cyberark-sia"; then
+if ! terraform providers 2>/dev/null | grep -q "terraform.local/local/cyberarksia"; then
     echo "⚠️  Provider may not be installed. Run:"
-    echo "  cd ~/terraform-provider-cyberark-sia"
+    echo "  cd ~/terraform-provider-cyberarksia"
     echo "  go build -v && go install"
 fi
 

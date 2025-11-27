@@ -101,7 +101,7 @@ To use the locally-built provider, configure Terraform CLI dev overrides:
 ```hcl
 provider_installation {
   dev_overrides {
-    "aaearon/cyberarksia" = "~/.terraform.d/plugins/local/aaearon/cyberark-sia/dev/linux_amd64"
+    "aaearon/cyberarksia" = "~/.terraform.d/plugins/local/aaearon/cyberarksia/dev/linux_amd64"
   }
   direct {}
 }

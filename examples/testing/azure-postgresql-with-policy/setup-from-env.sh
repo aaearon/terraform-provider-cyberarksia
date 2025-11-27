@@ -9,13 +9,13 @@ echo "📋 Creating terraform.tfvars from .env file..."
 echo ""
 
 # Check .env exists
-if [ ! -f ~/terraform-provider-cyberark-sia/.env ]; then
-    echo "❌ ERROR: .env file not found at ~/terraform-provider-cyberark-sia/.env"
+if [ ! -f ~/terraform-provider-cyberarksia/.env ]; then
+    echo "❌ ERROR: .env file not found at ~/terraform-provider-cyberarksia/.env"
     exit 1
 fi
 
 # Source .env file
-source ~/terraform-provider-cyberark-sia/.env
+source ~/terraform-provider-cyberarksia/.env
 
 # Check required variables
 if [ -z "$CYBERARK_USERNAME" ]; then

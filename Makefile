@@ -2,13 +2,13 @@
 .PHONY: validate validate-go validate-terraform validate-docs validate-security check-all
 .PHONY: pre-commit-install pre-commit-run tools-install
 
-BINARY_NAME=terraform-provider-cyberark-sia
+BINARY_NAME=terraform-provider-cyberarksia
 VERSION?=dev
 
 # Detect OS and architecture for cross-platform support
 GOOS?=$(shell go env GOOS)
 GOARCH?=$(shell go env GOARCH)
-INSTALL_PATH=~/.terraform.d/plugins/local/aaearon/cyberark-sia/$(VERSION)/$(GOOS)_$(GOARCH)
+INSTALL_PATH=~/.terraform.d/plugins/local/aaearon/cyberarksia/$(VERSION)/$(GOOS)_$(GOARCH)
 
 # Default target
 help:
