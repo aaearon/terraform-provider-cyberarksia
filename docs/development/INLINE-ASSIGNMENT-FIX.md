@@ -51,8 +51,8 @@ mismatch between struct and object: Struct defines fields not found in object: i
 - Builds successfully: `go build -v`
 - Binary location: `~/terraform-provider-cyberarksia/terraform-provider-cyberarksia`
 - **Must copy manually** to:
-  - `~/.terraform.d/plugins/terraform.local/local/cyberark-sia/0.1.0/linux_amd64/terraform-provider-cyberarksia_v0.1.0`
-  - `/tmp/sia-crud-validation-20251028-133244/.terraform/providers/terraform.local/local/cyberark-sia/0.1.0/linux_amd64/terraform-provider-cyberarksia`
+  - `~/.terraform.d/plugins/terraform.local/local/cyberarksia/0.1.0/linux_amd64/terraform-provider-cyberarksia_v0.1.0`
+  - `/tmp/sia-crud-validation-20251028-133244/.terraform/providers/terraform.local/local/cyberarksia/0.1.0/linux_amd64/terraform-provider-cyberarksia`
 
 ## Required Fix: Create Simplified Inline Models
 
@@ -176,9 +176,9 @@ cd ~/terraform-provider-cyberarksia
 go build -v
 
 # Copy to both locations
-cp terraform-provider-cyberarksia ~/.terraform.d/plugins/terraform.local/local/cyberark-sia/0.1.0/linux_amd64/terraform-provider-cyberarksia_v0.1.0
+cp terraform-provider-cyberarksia ~/.terraform.d/plugins/terraform.local/local/cyberarksia/0.1.0/linux_amd64/terraform-provider-cyberarksia_v0.1.0
 
-cp terraform-provider-cyberarksia /tmp/sia-crud-validation-20251028-133244/.terraform/providers/terraform.local/local/cyberark-sia/0.1.0/linux_amd64/terraform-provider-cyberarksia
+cp terraform-provider-cyberarksia /tmp/sia-crud-validation-20251028-133244/.terraform/providers/terraform.local/local/cyberarksia/0.1.0/linux_amd64/terraform-provider-cyberarksia
 ```
 
 ### 2. Test Configuration
