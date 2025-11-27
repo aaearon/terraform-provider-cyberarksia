@@ -27,7 +27,7 @@ locals {
 # ============================================================================
 # Uncomment this block if you want to create a test secret:
 #
-# resource "cyberarksia_virtual_machine_secret" "test" {
+# resource "cyberarksia_vm_secret" "test" {
 #   secret_name          = "crud-test-secret-${local.test_suffix}"
 #   secret_type          = "ProvisionerUser"
 #   provisioner_username = "testadmin"
@@ -55,8 +55,8 @@ resource "cyberarksia_target_set" "test" {
 # resource "cyberarksia_target_set" "test" {
 #   name        = "crud-test-${local.test_suffix}.example.com"
 #   type        = "Domain"
-#   secret_id   = cyberarksia_virtual_machine_secret.test.id
-#   secret_type = cyberarksia_virtual_machine_secret.test.secret_type
+#   secret_id   = cyberarksia_vm_secret.test.id
+#   secret_type = cyberarksia_vm_secret.test.secret_type
 #
 #   description                   = "CRUD validation test target set"
 #   provision_format              = "<user>-test-<session-guid>"

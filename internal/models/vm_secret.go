@@ -2,8 +2,8 @@ package models
 
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
-// VirtualMachineSecretModel represents a VM secret resource in Terraform
-type VirtualMachineSecretModel struct {
+// VMSecretModel represents a VM secret resource in Terraform
+type VMSecretModel struct {
 	// Identifiers (computed)
 	ID       types.String `tfsdk:"id"`
 	SecretID types.String `tfsdk:"secret_id"`

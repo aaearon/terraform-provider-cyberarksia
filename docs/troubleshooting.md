@@ -780,7 +780,7 @@ Target sets support in-place rename. Try updating the name to remove forward sla
 resource "cyberarksia_target_set" "example" {
   name        = "env.test.servers"  # CHANGED: dots instead of slashes
   type        = "Domain"
-  secret_id   = cyberarksia_virtual_machine_secret.admin.id
+  secret_id   = cyberarksia_vm_secret.admin.id
   secret_type = "ProvisionerUser"
 }
 ```

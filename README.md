@@ -210,7 +210,7 @@ See [docs/resources/database_policy_workspace_assignment.md](docs/resources/data
 
 ### VM/Server Access Resources
 
-#### `cyberarksia_virtual_machine_secret`
+#### `cyberarksia_vm_secret`
 
 Manages VM/server credentials for privileged access.
 
@@ -226,7 +226,7 @@ Manages VM/server credentials for privileged access.
 
 **Example use case:** Store a privileged Linux admin account that will be used across multiple server groups (production, staging, development).
 
-See [examples/resources/cyberarksia_virtual_machine_secret/](examples/resources/cyberarksia_virtual_machine_secret/) for usage examples.
+See [examples/resources/cyberarksia_vm_secret/](examples/resources/cyberarksia_vm_secret/) for usage examples.
 
 #### `cyberarksia_target_set`
 

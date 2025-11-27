@@ -50,7 +50,7 @@ variable "environment" {
 # VM SECRET RESOURCE (ProvisionerUser with Password Rotation)
 # ==============================================================================
 
-resource "cyberarksia_virtual_machine_secret" "rotated_admin" {
+resource "cyberarksia_vm_secret" "rotated_admin" {
   # Secret name remains constant across password rotations
   secret_name = "${var.environment}-vm-admin"
   secret_type = "ProvisionerUser"
@@ -68,12 +68,12 @@ resource "cyberarksia_virtual_machine_secret" "rotated_admin" {
 
 output "rotated_secret_id" {
   description = "UUID of the VM secret (use for workspace references)"
-  value       = cyberarksia_virtual_machine_secret.rotated_admin.secret_id
+  value       = cyberarksia_vm_secret.rotated_admin.secret_id
 }
 
 output "rotated_secret_name" {
   description = "Name of the VM secret"
-  value       = cyberarksia_virtual_machine_secret.rotated_admin.secret_name
+  value       = cyberarksia_vm_secret.rotated_admin.secret_name
 }
 
 output "rotation_instructions" {
@@ -117,7 +117,7 @@ output "rotation_instructions" {
 #    terraform apply
 #
 # 3. Verify creation:
-#    terraform state show cyberarksia_virtual_machine_secret.rotated_admin
+#    terraform state show cyberarksia_vm_secret.rotated_admin
 #
 # Expected output:
 #   secret_id = "abc-123-def-456"
@@ -136,8 +136,8 @@ output "rotation_instructions" {
 # Expected plan output:
 #   Terraform will perform the following actions:
 #
-#   # cyberarksia_virtual_machine_secret.rotated_admin will be updated in-place
-#   ~ resource "cyberarksia_virtual_machine_secret" "rotated_admin" {
+#   # cyberarksia_vm_secret.rotated_admin will be updated in-place
+#   ~ resource "cyberarksia_vm_secret" "rotated_admin" {
 #       ~ provisioner_password = (sensitive value)
 #       # (other attributes unchanged)
 #     }
@@ -167,7 +167,7 @@ output "rotation_instructions" {
 #   secret_id = "vm-admin-password"
 # }
 #
-# resource "cyberarksia_virtual_machine_secret" "rotated_admin" {
+# resource "cyberarksia_vm_secret" "rotated_admin" {
 #   secret_name = "vm-admin"
 #   secret_type = "ProvisionerUser"
 #
@@ -183,7 +183,7 @@ output "rotation_instructions" {
 # VERIFICATION AFTER ROTATION:
 # -----------------------------
 # 1. Check Terraform state (password still shows as sensitive):
-#    terraform state show cyberarksia_virtual_machine_secret.rotated_admin
+#    terraform state show cyberarksia_vm_secret.rotated_admin
 #
 # 2. Verify in SIA UI:
 #    - Navigate to SIA → Secrets → VM Secrets

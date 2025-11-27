@@ -1,4 +1,4 @@
-// Package provider implements acceptance tests for virtual machine secret resource
+// Package provider implements acceptance tests for VM secret resource
 package provider
 
 import (
@@ -17,21 +17,21 @@ import (
 // User Story 1 - Create VM Secrets (Priority: P1)
 // ============================================================================
 
-// TestAccVirtualMachineSecret_ProvisionerUser_Basic tests full CRUD lifecycle for ProvisionerUser type
-func TestAccVirtualMachineSecret_ProvisionerUser_Basic(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.provisioner_user"
+// TestAccVMSecret_ProvisionerUser_Basic tests full CRUD lifecycle for ProvisionerUser type
+func TestAccVMSecret_ProvisionerUser_Basic(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.provisioner_user"
 	secretName := fmt.Sprintf("test-vm-secret-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("provisioner_user", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("provisioner_user", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "secret_name", secretName),
 					resource.TestCheckResourceAttr(resourceName, "secret_type", "ProvisionerUser"),
 					resource.TestCheckResourceAttr(resourceName, "provisioner_username", "vm_admin"),
@@ -56,21 +56,21 @@ func TestAccVirtualMachineSecret_ProvisionerUser_Basic(t *testing.T) {
 	})
 }
 
-// TestAccVirtualMachineSecret_PCloudAccount_Basic tests full CRUD lifecycle for PCloudAccount type
-func TestAccVirtualMachineSecret_PCloudAccount_Basic(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.pcloud_account"
+// TestAccVMSecret_PCloudAccount_Basic tests full CRUD lifecycle for PCloudAccount type
+func TestAccVMSecret_PCloudAccount_Basic(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.pcloud_account"
 	secretName := fmt.Sprintf("test-pcloud-secret-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccVirtualMachineSecretConfigPCloudAccount(secretName),
+				Config: testAccVMSecretConfigPCloudAccount(secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "secret_name", secretName),
 					resource.TestCheckResourceAttr(resourceName, "secret_type", "PCloudAccount"),
 					resource.TestCheckResourceAttr(resourceName, "pcloud_safe_name", "Production-Safe"),
@@ -96,20 +96,20 @@ func TestAccVirtualMachineSecret_PCloudAccount_Basic(t *testing.T) {
 	})
 }
 
-// TestAccVirtualMachineSecret_SensitiveOutput tests that passwords are not in plan output
-func TestAccVirtualMachineSecret_SensitiveOutput(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.sensitive_test"
+// TestAccVMSecret_SensitiveOutput tests that passwords are not in plan output
+func TestAccVMSecret_SensitiveOutput(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.sensitive_test"
 	secretName := fmt.Sprintf("test-sensitive-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("sensitive_test", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("sensitive_test", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					// Password should be marked as sensitive - value should not be visible
 					resource.TestCheckResourceAttr(resourceName, "provisioner_username", "vm_admin"),
 					// We can't directly check if password is redacted in plan, but we can verify it's set
@@ -124,33 +124,33 @@ func TestAccVirtualMachineSecret_SensitiveOutput(t *testing.T) {
 // User Story 2 - Read and Verify VM Secrets (Priority: P1)
 // ============================================================================
 
-// TestAccVirtualMachineSecret_DriftDetection tests detection of external changes
+// TestAccVMSecret_DriftDetection tests detection of external changes
 // NOTE: This test demonstrates drift detection by changing the Terraform config
 // A true drift test would modify the secret via API between steps, but that requires
 // direct API access in test helpers. The current implementation tests the update path.
-func TestAccVirtualMachineSecret_DriftDetection(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.drift_test"
+func TestAccVMSecret_DriftDetection(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.drift_test"
 	secretName := fmt.Sprintf("test-drift-%s", acctest.RandString(8))
 	updatedSecretName := fmt.Sprintf("test-drift-updated-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			// Create initial secret
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("drift_test", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("drift_test", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "secret_name", secretName),
 				),
 			},
 			// Change config to trigger update (simulates drift + correction)
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("drift_test", updatedSecretName),
+				Config: testAccVMSecretConfigProvisionerUser("drift_test", updatedSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "secret_name", updatedSecretName),
 				),
 			},
@@ -160,21 +160,21 @@ func TestAccVirtualMachineSecret_DriftDetection(t *testing.T) {
 	})
 }
 
-// TestAccVirtualMachineSecret_ExternalDeletion tests handling of 404 errors gracefully
+// TestAccVMSecret_ExternalDeletion tests handling of 404 errors gracefully
 // NOTE: Full test requires API access in PreConfig to delete secret externally
-func TestAccVirtualMachineSecret_ExternalDeletion(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.external_delete_test"
+func TestAccVMSecret_ExternalDeletion(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.external_delete_test"
 	secretName := fmt.Sprintf("test-external-delete-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("external_delete_test", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("external_delete_test", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 				),
 			},
 			// TODO: Add PreConfig step to delete secret via API (simulates external deletion)
@@ -188,9 +188,9 @@ func TestAccVirtualMachineSecret_ExternalDeletion(t *testing.T) {
 // User Story 3 - Update VM Secret Metadata (Priority: P2)
 // ============================================================================
 
-// TestAccVirtualMachineSecret_UpdateName tests in-place name updates
-func TestAccVirtualMachineSecret_UpdateName(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.update_name_test"
+// TestAccVMSecret_UpdateName tests in-place name updates
+func TestAccVMSecret_UpdateName(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.update_name_test"
 	secretName := fmt.Sprintf("test-update-name-%s", acctest.RandString(8))
 	updatedSecretName := fmt.Sprintf("test-updated-name-%s", acctest.RandString(8))
 
@@ -199,13 +199,13 @@ func TestAccVirtualMachineSecret_UpdateName(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			// Create initial secret and capture ID
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("update_name_test", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("update_name_test", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "secret_name", secretName),
 					resource.TestCheckResourceAttrWith(resourceName, "secret_id", func(value string) error {
 						originalSecretID = value
@@ -215,9 +215,9 @@ func TestAccVirtualMachineSecret_UpdateName(t *testing.T) {
 			},
 			// Update name in-place - verify ID remains stable
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("update_name_test", updatedSecretName),
+				Config: testAccVMSecretConfigProvisionerUser("update_name_test", updatedSecretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "secret_name", updatedSecretName),
 					// Verify secret_id hasn't changed (in-place update)
 					resource.TestCheckResourceAttrWith(resourceName, "secret_id", func(v string) error {
@@ -238,9 +238,9 @@ func TestAccVirtualMachineSecret_UpdateName(t *testing.T) {
 	})
 }
 
-// TestAccVirtualMachineSecret_UpdatePassword tests password rotation
-func TestAccVirtualMachineSecret_UpdatePassword(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.update_password_test"
+// TestAccVMSecret_UpdatePassword tests password rotation
+func TestAccVMSecret_UpdatePassword(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.update_password_test"
 	secretName := fmt.Sprintf("test-update-password-%s", acctest.RandString(8))
 
 	var originalSecretID string
@@ -248,13 +248,13 @@ func TestAccVirtualMachineSecret_UpdatePassword(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			// Create with initial password and capture ID
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUserWithPassword("update_password_test", secretName, "InitialPassword123!"),
+				Config: testAccVMSecretConfigProvisionerUserWithPassword("update_password_test", secretName, "InitialPassword123!"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "provisioner_username", "vm_admin"),
 					resource.TestCheckResourceAttrWith(resourceName, "secret_id", func(value string) error {
 						originalSecretID = value
@@ -264,9 +264,9 @@ func TestAccVirtualMachineSecret_UpdatePassword(t *testing.T) {
 			},
 			// Update password (rotation) - verify ID remains stable
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUserWithPassword("update_password_test", secretName, "RotatedPassword456!"),
+				Config: testAccVMSecretConfigProvisionerUserWithPassword("update_password_test", secretName, "RotatedPassword456!"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "provisioner_username", "vm_admin"),
 					// Verify secret_id hasn't changed (in-place update)
 					resource.TestCheckResourceAttrWith(resourceName, "secret_id", func(v string) error {
@@ -287,9 +287,9 @@ func TestAccVirtualMachineSecret_UpdatePassword(t *testing.T) {
 	})
 }
 
-// TestAccVirtualMachineSecret_ForceNew tests that secret_type change triggers recreate
-func TestAccVirtualMachineSecret_ForceNew(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.forcenew_test"
+// TestAccVMSecret_ForceNew tests that secret_type change triggers recreate
+func TestAccVMSecret_ForceNew(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.forcenew_test"
 	secretName := fmt.Sprintf("test-forcenew-%s", acctest.RandString(8))
 
 	var originalSecretID string
@@ -297,13 +297,13 @@ func TestAccVirtualMachineSecret_ForceNew(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			// Create ProvisionerUser secret
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("forcenew_test", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("forcenew_test", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "secret_type", "ProvisionerUser"),
 					func(s *terraform.State) error {
 						rs := s.RootModule().Resources[resourceName]
@@ -314,9 +314,9 @@ func TestAccVirtualMachineSecret_ForceNew(t *testing.T) {
 			},
 			// Change to PCloudAccount - should trigger ForceNew (destroy + recreate)
 			{
-				Config: testAccVirtualMachineSecretConfigPCloudAccount(secretName),
+				Config: testAccVMSecretConfigPCloudAccount(secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "secret_type", "PCloudAccount"),
 					// Verify secret_id has changed (resource was recreated)
 					func(s *terraform.State) error {
@@ -337,21 +337,21 @@ func TestAccVirtualMachineSecret_ForceNew(t *testing.T) {
 // User Story 4 - Import Existing VM Secrets (Priority: P2)
 // ============================================================================
 
-// TestAccVirtualMachineSecret_ImportBasic tests import by secret_id
-func TestAccVirtualMachineSecret_ImportBasic(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.import_test"
+// TestAccVMSecret_ImportBasic tests import by secret_id
+func TestAccVMSecret_ImportBasic(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.import_test"
 	secretName := fmt.Sprintf("test-import-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			// Create secret
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("import_test", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("import_test", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 				),
 			},
 			// Import by secret_id
@@ -366,15 +366,15 @@ func TestAccVirtualMachineSecret_ImportBasic(t *testing.T) {
 	})
 }
 
-// TestAccVirtualMachineSecret_ImportNotFound tests that importing non-existent secret_id fails
-func TestAccVirtualMachineSecret_ImportNotFound(t *testing.T) {
+// TestAccVMSecret_ImportNotFound tests that importing non-existent secret_id fails
+func TestAccVMSecret_ImportNotFound(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:        testAccVirtualMachineSecretConfigProvisionerUser("import_test", "nonexistent"),
-				ResourceName:  "cyberarksia_virtual_machine_secret.import_test",
+				Config:        testAccVMSecretConfigProvisionerUser("import_test", "nonexistent"),
+				ResourceName:  "cyberarksia_vm_secret.import_test",
 				ImportState:   true,
 				ImportStateId: "00000000-0000-0000-0000-000000000000",
 				// Import calls Read() which should return 404 for non-existent UUID
@@ -389,20 +389,20 @@ func TestAccVirtualMachineSecret_ImportNotFound(t *testing.T) {
 // User Story 5 - Delete VM Secrets (Priority: P3)
 // ============================================================================
 
-// TestAccVirtualMachineSecret_DeleteBasic tests secret deletion via Terraform destroy
-func TestAccVirtualMachineSecret_DeleteBasic(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.delete_test"
+// TestAccVMSecret_DeleteBasic tests secret deletion via Terraform destroy
+func TestAccVMSecret_DeleteBasic(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.delete_test"
 	secretName := fmt.Sprintf("test-delete-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("delete_test", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("delete_test", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 				),
 			},
 			// After test completes, Terraform calls Delete() and CheckDestroy verifies success
@@ -410,21 +410,21 @@ func TestAccVirtualMachineSecret_DeleteBasic(t *testing.T) {
 	})
 }
 
-// TestAccVirtualMachineSecret_DeleteIdempotent tests that deleting already-deleted secret succeeds
+// TestAccVMSecret_DeleteIdempotent tests that deleting already-deleted secret succeeds
 // NOTE: Full test requires two sequential destroy operations with API verification
-func TestAccVirtualMachineSecret_DeleteIdempotent(t *testing.T) {
-	resourceName := "cyberarksia_virtual_machine_secret.delete_idempotent_test"
+func TestAccVMSecret_DeleteIdempotent(t *testing.T) {
+	resourceName := "cyberarksia_vm_secret.delete_idempotent_test"
 	secretName := fmt.Sprintf("test-delete-idempotent-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		CheckDestroy:             testAccCheckVirtualMachineSecretDestroy,
+		CheckDestroy:             testAccCheckVMSecretDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccVirtualMachineSecretConfigProvisionerUser("delete_idempotent_test", secretName),
+				Config: testAccVMSecretConfigProvisionerUser("delete_idempotent_test", secretName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					testAccCheckVirtualMachineSecretExists(resourceName),
+					testAccCheckVMSecretExists(resourceName),
 				),
 			},
 			// Standard destroy tests idempotency through CheckDestroy
@@ -440,8 +440,8 @@ func TestAccVirtualMachineSecret_DeleteIdempotent(t *testing.T) {
 // Validation Tests - Negative Scenarios
 // ============================================================================
 
-// TestAccVirtualMachineSecret_InvalidSecretType tests rejection of invalid secret_type
-func TestAccVirtualMachineSecret_InvalidSecretType(t *testing.T) {
+// TestAccVMSecret_InvalidSecretType tests rejection of invalid secret_type
+func TestAccVMSecret_InvalidSecretType(t *testing.T) {
 	secretName := fmt.Sprintf("test-invalid-type-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
@@ -449,7 +449,7 @@ func TestAccVirtualMachineSecret_InvalidSecretType(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccVirtualMachineSecretConfigInvalidSecretType(secretName),
+				Config: testAccVMSecretConfigInvalidSecretType(secretName),
 				// Terraform validator generates "Invalid Attribute Value" message for enum validation
 				ExpectError: regexp.MustCompile(`(?i)(Invalid Attribute Value|value must be one of)`),
 			},
@@ -457,8 +457,8 @@ func TestAccVirtualMachineSecret_InvalidSecretType(t *testing.T) {
 	})
 }
 
-// TestAccVirtualMachineSecret_MissingProvisionerUsername tests ProvisionerUser without username
-func TestAccVirtualMachineSecret_MissingProvisionerUsername(t *testing.T) {
+// TestAccVMSecret_MissingProvisionerUsername tests ProvisionerUser without username
+func TestAccVMSecret_MissingProvisionerUsername(t *testing.T) {
 	secretName := fmt.Sprintf("test-missing-username-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
@@ -466,15 +466,15 @@ func TestAccVirtualMachineSecret_MissingProvisionerUsername(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccVirtualMachineSecretConfigMissingProvisionerUsername(secretName),
+				Config:      testAccVMSecretConfigMissingProvisionerUsername(secretName),
 				ExpectError: regexp.MustCompile(`(?i)(provisioner_username.*required.*ProvisionerUser|Missing Required Field)`),
 			},
 		},
 	})
 }
 
-// TestAccVirtualMachineSecret_MissingProvisionerPassword tests ProvisionerUser without password
-func TestAccVirtualMachineSecret_MissingProvisionerPassword(t *testing.T) {
+// TestAccVMSecret_MissingProvisionerPassword tests ProvisionerUser without password
+func TestAccVMSecret_MissingProvisionerPassword(t *testing.T) {
 	secretName := fmt.Sprintf("test-missing-password-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
@@ -482,15 +482,15 @@ func TestAccVirtualMachineSecret_MissingProvisionerPassword(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccVirtualMachineSecretConfigMissingProvisionerPassword(secretName),
+				Config:      testAccVMSecretConfigMissingProvisionerPassword(secretName),
 				ExpectError: regexp.MustCompile(`(?i)(provisioner_password.*required.*ProvisionerUser|Missing Required Field)`),
 			},
 		},
 	})
 }
 
-// TestAccVirtualMachineSecret_MissingPCloudSafeName tests PCloudAccount without safe_name
-func TestAccVirtualMachineSecret_MissingPCloudSafeName(t *testing.T) {
+// TestAccVMSecret_MissingPCloudSafeName tests PCloudAccount without safe_name
+func TestAccVMSecret_MissingPCloudSafeName(t *testing.T) {
 	secretName := fmt.Sprintf("test-missing-safe-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
@@ -498,15 +498,15 @@ func TestAccVirtualMachineSecret_MissingPCloudSafeName(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccVirtualMachineSecretConfigMissingPCloudSafeName(secretName),
+				Config:      testAccVMSecretConfigMissingPCloudSafeName(secretName),
 				ExpectError: regexp.MustCompile(`(?i)(pcloud_safe_name.*required.*PCloudAccount|Missing Required Field)`),
 			},
 		},
 	})
 }
 
-// TestAccVirtualMachineSecret_MissingPCloudAccountName tests PCloudAccount without account_name
-func TestAccVirtualMachineSecret_MissingPCloudAccountName(t *testing.T) {
+// TestAccVMSecret_MissingPCloudAccountName tests PCloudAccount without account_name
+func TestAccVMSecret_MissingPCloudAccountName(t *testing.T) {
 	secretName := fmt.Sprintf("test-missing-account-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
@@ -514,15 +514,15 @@ func TestAccVirtualMachineSecret_MissingPCloudAccountName(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccVirtualMachineSecretConfigMissingPCloudAccountName(secretName),
+				Config:      testAccVMSecretConfigMissingPCloudAccountName(secretName),
 				ExpectError: regexp.MustCompile(`(?i)(pcloud_account_name.*required.*PCloudAccount|Missing Required Field)`),
 			},
 		},
 	})
 }
 
-// TestAccVirtualMachineSecret_InvalidFieldMix tests ProvisionerUser with PCloud fields
-func TestAccVirtualMachineSecret_InvalidFieldMix(t *testing.T) {
+// TestAccVMSecret_InvalidFieldMix tests ProvisionerUser with PCloud fields
+func TestAccVMSecret_InvalidFieldMix(t *testing.T) {
 	secretName := fmt.Sprintf("test-invalid-mix-%s", acctest.RandString(8))
 
 	resource.Test(t, resource.TestCase{
@@ -530,7 +530,7 @@ func TestAccVirtualMachineSecret_InvalidFieldMix(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccVirtualMachineSecretConfigInvalidFieldMix(secretName),
+				Config:      testAccVMSecretConfigInvalidFieldMix(secretName),
 				ExpectError: regexp.MustCompile(`(?i)(cannot be set when secret_type|Invalid Field Combination)`),
 			},
 		},
@@ -541,10 +541,10 @@ func TestAccVirtualMachineSecret_InvalidFieldMix(t *testing.T) {
 // Helper Functions
 // ============================================================================
 
-// testAccCheckVirtualMachineSecretExists verifies the secret exists in state
+// testAccCheckVMSecretExists verifies the secret exists in state
 // NOTE: Full API validation happens in the resource Read() method which is called
 // automatically by Terraform test framework during Check phase
-func testAccCheckVirtualMachineSecretExists(resourceName string) resource.TestCheckFunc {
+func testAccCheckVMSecretExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {
@@ -562,9 +562,9 @@ func testAccCheckVirtualMachineSecretExists(resourceName string) resource.TestCh
 	}
 }
 
-// testAccCheckVirtualMachineSecretDestroy verifies all secrets were destroyed
+// testAccCheckVMSecretDestroy verifies all secrets were destroyed
 // This function queries the API to ensure resources no longer exist
-func testAccCheckVirtualMachineSecretDestroy(s *terraform.State) error {
+func testAccCheckVMSecretDestroy(s *terraform.State) error {
 	// Get provider configuration from environment
 	providerData, err := getProviderDataFromEnv()
 	if err != nil {
@@ -572,7 +572,7 @@ func testAccCheckVirtualMachineSecretDestroy(s *terraform.State) error {
 	}
 
 	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "cyberarksia_virtual_machine_secret" {
+		if rs.Type != "cyberarksia_vm_secret" {
 			continue
 		}
 
@@ -604,10 +604,10 @@ func testAccCheckVirtualMachineSecretDestroy(s *terraform.State) error {
 // Test Configurations
 // ============================================================================
 
-// testAccVirtualMachineSecretConfigProvisionerUser returns basic ProvisionerUser config
-func testAccVirtualMachineSecretConfigProvisionerUser(resourceLabel, secretName string) string {
+// testAccVMSecretConfigProvisionerUser returns basic ProvisionerUser config
+func testAccVMSecretConfigProvisionerUser(resourceLabel, secretName string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "%[1]s" {
+resource "cyberarksia_vm_secret" "%[1]s" {
   secret_name          = %[2]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "vm_admin"
@@ -616,10 +616,10 @@ resource "cyberarksia_virtual_machine_secret" "%[1]s" {
 `, resourceLabel, secretName)
 }
 
-// testAccVirtualMachineSecretConfigProvisionerUserWithPassword returns ProvisionerUser config with custom password
-func testAccVirtualMachineSecretConfigProvisionerUserWithPassword(resourceLabel, secretName, password string) string {
+// testAccVMSecretConfigProvisionerUserWithPassword returns ProvisionerUser config with custom password
+func testAccVMSecretConfigProvisionerUserWithPassword(resourceLabel, secretName, password string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "%[1]s" {
+resource "cyberarksia_vm_secret" "%[1]s" {
   secret_name          = %[2]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "vm_admin"
@@ -628,17 +628,17 @@ resource "cyberarksia_virtual_machine_secret" "%[1]s" {
 `, resourceLabel, secretName, password)
 }
 
-// testAccVirtualMachineSecretConfigPCloudAccount returns basic PCloudAccount config
-func testAccVirtualMachineSecretConfigPCloudAccount(secretName string) string {
+// testAccVMSecretConfigPCloudAccount returns basic PCloudAccount config
+func testAccVMSecretConfigPCloudAccount(secretName string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "pcloud_account" {
+resource "cyberarksia_vm_secret" "pcloud_account" {
   secret_name         = %[1]q
   secret_type         = "PCloudAccount"
   pcloud_safe_name    = "Production-Safe"
   pcloud_account_name = "vm-admin-account"
 }
 
-resource "cyberarksia_virtual_machine_secret" "forcenew_test" {
+resource "cyberarksia_vm_secret" "forcenew_test" {
   secret_name         = %[1]q
   secret_type         = "PCloudAccount"
   pcloud_safe_name    = "Production-Safe"
@@ -647,10 +647,10 @@ resource "cyberarksia_virtual_machine_secret" "forcenew_test" {
 `, secretName)
 }
 
-// testAccVirtualMachineSecretConfigInvalidSecretType returns config with invalid secret_type
-func testAccVirtualMachineSecretConfigInvalidSecretType(secretName string) string {
+// testAccVMSecretConfigInvalidSecretType returns config with invalid secret_type
+func testAccVMSecretConfigInvalidSecretType(secretName string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "invalid_type" {
+resource "cyberarksia_vm_secret" "invalid_type" {
   secret_name          = %[1]q
   secret_type          = "InvalidType"
   provisioner_username = "vm_admin"
@@ -659,10 +659,10 @@ resource "cyberarksia_virtual_machine_secret" "invalid_type" {
 `, secretName)
 }
 
-// testAccVirtualMachineSecretConfigMissingProvisionerUsername returns config missing username
-func testAccVirtualMachineSecretConfigMissingProvisionerUsername(secretName string) string {
+// testAccVMSecretConfigMissingProvisionerUsername returns config missing username
+func testAccVMSecretConfigMissingProvisionerUsername(secretName string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "missing_username" {
+resource "cyberarksia_vm_secret" "missing_username" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_password = "SecurePassword123!"
@@ -670,10 +670,10 @@ resource "cyberarksia_virtual_machine_secret" "missing_username" {
 `, secretName)
 }
 
-// testAccVirtualMachineSecretConfigMissingProvisionerPassword returns config missing password
-func testAccVirtualMachineSecretConfigMissingProvisionerPassword(secretName string) string {
+// testAccVMSecretConfigMissingProvisionerPassword returns config missing password
+func testAccVMSecretConfigMissingProvisionerPassword(secretName string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "missing_password" {
+resource "cyberarksia_vm_secret" "missing_password" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "vm_admin"
@@ -681,10 +681,10 @@ resource "cyberarksia_virtual_machine_secret" "missing_password" {
 `, secretName)
 }
 
-// testAccVirtualMachineSecretConfigMissingPCloudSafeName returns config missing safe_name
-func testAccVirtualMachineSecretConfigMissingPCloudSafeName(secretName string) string {
+// testAccVMSecretConfigMissingPCloudSafeName returns config missing safe_name
+func testAccVMSecretConfigMissingPCloudSafeName(secretName string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "missing_safe" {
+resource "cyberarksia_vm_secret" "missing_safe" {
   secret_name         = %[1]q
   secret_type         = "PCloudAccount"
   pcloud_account_name = "vm-admin-account"
@@ -692,10 +692,10 @@ resource "cyberarksia_virtual_machine_secret" "missing_safe" {
 `, secretName)
 }
 
-// testAccVirtualMachineSecretConfigMissingPCloudAccountName returns config missing account_name
-func testAccVirtualMachineSecretConfigMissingPCloudAccountName(secretName string) string {
+// testAccVMSecretConfigMissingPCloudAccountName returns config missing account_name
+func testAccVMSecretConfigMissingPCloudAccountName(secretName string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "missing_account" {
+resource "cyberarksia_vm_secret" "missing_account" {
   secret_name      = %[1]q
   secret_type      = "PCloudAccount"
   pcloud_safe_name = "Production-Safe"
@@ -703,10 +703,10 @@ resource "cyberarksia_virtual_machine_secret" "missing_account" {
 `, secretName)
 }
 
-// testAccVirtualMachineSecretConfigInvalidFieldMix returns config with mixed fields
-func testAccVirtualMachineSecretConfigInvalidFieldMix(secretName string) string {
+// testAccVMSecretConfigInvalidFieldMix returns config with mixed fields
+func testAccVMSecretConfigInvalidFieldMix(secretName string) string {
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "invalid_mix" {
+resource "cyberarksia_vm_secret" "invalid_mix" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "vm_admin"

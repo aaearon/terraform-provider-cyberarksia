@@ -24,7 +24,7 @@ Manages a VM/server target set in CyberArk Secure Infrastructure Access (SIA). T
 #
 # Matches all servers in a domain (most common use case)
 
-resource "cyberarksia_virtual_machine_secret" "admin" {
+resource "cyberarksia_vm_secret" "admin" {
   secret_name          = "windows-admin-credentials"
   secret_type          = "ProvisionerUser"
   provisioner_username = "Administrator"
@@ -34,8 +34,8 @@ resource "cyberarksia_virtual_machine_secret" "admin" {
 resource "cyberarksia_target_set" "production" {
   name        = "prod.example.com"
   type        = "Domain"
-  secret_id   = cyberarksia_virtual_machine_secret.admin.id
-  secret_type = cyberarksia_virtual_machine_secret.admin.secret_type
+  secret_id   = cyberarksia_vm_secret.admin.id
+  secret_type = cyberarksia_vm_secret.admin.secret_type
 
   description = "Production environment servers"
 }
@@ -47,7 +47,7 @@ resource "cyberarksia_target_set" "production" {
 resource "cyberarksia_target_set" "datacenter_east" {
   name        = "dc-east.example.com"
   type        = "Suffix"
-  secret_id   = cyberarksia_virtual_machine_secret.admin.id
+  secret_id   = cyberarksia_vm_secret.admin.id
   secret_type = "ProvisionerUser"
 
   description                   = "East Coast Datacenter Servers"
@@ -61,7 +61,7 @@ resource "cyberarksia_target_set" "datacenter_east" {
 resource "cyberarksia_target_set" "critical_database" {
   name        = "db01.prod.example.com"
   type        = "Target"
-  secret_id   = cyberarksia_virtual_machine_secret.admin.id
+  secret_id   = cyberarksia_vm_secret.admin.id
   secret_type = "ProvisionerUser"
 
   description      = "Critical Production Database Server"
@@ -75,7 +75,7 @@ resource "cyberarksia_target_set" "critical_database" {
 ### Required
 
 - `name` (String) Name of the target set. Must be unique across the SIA tenant. Avoid using forward slashes as they cause deletion issues.
-- `secret_id` (String) ID of the VM secret containing credentials. Reference `cyberarksia_virtual_machine_secret.example.id` for proper dependency ordering.
+- `secret_id` (String) ID of the VM secret containing credentials. Reference `cyberarksia_vm_secret.example.id` for proper dependency ordering.
 - `secret_type` (String) Type of VM secret: `ProvisionerUser` (username/password credentials) or `PCloudAccount` (PAM vault account reference).
 - `type` (String) Type of matching pattern: `Domain` (matches all servers in a domain), `Suffix` (matches servers with hostname suffix), or `Target` (matches specific hostname).
 

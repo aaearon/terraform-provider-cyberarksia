@@ -115,7 +115,7 @@ These services are **already available** in the Terraform provider (v0.1.0).
 | **DB Policy Principal Assignments** | `cyberarksia_database_policy_principal_assignment` | `Db()` (UAP) | Assign users/groups/roles to DB policies (WHO) | `database_policy_principal_assignment_resource.go` |
 | **DB Policy Workspace Assignments** | `cyberarksia_database_policy_workspace_assignment` | `Db()` (UAP) | Assign database workspaces to policies (WHAT) | `database_policy_workspace_assignment_resource.go` |
 | **Principal Lookup** | `cyberarksia_principal` (data source) | Identity services | Look up users/groups/roles by name | `principal_data_source.go` |
-| **VM Secrets** ✅ | `cyberarksia_virtual_machine_secret` | `SecretsVM()` | VM credentials (ProvisionerUser, PCloudAccount) | `virtual_machine_secret_resource.go` |
+| **VM Secrets** ✅ | `cyberarksia_vm_secret` | `SecretsVM()` | VM credentials (ProvisionerUser, PCloudAccount) | `vm_secret_resource.go` |
 | **Target Sets** ✅ | `cyberarksia_target_set` | `WorkspacesTargetSets()` | VM/server target groupings with credentials | `target_set_resource.go` |
 | **VM Policies** ✅ | `cyberarksia_vm_policy` | `VM()` (UAP) | VM access policies (FQDN/IP, AWS, Azure, GCP) | `vm_policy_resource.go` |
 | **VM Policy Principal Assignments** ✅ | `cyberarksia_vm_policy_principal_assignment` | `VM()` (UAP) | Assign users/groups/roles to VM policies (WHO) | `vm_policy_principal_assignment_resource.go` |
@@ -1006,7 +1006,7 @@ if err != nil && strings.Contains(err.Error(), "unsupported workspace type") {
 **Goal**: Extend provider to VM/server management (mirrors existing DB resources)
 
 **Resources**:
-1. ✅ `cyberarksia_virtual_machine_secret` (VM credentials) - **COMPLETED** (commit 0fabb1c)
+1. ✅ `cyberarksia_vm_secret` (VM credentials) - **COMPLETED** (commit 0fabb1c)
 2. ✅ `cyberarksia_target_set` (VM workspaces) - **COMPLETED** (commit e309c9a)
 3. ✅ `cyberarksia_vm_policy` (VM access policies) - **COMPLETED** (commit de11dda)
 4. ✅ `cyberarksia_vm_policy_principal_assignment` (WHO gets access) - **COMPLETED** (commit 4571f9c)

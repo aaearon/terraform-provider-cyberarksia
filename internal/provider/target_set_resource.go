@@ -103,9 +103,9 @@ func (r *targetSetResource) Schema(ctx context.Context, req resource.SchemaReque
 			},
 			"secret_id": schema.StringAttribute{
 				Description: "ID of the VM secret containing credentials. " +
-					"Reference `cyberarksia_virtual_machine_secret.example.id` for proper dependency ordering.",
+					"Reference `cyberarksia_vm_secret.example.id` for proper dependency ordering.",
 				MarkdownDescription: "ID of the VM secret containing credentials. " +
-					"Reference `cyberarksia_virtual_machine_secret.example.id` for proper dependency ordering.",
+					"Reference `cyberarksia_vm_secret.example.id` for proper dependency ordering.",
 				Required: true,
 			},
 			"secret_type": schema.StringAttribute{
