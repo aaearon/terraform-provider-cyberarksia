@@ -54,6 +54,15 @@ func cloudProviderFromAPI(apiValue string) string {
 	}
 }
 
+// stringValueOrNullWorkspace returns types.StringNull() for empty strings, otherwise types.StringValue()
+// Used for optional string fields where API returns "" but config expects null
+func stringValueOrNullWorkspace(s string) types.String {
+	if s == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(s)
+}
+
 // NewDatabaseWorkspaceResource is a helper function to simplify the provider implementation
 func NewDatabaseWorkspaceResource() resource.Resource {
 	return &databaseWorkspaceResource{}
@@ -493,24 +502,25 @@ func (r *databaseWorkspaceResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	// Map response to state - update fields from API response
-	state.Name = types.StringValue(database.Name)
-	state.NetworkName = types.StringValue(database.NetworkName)
+	// Use stringValueOrNullWorkspace for optional fields to prevent drift when API returns ""
+	state.Name = types.StringValue(database.Name) // Required field
+	state.NetworkName = stringValueOrNullWorkspace(database.NetworkName)
 	// Convert Platform from API format back to Terraform format (ON-PREMISE -> on_premise, AWS -> aws, etc.)
 	if database.Platform != "" {
 		state.CloudProvider = types.StringValue(cloudProviderFromAPI(database.Platform))
 	} else {
 		state.CloudProvider = types.StringNull()
 	}
-	state.AuthDatabase = types.StringValue(database.AuthDatabase)
-	state.Account = types.StringValue(database.Account)
-	state.DatabaseType = types.StringValue(database.ProviderDetails.Engine)
-	state.Address = types.StringValue(database.ReadWriteEndpoint)
-	state.ReadOnlyEndpoint = types.StringValue(database.ReadOnlyEndpoint)
+	state.AuthDatabase = stringValueOrNullWorkspace(database.AuthDatabase)
+	state.Account = stringValueOrNullWorkspace(database.Account)
+	state.DatabaseType = types.StringValue(database.ProviderDetails.Engine) // Required field
+	state.Address = stringValueOrNullWorkspace(database.ReadWriteEndpoint)
+	state.ReadOnlyEndpoint = stringValueOrNullWorkspace(database.ReadOnlyEndpoint)
 	state.Port = types.Int64Value(int64(database.Port))
-	state.SecretID = types.StringValue(database.SecretID)
+	state.SecretID = types.StringValue(database.SecretID) // Required field
 	state.EnableCertificateValidation = types.BoolValue(database.EnableCertificateValidation)
-	state.CertificateID = types.StringValue(database.Certificate)
-	state.Region = types.StringValue(database.Region)
+	state.CertificateID = stringValueOrNullWorkspace(database.Certificate)
+	state.Region = stringValueOrNullWorkspace(database.Region)
 
 	// Convert services []string from SDK to types.List
 	if len(database.Services) > 0 {
