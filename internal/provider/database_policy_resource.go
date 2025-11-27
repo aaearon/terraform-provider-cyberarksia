@@ -439,20 +439,26 @@ func (r *DatabasePolicyResource) ValidateConfig(ctx context.Context, req resourc
 	}
 
 	// Validate principal directory requirements (USER/GROUP need source_directory)
+	// Skip validation if values are unknown (will be resolved at apply time from data sources)
 	for i, principal := range data.Principal {
 		principalType := principal.PrincipalType.ValueString()
 		if principalType == "USER" || principalType == "GROUP" {
-			if principal.SourceDirectoryName.IsNull() || principal.SourceDirectoryName.ValueString() == "" {
-				resp.Diagnostics.AddError(
-					"Missing Source Directory Name",
-					fmt.Sprintf("principals[%d]: source_directory_name is required for principal_type %s", i, principalType),
-				)
+			// Skip validation if value is unknown (e.g., from data source reference)
+			if !principal.SourceDirectoryName.IsUnknown() {
+				if principal.SourceDirectoryName.IsNull() || principal.SourceDirectoryName.ValueString() == "" {
+					resp.Diagnostics.AddError(
+						"Missing Source Directory Name",
+						fmt.Sprintf("principals[%d]: source_directory_name is required for principal_type %s", i, principalType),
+					)
+				}
 			}
-			if principal.SourceDirectoryID.IsNull() || principal.SourceDirectoryID.ValueString() == "" {
-				resp.Diagnostics.AddError(
-					"Missing Source Directory ID",
-					fmt.Sprintf("principals[%d]: source_directory_id is required for principal_type %s", i, principalType),
-				)
+			if !principal.SourceDirectoryID.IsUnknown() {
+				if principal.SourceDirectoryID.IsNull() || principal.SourceDirectoryID.ValueString() == "" {
+					resp.Diagnostics.AddError(
+						"Missing Source Directory ID",
+						fmt.Sprintf("principals[%d]: source_directory_id is required for principal_type %s", i, principalType),
+					)
+				}
 			}
 		}
 	}
