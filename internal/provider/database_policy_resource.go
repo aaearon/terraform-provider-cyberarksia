@@ -189,8 +189,8 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 						"db_auth_profile": schema.SingleNestedBlock{
 							MarkdownDescription: "Database authentication profile. **Required** when `authentication_method` is `db_auth`.",
 							Attributes: map[string]schema.Attribute{
-								"roles": schema.ListAttribute{
-									MarkdownDescription: "List of database roles to assign.",
+								"roles": schema.SetAttribute{
+									MarkdownDescription: "Set of database roles to assign.",
 									Optional:            true,
 									ElementType:         types.StringType,
 								},
@@ -199,8 +199,8 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 						"ldap_auth_profile": schema.SingleNestedBlock{
 							MarkdownDescription: "LDAP authentication profile. **Required** when `authentication_method` is `ldap_auth`.",
 							Attributes: map[string]schema.Attribute{
-								"assign_groups": schema.ListAttribute{
-									MarkdownDescription: "List of LDAP groups to assign.",
+								"assign_groups": schema.SetAttribute{
+									MarkdownDescription: "Set of LDAP groups to assign.",
 									Optional:            true,
 									ElementType:         types.StringType,
 								},
@@ -209,8 +209,8 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 						"oracle_auth_profile": schema.SingleNestedBlock{
 							MarkdownDescription: "Oracle authentication profile. **Required** when `authentication_method` is `oracle_auth`.",
 							Attributes: map[string]schema.Attribute{
-								"roles": schema.ListAttribute{
-									MarkdownDescription: "List of Oracle roles to assign.",
+								"roles": schema.SetAttribute{
+									MarkdownDescription: "Set of Oracle roles to assign.",
 									Optional:            true,
 									ElementType:         types.StringType,
 								},
@@ -231,8 +231,8 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 						"mongo_auth_profile": schema.SingleNestedBlock{
 							MarkdownDescription: "MongoDB authentication profile. **Required** when `authentication_method` is `mongo_auth`.",
 							Attributes: map[string]schema.Attribute{
-								"global_builtin_roles": schema.ListAttribute{
-									MarkdownDescription: "List of global built-in roles.",
+								"global_builtin_roles": schema.SetAttribute{
+									MarkdownDescription: "Set of global built-in roles.",
 									Optional:            true,
 									ElementType:         types.StringType,
 								},
@@ -251,13 +251,13 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 						"sqlserver_auth_profile": schema.SingleNestedBlock{
 							MarkdownDescription: "SQL Server authentication profile. **Required** when `authentication_method` is `sqlserver_auth`.",
 							Attributes: map[string]schema.Attribute{
-								"global_builtin_roles": schema.ListAttribute{
-									MarkdownDescription: "List of global built-in roles.",
+								"global_builtin_roles": schema.SetAttribute{
+									MarkdownDescription: "Set of global built-in roles.",
 									Optional:            true,
 									ElementType:         types.StringType,
 								},
-								"global_custom_roles": schema.ListAttribute{
-									MarkdownDescription: "List of global custom roles.",
+								"global_custom_roles": schema.SetAttribute{
+									MarkdownDescription: "Set of global custom roles.",
 									Optional:            true,
 									ElementType:         types.StringType,
 								},
@@ -285,9 +285,9 @@ func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.Schema
 					},
 				},
 			},
-			"principal": schema.ListNestedBlock{
+			"principal": schema.SetNestedBlock{
 				MarkdownDescription: "Principal assignment (repeatable block). **Required**: At least 1 principal block is required. " +
-					"Follows familiar Terraform patterns (aws_security_group ingress/egress). " +
+					"Follows familiar Terraform patterns (aws_security_group ingress/egress). Order-independent (principals may be returned in any order by the API). " +
 					"Use `lifecycle { ignore_changes = [principal] }` if managing assignments via separate `cyberarksia_database_policy_principal_assignment` resources.",
 				NestedObject: schema.NestedBlockObject{
 					Attributes: map[string]schema.Attribute{

@@ -15,6 +15,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
+// stringValueOrNull returns types.StringNull() for empty strings, otherwise types.StringValue()
+// This handles the case where the API returns null (which Go unmarshals to "") but the
+// Terraform config has the field omitted (null). Without this, state would have "" while
+// config has null, causing perpetual drift.
+func stringValueOrNull(s string) types.String {
+	if s == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(s)
+}
+
 // changeInfoAttrTypes defines the attribute types for ChangeInfo objects (created_by, updated_on)
 var changeInfoAttrTypes = map[string]attr.Type{
 	"user":      types.StringType,
@@ -172,7 +183,7 @@ func (m *DatabasePolicyModel) FromSDK(ctx context.Context, policy *uapsiadbmodel
 	m.ID = types.StringValue(policy.Metadata.PolicyID)
 	m.PolicyID = types.StringValue(policy.Metadata.PolicyID)
 	m.Name = types.StringValue(policy.Metadata.Name)
-	m.Description = types.StringValue(policy.Metadata.Description)
+	m.Description = stringValueOrNull(policy.Metadata.Description)
 	// Keep API values as-is (API returns "Active"/"Suspended" capitalized)
 	// Normalize to lowercase to match user config (API returns titlecase)
 	m.Status = types.StringValue(strings.ToLower(policy.Metadata.Status.Status))
@@ -213,8 +224,8 @@ func (m *DatabasePolicyModel) FromSDK(ctx context.Context, policy *uapsiadbmodel
 			PrincipalID:         types.StringValue(sdkPrincipal.ID),
 			PrincipalType:       types.StringValue(sdkPrincipal.Type),
 			PrincipalName:       types.StringValue(sdkPrincipal.Name),
-			SourceDirectoryName: types.StringValue(sdkPrincipal.SourceDirectoryName),
-			SourceDirectoryID:   types.StringValue(sdkPrincipal.SourceDirectoryID),
+			SourceDirectoryName: stringValueOrNull(sdkPrincipal.SourceDirectoryName),
+			SourceDirectoryID:   stringValueOrNull(sdkPrincipal.SourceDirectoryID),
 		})
 	}
 
@@ -307,8 +318,8 @@ func convertConditionsFromSDK(ctx context.Context, c *uapsiacommonmodels.ArkUAPS
 
 		conditions.AccessWindow = &AccessWindowModel{
 			DaysOfTheWeek: daysSet,
-			FromHour:      types.StringValue(c.AccessWindow.FromHour),
-			ToHour:        types.StringValue(c.AccessWindow.ToHour),
+			FromHour:      stringValueOrNull(c.AccessWindow.FromHour),
+			ToHour:        stringValueOrNull(c.AccessWindow.ToHour),
 		}
 	}
 
@@ -336,19 +347,19 @@ func parseInstanceTargetToAssignment(ctx context.Context, instance *uapsiadbmode
 	case "db_auth":
 		if instance.DBAuthProfile != nil {
 			assignment.DBAuthProfile = &DBAuthProfileModel{
-				Roles: convertStringSliceToList(instance.DBAuthProfile.Roles),
+				Roles: convertStringSliceToSet(instance.DBAuthProfile.Roles),
 			}
 		}
 	case "ldap_auth":
 		if instance.LDAPAuthProfile != nil {
 			assignment.LDAPAuthProfile = &LDAPAuthProfileModel{
-				AssignGroups: convertStringSliceToList(instance.LDAPAuthProfile.AssignGroups),
+				AssignGroups: convertStringSliceToSet(instance.LDAPAuthProfile.AssignGroups),
 			}
 		}
 	case "oracle_auth":
 		if instance.OracleAuthProfile != nil {
 			assignment.OracleAuthProfile = &OracleAuthProfileModel{
-				Roles:       convertStringSliceToList(instance.OracleAuthProfile.Roles),
+				Roles:       convertStringSliceToSet(instance.OracleAuthProfile.Roles),
 				DbaRole:     types.BoolValue(instance.OracleAuthProfile.DbaRole),
 				SysdbaRole:  types.BoolValue(instance.OracleAuthProfile.SysdbaRole),
 				SysoperRole: types.BoolValue(instance.OracleAuthProfile.SysoperRole),
@@ -358,7 +369,7 @@ func parseInstanceTargetToAssignment(ctx context.Context, instance *uapsiadbmode
 		if instance.MongoAuthProfile != nil {
 			mongoProfile := &MongoAuthProfileModel{}
 			if len(instance.MongoAuthProfile.GlobalBuiltinRoles) > 0 {
-				mongoProfile.GlobalBuiltinRoles = convertStringSliceToList(instance.MongoAuthProfile.GlobalBuiltinRoles)
+				mongoProfile.GlobalBuiltinRoles = convertStringSliceToSet(instance.MongoAuthProfile.GlobalBuiltinRoles)
 			}
 			if len(instance.MongoAuthProfile.DatabaseBuiltinRoles) > 0 {
 				dbBuiltin, _ := types.MapValueFrom(ctx, types.ListType{ElemType: types.StringType}, instance.MongoAuthProfile.DatabaseBuiltinRoles)
@@ -374,10 +385,10 @@ func parseInstanceTargetToAssignment(ctx context.Context, instance *uapsiadbmode
 		if instance.SQLServerAuthProfile != nil {
 			sqlProfile := &SQLServerAuthProfileModel{}
 			if len(instance.SQLServerAuthProfile.GlobalBuiltinRoles) > 0 {
-				sqlProfile.GlobalBuiltinRoles = convertStringSliceToList(instance.SQLServerAuthProfile.GlobalBuiltinRoles)
+				sqlProfile.GlobalBuiltinRoles = convertStringSliceToSet(instance.SQLServerAuthProfile.GlobalBuiltinRoles)
 			}
 			if len(instance.SQLServerAuthProfile.GlobalCustomRoles) > 0 {
-				sqlProfile.GlobalCustomRoles = convertStringSliceToList(instance.SQLServerAuthProfile.GlobalCustomRoles)
+				sqlProfile.GlobalCustomRoles = convertStringSliceToSet(instance.SQLServerAuthProfile.GlobalCustomRoles)
 			}
 			if len(instance.SQLServerAuthProfile.DatabaseBuiltinRoles) > 0 {
 				dbBuiltin, _ := types.MapValueFrom(ctx, types.ListType{ElemType: types.StringType}, instance.SQLServerAuthProfile.DatabaseBuiltinRoles)
@@ -404,10 +415,11 @@ func parseInstanceTargetToAssignment(ctx context.Context, instance *uapsiadbmode
 	return assignment, nil
 }
 
-// convertStringSliceToList converts a []string to types.List for Terraform state
-func convertStringSliceToList(values []string) types.List {
+// convertStringSliceToSet converts a []string to types.Set for Terraform state
+// Use for unordered collections like roles where order doesn't matter
+func convertStringSliceToSet(values []string) types.Set {
 	if len(values) == 0 {
-		return types.ListNull(types.StringType)
+		return types.SetNull(types.StringType)
 	}
 
 	attrs := make([]attr.Value, len(values))
@@ -415,6 +427,6 @@ func convertStringSliceToList(values []string) types.List {
 		attrs[i] = types.StringValue(v)
 	}
 
-	list, _ := types.ListValue(types.StringType, attrs)
-	return list
+	set, _ := types.SetValue(types.StringType, attrs)
+	return set
 }

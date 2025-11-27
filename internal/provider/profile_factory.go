@@ -312,10 +312,10 @@ func ParseAuthenticationProfile(
 // parseDBAuthProfile handles db_auth profile parsing
 func parseDBAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) {
 	if target.DBAuthProfile != nil {
-		rolesList, diags := types.ListValueFrom(ctx, types.StringType, target.DBAuthProfile.Roles)
+		rolesSet, diags := types.SetValueFrom(ctx, types.StringType, target.DBAuthProfile.Roles)
 		diagnostics.Append(diags...)
 		if !diagnostics.HasError() {
-			data.DBAuthProfile = &models.DBAuthProfileModel{Roles: rolesList}
+			data.DBAuthProfile = &models.DBAuthProfileModel{Roles: rolesSet}
 		}
 	}
 }
@@ -323,10 +323,10 @@ func parseDBAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBI
 // parseLDAPAuthProfile handles ldap_auth profile parsing
 func parseLDAPAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) {
 	if target.LDAPAuthProfile != nil {
-		assignGroupsList, diags := types.ListValueFrom(ctx, types.StringType, target.LDAPAuthProfile.AssignGroups)
+		assignGroupsSet, diags := types.SetValueFrom(ctx, types.StringType, target.LDAPAuthProfile.AssignGroups)
 		diagnostics.Append(diags...)
 		if !diagnostics.HasError() {
-			data.LDAPAuthProfile = &models.LDAPAuthProfileModel{AssignGroups: assignGroupsList}
+			data.LDAPAuthProfile = &models.LDAPAuthProfileModel{AssignGroups: assignGroupsSet}
 		}
 	}
 }
@@ -334,11 +334,11 @@ func parseLDAPAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIAD
 // parseOracleAuthProfile handles oracle_auth profile parsing
 func parseOracleAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIADBInstanceTarget, data *models.DatabasePolicyWorkspaceAssignmentModel, diagnostics *diag.Diagnostics) {
 	if target.OracleAuthProfile != nil {
-		rolesList, diags := types.ListValueFrom(ctx, types.StringType, target.OracleAuthProfile.Roles)
+		rolesSet, diags := types.SetValueFrom(ctx, types.StringType, target.OracleAuthProfile.Roles)
 		diagnostics.Append(diags...)
 		if !diagnostics.HasError() {
 			data.OracleAuthProfile = &models.OracleAuthProfileModel{
-				Roles:       rolesList,
+				Roles:       rolesSet,
 				DbaRole:     types.BoolValue(target.OracleAuthProfile.DbaRole),
 				SysdbaRole:  types.BoolValue(target.OracleAuthProfile.SysdbaRole),
 				SysoperRole: types.BoolValue(target.OracleAuthProfile.SysoperRole),
@@ -354,12 +354,12 @@ func parseMongoAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUAPSIA
 
 		// Global builtin roles
 		if len(target.MongoAuthProfile.GlobalBuiltinRoles) > 0 {
-			globalList, diags := types.ListValueFrom(ctx, types.StringType, target.MongoAuthProfile.GlobalBuiltinRoles)
+			globalSet, diags := types.SetValueFrom(ctx, types.StringType, target.MongoAuthProfile.GlobalBuiltinRoles)
 			diagnostics.Append(diags...)
 			if diagnostics.HasError() {
 				return
 			}
-			mongoModel.GlobalBuiltinRoles = globalList
+			mongoModel.GlobalBuiltinRoles = globalSet
 		}
 
 		// Database builtin roles
@@ -393,22 +393,22 @@ func parseSQLServerAuthProfile(ctx context.Context, target *uapsiadbmodels.ArkUA
 
 		// Global builtin roles
 		if len(target.SQLServerAuthProfile.GlobalBuiltinRoles) > 0 {
-			globalBuiltinList, diags := types.ListValueFrom(ctx, types.StringType, target.SQLServerAuthProfile.GlobalBuiltinRoles)
+			globalBuiltinSet, diags := types.SetValueFrom(ctx, types.StringType, target.SQLServerAuthProfile.GlobalBuiltinRoles)
 			diagnostics.Append(diags...)
 			if diagnostics.HasError() {
 				return
 			}
-			sqlModel.GlobalBuiltinRoles = globalBuiltinList
+			sqlModel.GlobalBuiltinRoles = globalBuiltinSet
 		}
 
 		// Global custom roles
 		if len(target.SQLServerAuthProfile.GlobalCustomRoles) > 0 {
-			globalCustomList, diags := types.ListValueFrom(ctx, types.StringType, target.SQLServerAuthProfile.GlobalCustomRoles)
+			globalCustomSet, diags := types.SetValueFrom(ctx, types.StringType, target.SQLServerAuthProfile.GlobalCustomRoles)
 			diagnostics.Append(diags...)
 			if diagnostics.HasError() {
 				return
 			}
-			sqlModel.GlobalCustomRoles = globalCustomList
+			sqlModel.GlobalCustomRoles = globalCustomSet
 		}
 
 		// Database builtin roles

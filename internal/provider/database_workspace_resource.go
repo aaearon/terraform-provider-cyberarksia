@@ -408,7 +408,7 @@ func (r *databaseWorkspaceResource) Create(ctx context.Context, req resource.Cre
 	plan.DatabaseType = types.StringValue(database.ProviderDetails.Engine)
 	// Note: ARK SDK v1.5.0 ArkSIADBDatabase model does not expose last_modified field
 	// The API may track modification time internally, but it's not returned in the response
-	plan.LastModified = types.StringValue("")
+	plan.LastModified = types.StringNull()
 
 	// Log certificate association if configured
 	logFields := map[string]interface{}{
@@ -662,7 +662,7 @@ func (r *databaseWorkspaceResource) Update(ctx context.Context, req resource.Upd
 	plan.DatabaseType = types.StringValue(updated.ProviderDetails.Engine)
 	// Note: ARK SDK v1.5.0 ArkSIADBDatabase model does not expose last_modified field
 	// The API may track modification time internally, but it's not returned in the response
-	plan.LastModified = types.StringValue("")
+	plan.LastModified = types.StringNull()
 
 	// Log certificate association changes if updated
 	logFields := map[string]interface{}{

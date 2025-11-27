@@ -95,8 +95,8 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Schema(ctx context.Context, 
 			"db_auth_profile": schema.SingleNestedBlock{
 				MarkdownDescription: "Database authentication profile. Use when `authentication_method` is `db_auth`. **Required** if authentication_method is `db_auth`.",
 				Attributes: map[string]schema.Attribute{
-					"roles": schema.ListAttribute{
-						MarkdownDescription: "List of database roles to assign to the user. **Required** when this profile is used.",
+					"roles": schema.SetAttribute{
+						MarkdownDescription: "Set of database roles to assign to the user. **Required** when this profile is used.",
 						Optional:            true,
 						ElementType:         types.StringType,
 					},
@@ -105,8 +105,8 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Schema(ctx context.Context, 
 			"ldap_auth_profile": schema.SingleNestedBlock{
 				MarkdownDescription: "LDAP authentication profile. Use when `authentication_method` is `ldap_auth`. **Required** if authentication_method is `ldap_auth`.",
 				Attributes: map[string]schema.Attribute{
-					"assign_groups": schema.ListAttribute{
-						MarkdownDescription: "List of LDAP groups to assign to the user. **Required** when this profile is used.",
+					"assign_groups": schema.SetAttribute{
+						MarkdownDescription: "Set of LDAP groups to assign to the user. **Required** when this profile is used.",
 						Optional:            true,
 						ElementType:         types.StringType,
 					},
@@ -115,8 +115,8 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Schema(ctx context.Context, 
 			"oracle_auth_profile": schema.SingleNestedBlock{
 				MarkdownDescription: "Oracle authentication profile. Use when `authentication_method` is `oracle_auth`. **Required** if authentication_method is `oracle_auth`.",
 				Attributes: map[string]schema.Attribute{
-					"roles": schema.ListAttribute{
-						MarkdownDescription: "List of Oracle roles to assign to the user. **Required** when this profile is used.",
+					"roles": schema.SetAttribute{
+						MarkdownDescription: "Set of Oracle roles to assign to the user. **Required** when this profile is used.",
 						Optional:            true,
 						ElementType:         types.StringType,
 					},
@@ -137,8 +137,8 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Schema(ctx context.Context, 
 			"mongo_auth_profile": schema.SingleNestedBlock{
 				MarkdownDescription: "MongoDB authentication profile. Use when `authentication_method` is `mongo_auth`.",
 				Attributes: map[string]schema.Attribute{
-					"global_builtin_roles": schema.ListAttribute{
-						MarkdownDescription: "List of global built-in roles to assign.",
+					"global_builtin_roles": schema.SetAttribute{
+						MarkdownDescription: "Set of global built-in roles to assign.",
 						Optional:            true,
 						ElementType:         types.StringType,
 					},
@@ -157,13 +157,13 @@ func (r *DatabasePolicyWorkspaceAssignmentResource) Schema(ctx context.Context, 
 			"sqlserver_auth_profile": schema.SingleNestedBlock{
 				MarkdownDescription: "SQL Server authentication profile. Use when `authentication_method` is `sqlserver_auth`.",
 				Attributes: map[string]schema.Attribute{
-					"global_builtin_roles": schema.ListAttribute{
-						MarkdownDescription: "List of global built-in roles to assign.",
+					"global_builtin_roles": schema.SetAttribute{
+						MarkdownDescription: "Set of global built-in roles to assign.",
 						Optional:            true,
 						ElementType:         types.StringType,
 					},
-					"global_custom_roles": schema.ListAttribute{
-						MarkdownDescription: "List of global custom roles to assign.",
+					"global_custom_roles": schema.SetAttribute{
+						MarkdownDescription: "Set of global custom roles to assign.",
 						Optional:            true,
 						ElementType:         types.StringType,
 					},

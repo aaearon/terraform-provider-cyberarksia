@@ -1,0 +1,13 @@
+# Azure Configuration
+azure_subscription_id = "your-azure-subscription-id"
+
+# CyberArk SIA Credentials
+cyberark_username = "service-account@cyberark.cloud.XXXXX"
+cyberark_password = "your-cyberark-password"
+
+# PostgreSQL Admin Password (min 8 chars, mixed case + numbers)
+postgres_admin_password = "YourSecureP@ssw0rd!"
+
+# Optional overrides
+location        = "eastus"
+resource_prefix = "sia-demo"
