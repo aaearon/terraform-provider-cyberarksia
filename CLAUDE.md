@@ -175,7 +175,7 @@ terraform-provider-cyberarksia/
 | Resource | `cyberarksia_database_policy` | `internal/provider/database_policy_resource.go` | ✅ Stable | Access policies with time-based conditions |
 | Resource | `cyberarksia_database_policy_principal_assignment` | `internal/provider/database_policy_principal_assignment_resource.go` | ✅ Stable | Assign users/groups/roles TO policies (WHO gets access) |
 | Resource | `cyberarksia_database_policy_workspace_assignment` | `internal/provider/database_policy_workspace_assignment_resource.go` | ✅ Stable | Assign database workspaces TO policies (WHAT they access) |
-| Resource | `cyberarksia_virtual_machine_secret` | `internal/provider/virtual_machine_secret_resource.go` | ✅ Stable | VM credentials (ProvisionerUser/PCloudAccount) |
+| Resource | `cyberarksia_vm_secret` | `internal/provider/vm_secret_resource.go` | ✅ Stable | VM credentials (ProvisionerUser/PCloudAccount) |
 | Resource | `cyberarksia_target_set` | `internal/provider/target_set_resource.go` | ✅ Stable | VM/server target sets (Domain/Suffix/Target matching) |
 | Resource | `cyberarksia_vm_policy` | `internal/provider/vm_policy_resource.go` | ✅ Stable | VM access policies (FQDN/IP, AWS, Azure, GCP targets with SSH/RDP) |
 | Resource | `cyberarksia_vm_policy_principal_assignment` | `internal/provider/vm_policy_principal_assignment_resource.go` | ✅ Stable | Assign users/groups/roles TO VM policies (WHO gets access) |
@@ -193,7 +193,7 @@ terraform-provider-cyberarksia/
 | Define access policy conditions | `cyberarksia_database_policy` | Time-based access windows |
 | Grant users access to policies | `cyberarksia_database_policy_principal_assignment` | WHO gets access |
 | Assign databases to policies | `cyberarksia_database_policy_workspace_assignment` | WHAT they access |
-| Store VM/server credentials | `cyberarksia_virtual_machine_secret` | ProvisionerUser or PCloudAccount |
+| Store VM/server credentials | `cyberarksia_vm_secret` | ProvisionerUser or PCloudAccount |
 | Group VMs/servers by criteria | `cyberarksia_target_set` | Domain/Suffix/Target matching |
 | Define VM access policies | `cyberarksia_vm_policy` | Time-based access with cloud/on-prem targets |
 | Grant users access to VM policies | `cyberarksia_vm_policy_principal_assignment` | WHO gets VM access |
@@ -206,7 +206,7 @@ terraform-provider-cyberarksia/
 | Set up database access for first time | database_secret → database_workspace → database_policy → principal_assignment + workspace_assignment | [Resource Dependencies](#resource-dependencies) |
 | Grant user access to database | principal_assignment | [Policy Management](#read-modify-write-for-policy-assignments) |
 | Add database to existing policy | workspace_assignment | [Policy Management](#read-modify-write-for-policy-assignments) |
-| Configure VM target management | virtual_machine_secret → target_set | [Resource Dependencies](#resource-dependencies) |
+| Configure VM target management | vm_secret → target_set | [Resource Dependencies](#resource-dependencies) |
 | Rotate database credentials | Update database_secret resource | [Error Handling Pattern](#error-handling-pattern) |
 | Debug authentication issues | Check logs, verify credentials | [Debugging Test Failures](#debugging-test-failures) |
 
@@ -229,7 +229,7 @@ Typical configuration flow:
 
 **VM/Server configuration flow:**
 ```
-1. cyberarksia_virtual_machine_secret (VM credentials)
+1. cyberarksia_vm_secret (VM credentials)
      ↓
 2. cyberarksia_target_set (VM/server target grouping)
      ↓

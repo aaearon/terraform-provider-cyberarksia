@@ -1,4 +1,4 @@
-resource "cyberarksia_virtual_machine_secret" "example" {
+resource "cyberarksia_vm_secret" "example" {
   secret_name = "app-server-admin"
   secret_type = "ProvisionerUser"
 
@@ -8,10 +8,10 @@ resource "cyberarksia_virtual_machine_secret" "example" {
 
 output "secret_id" {
   description = "UUID of the created VM secret"
-  value       = cyberarksia_virtual_machine_secret.example.secret_id
+  value       = cyberarksia_vm_secret.example.secret_id
 }
 
 output "secret_name" {
   description = "Name of the VM secret"
-  value       = cyberarksia_virtual_machine_secret.example.secret_name
+  value       = cyberarksia_vm_secret.example.secret_name
 }

@@ -10,7 +10,7 @@
 # Prerequisites:
 # 1. Define the resource in your Terraform configuration:
 #
-#    resource "cyberarksia_virtual_machine_secret" "imported" {
+#    resource "cyberarksia_vm_secret" "imported" {
 #      secret_name = "placeholder"  # Will be updated from API
 #      secret_type = "ProvisionerUser"
 #
@@ -29,11 +29,11 @@ fi
 
 SECRET_ID="$1"
 
-terraform import cyberarksia_virtual_machine_secret.imported "$SECRET_ID"
+terraform import cyberarksia_vm_secret.imported "$SECRET_ID"
 
 echo ""
 echo "Import complete! Next steps:"
-echo "1. Run: terraform state show cyberarksia_virtual_machine_secret.imported"
+echo "1. Run: terraform state show cyberarksia_vm_secret.imported"
 echo "2. Update your config with actual values from state"
 echo "3. Run: terraform plan (should show no changes if config matches)"
 echo ""

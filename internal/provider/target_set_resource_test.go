@@ -590,7 +590,7 @@ func testAccCheckTargetSetDestroy(s *terraform.State) error {
 func testAccTargetSetConfigBasic(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -600,7 +600,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "basic" {
   name             = %[2]q
   type             = "Domain"
-  secret_id        = cyberarksia_virtual_machine_secret.test.id
+  secret_id        = cyberarksia_vm_secret.test.id
   secret_type      = "ProvisionerUser"
   provision_format = "<user>-<session-guid>"
 }
@@ -611,7 +611,7 @@ resource "cyberarksia_target_set" "basic" {
 func testAccTargetSetConfigDrift(targetSetName string) string {
 	secretName := fmt.Sprintf("drift-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "drift_test" {
+resource "cyberarksia_vm_secret" "drift_test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "driftadmin"
@@ -621,7 +621,7 @@ resource "cyberarksia_virtual_machine_secret" "drift_test" {
 resource "cyberarksia_target_set" "drift_test" {
   name             = %[2]q
   type             = "Domain"
-  secret_id        = cyberarksia_virtual_machine_secret.drift_test.id
+  secret_id        = cyberarksia_vm_secret.drift_test.id
   secret_type      = "ProvisionerUser"
   provision_format = "<user>-<session-guid>"
 }
@@ -632,7 +632,7 @@ resource "cyberarksia_target_set" "drift_test" {
 func testAccTargetSetConfigDomain(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -642,7 +642,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "domain" {
   name        = %[2]q
   type        = "Domain"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
   description = "Production servers in example.com domain"
 }
@@ -653,7 +653,7 @@ resource "cyberarksia_target_set" "domain" {
 func testAccTargetSetConfigSuffix(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -663,7 +663,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "suffix" {
   name        = %[2]q
   type        = "Suffix"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
   description = "Datacenter 1 servers"
 }
@@ -674,7 +674,7 @@ resource "cyberarksia_target_set" "suffix" {
 func testAccTargetSetConfigTarget(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -684,7 +684,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "target" {
   name        = %[2]q
   type        = "Target"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
   description = "Specific server target"
 }
@@ -695,7 +695,7 @@ resource "cyberarksia_target_set" "target" {
 func testAccTargetSetConfigTypeChange(targetSetName, targetType string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -705,7 +705,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "type_change" {
   name        = %[2]q
   type        = %[3]q
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
 }
 `, secretName, targetSetName, targetType)
@@ -715,7 +715,7 @@ resource "cyberarksia_target_set" "type_change" {
 func testAccTargetSetConfigProvisionFormat(targetSetName, provisionFormat string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -725,7 +725,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "provision" {
   name             = %[2]q
   type             = "Domain"
-  secret_id        = cyberarksia_virtual_machine_secret.test.id
+  secret_id        = cyberarksia_vm_secret.test.id
   secret_type      = "ProvisionerUser"
   provision_format = %[3]q
 }
@@ -736,7 +736,7 @@ resource "cyberarksia_target_set" "provision" {
 func testAccTargetSetConfigNoProvisionFormat(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -746,7 +746,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "provision" {
   name        = %[2]q
   type        = "Domain"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
   # provision_format intentionally omitted to test clearing prevention
 }
@@ -758,20 +758,20 @@ func testAccTargetSetConfigWithSecrets(targetSetName, secretLabel string) string
 	secretName1 := fmt.Sprintf("test-secret1-%s", acctest.RandString(8))
 	secretName2 := fmt.Sprintf("test-secret2-%s", acctest.RandString(8))
 
-	secretRef := "cyberarksia_virtual_machine_secret.secret1.id"
+	secretRef := "cyberarksia_vm_secret.secret1.id"
 	if secretLabel == "secret2" {
-		secretRef = "cyberarksia_virtual_machine_secret.secret2.id"
+		secretRef = "cyberarksia_vm_secret.secret2.id"
 	}
 
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "secret1" {
+resource "cyberarksia_vm_secret" "secret1" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin1"
   provisioner_password = "TestPassword123!"
 }
 
-resource "cyberarksia_virtual_machine_secret" "secret2" {
+resource "cyberarksia_vm_secret" "secret2" {
   secret_name          = %[2]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin2"
@@ -798,7 +798,7 @@ func testAccTargetSetConfigWithDescription(targetSetName, description string) st
 	}
 
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -808,7 +808,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "desc_update" {
   name             = %[2]q
   type             = "Domain"
-  secret_id        = cyberarksia_virtual_machine_secret.test.id
+  secret_id        = cyberarksia_vm_secret.test.id
   secret_type      = "ProvisionerUser"%[3]s
   provision_format = "<user>-<session-guid>"
 }
@@ -819,7 +819,7 @@ resource "cyberarksia_target_set" "desc_update" {
 func testAccTargetSetConfigCertValidation(targetSetName string, enableValidation bool) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -829,7 +829,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "cert_validation" {
   name                          = %[2]q
   type                          = "Domain"
-  secret_id                     = cyberarksia_virtual_machine_secret.test.id
+  secret_id                     = cyberarksia_vm_secret.test.id
   secret_type                   = "ProvisionerUser"
   enable_certificate_validation = %[3]t
   provision_format              = "<user>-<session-guid>"
@@ -841,7 +841,7 @@ resource "cyberarksia_target_set" "cert_validation" {
 func testAccTargetSetConfigComplete(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -851,7 +851,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "import_test" {
   name                          = %[2]q
   type                          = "Domain"
-  secret_id                     = cyberarksia_virtual_machine_secret.test.id
+  secret_id                     = cyberarksia_vm_secret.test.id
   secret_type                   = "ProvisionerUser"
   description                   = "Complete target set for import testing"
   provision_format              = "import-<user>-<session-guid>"
@@ -864,7 +864,7 @@ resource "cyberarksia_target_set" "import_test" {
 func testAccTargetSetConfigRename(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -874,7 +874,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "test" {
   name             = %[2]q
   type             = "Domain"
-  secret_id        = cyberarksia_virtual_machine_secret.test.id
+  secret_id        = cyberarksia_vm_secret.test.id
   secret_type      = "ProvisionerUser"
   provision_format = "<user>-<session-guid>"
 }
@@ -885,7 +885,7 @@ resource "cyberarksia_target_set" "test" {
 func testAccTargetSetConfigInvalidType(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -895,7 +895,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "invalid_type" {
   name        = %[2]q
   type        = "InvalidType"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
 }
 `, secretName, targetSetName)
@@ -905,7 +905,7 @@ resource "cyberarksia_target_set" "invalid_type" {
 func testAccTargetSetConfigInvalidSecretType(targetSetName string) string {
 	secretName := fmt.Sprintf("test-secret-%s", acctest.RandString(8))
 	return fmt.Sprintf(`
-resource "cyberarksia_virtual_machine_secret" "test" {
+resource "cyberarksia_vm_secret" "test" {
   secret_name          = %[1]q
   secret_type          = "ProvisionerUser"
   provisioner_username = "testadmin"
@@ -915,7 +915,7 @@ resource "cyberarksia_virtual_machine_secret" "test" {
 resource "cyberarksia_target_set" "invalid_secret_type" {
   name        = %[2]q
   type        = "Domain"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "InvalidSecretType"
 }
 `, secretName, targetSetName)

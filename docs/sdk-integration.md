@@ -22,7 +22,7 @@ The following breaking changes are planned for the next release. If you're using
 
 1. **Resource Rename**: `cyberarksia_secret` → `cyberarksia_database_secret`
    - Rationale: Clarifies that it manages database credentials only (not VM secrets)
-   - VM credentials use `cyberarksia_virtual_machine_secret`
+   - VM credentials use `cyberarksia_vm_secret`
 
 2. **Resource Rename**: `cyberarksia_database_policy_database_assignment` → `cyberarksia_database_policy_workspace_assignment`
    - Rationale: Consistency with `cyberarksia_database_workspace` naming

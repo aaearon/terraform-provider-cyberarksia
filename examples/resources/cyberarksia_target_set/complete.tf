@@ -3,7 +3,7 @@
 # This example demonstrates all available attributes for cyberarksia_target_set
 
 # Prerequisite: VM Secret
-resource "cyberarksia_virtual_machine_secret" "complete_example" {
+resource "cyberarksia_vm_secret" "complete_example" {
   secret_name          = "complete-target-set-credentials"
   secret_type          = "ProvisionerUser"
   provisioner_username = "Administrator"
@@ -28,11 +28,11 @@ resource "cyberarksia_target_set" "complete" {
 
   # Secret ID: Reference to VM credentials
   # Best practice: Use resource reference for automatic dependency ordering
-  secret_id = cyberarksia_virtual_machine_secret.complete_example.id
+  secret_id = cyberarksia_vm_secret.complete_example.id
 
   # Secret Type: Must match the referenced secret's type
   # Options: "ProvisionerUser", "PCloudAccount"
-  secret_type = cyberarksia_virtual_machine_secret.complete_example.secret_type
+  secret_type = cyberarksia_vm_secret.complete_example.secret_type
 
   # ===== Optional Attributes =====
 
@@ -115,8 +115,8 @@ output "target_set_complete_example" {
 #    - Active sessions continue with old credentials until expiration
 #
 #    Example:
-#      secret_id   = cyberarksia_virtual_machine_secret.new_admin.id
-#      secret_type = cyberarksia_virtual_machine_secret.new_admin.secret_type
+#      secret_id   = cyberarksia_vm_secret.new_admin.id
+#      secret_type = cyberarksia_vm_secret.new_admin.secret_type
 
 # 4. PROVISION FORMAT CONSTRAINTS
 #    - Can be set initially or added later

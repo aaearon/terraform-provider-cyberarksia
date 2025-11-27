@@ -1,4 +1,4 @@
-// Package provider implements the virtual machine secret resource
+// Package provider implements the VM secret resource
 package provider
 
 import (
@@ -21,29 +21,29 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces
 var (
-	_ resource.Resource                   = &virtualMachineSecretResource{}
-	_ resource.ResourceWithConfigure      = &virtualMachineSecretResource{}
-	_ resource.ResourceWithImportState    = &virtualMachineSecretResource{}
-	_ resource.ResourceWithValidateConfig = &virtualMachineSecretResource{}
+	_ resource.Resource                   = &vmSecretResource{}
+	_ resource.ResourceWithConfigure      = &vmSecretResource{}
+	_ resource.ResourceWithImportState    = &vmSecretResource{}
+	_ resource.ResourceWithValidateConfig = &vmSecretResource{}
 )
 
-// NewVirtualMachineSecretResource is a helper function to simplify the provider implementation
-func NewVirtualMachineSecretResource() resource.Resource {
-	return &virtualMachineSecretResource{}
+// NewVMSecretResource is a helper function to simplify the provider implementation
+func NewVMSecretResource() resource.Resource {
+	return &vmSecretResource{}
 }
 
-// virtualMachineSecretResource is the resource implementation
-type virtualMachineSecretResource struct {
+// vmSecretResource is the resource implementation
+type vmSecretResource struct {
 	providerData *ProviderData
 }
 
 // Metadata returns the resource type name
-func (r *virtualMachineSecretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_virtual_machine_secret"
+func (r *vmSecretResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_vm_secret"
 }
 
 // Schema defines the schema for the resource
-func (r *virtualMachineSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *vmSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Manages a virtual machine secret (credential) in CyberArk SIA. VM secrets are credentials " +
 			"used for VM/server access provisioning. Supports ProvisionerUser (self-contained username/password) " +
@@ -127,7 +127,7 @@ func (r *virtualMachineSecretResource) Schema(ctx context.Context, req resource.
 }
 
 // Configure adds the provider configured client to the resource
-func (r *virtualMachineSecretResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *vmSecretResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured
 	if req.ProviderData == nil {
 		return
@@ -146,8 +146,8 @@ func (r *virtualMachineSecretResource) Configure(ctx context.Context, req resour
 }
 
 // ValidateConfig performs cross-attribute validation based on secret_type
-func (r *virtualMachineSecretResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
-	var config models.VirtualMachineSecretModel
+func (r *vmSecretResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config models.VMSecretModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -225,8 +225,8 @@ func (r *virtualMachineSecretResource) ValidateConfig(ctx context.Context, req r
 }
 
 // Create creates the resource and sets the initial Terraform state
-func (r *virtualMachineSecretResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan models.VirtualMachineSecretModel
+func (r *vmSecretResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan models.VMSecretModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -290,8 +290,8 @@ func (r *virtualMachineSecretResource) Create(ctx context.Context, req resource.
 }
 
 // Read refreshes the Terraform state with the latest data
-func (r *virtualMachineSecretResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state models.VirtualMachineSecretModel
+func (r *vmSecretResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state models.VMSecretModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -360,8 +360,8 @@ func (r *virtualMachineSecretResource) Read(ctx context.Context, req resource.Re
 }
 
 // Update updates the resource and sets the updated Terraform state on success
-func (r *virtualMachineSecretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, state models.VirtualMachineSecretModel
+func (r *vmSecretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan, state models.VMSecretModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -461,8 +461,8 @@ func (r *virtualMachineSecretResource) Update(ctx context.Context, req resource.
 }
 
 // Delete deletes the resource and removes the Terraform state on success
-func (r *virtualMachineSecretResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state models.VirtualMachineSecretModel
+func (r *vmSecretResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state models.VMSecretModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -509,7 +509,7 @@ func (r *virtualMachineSecretResource) Delete(ctx context.Context, req resource.
 }
 
 // ImportState imports an existing resource by ID
-func (r *virtualMachineSecretResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *vmSecretResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Import by secret_id (UUID)
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

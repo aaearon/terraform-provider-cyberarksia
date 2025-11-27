@@ -18,7 +18,7 @@ Target sets define logical groupings of virtual machines and servers that share 
 **Prerequisites**: Existing VM secret resource
 
 ### Resources Validated
-1. `cyberarksia_virtual_machine_secret` - VM credentials (ProvisionerUser or PCloudAccount)
+1. `cyberarksia_vm_secret` - VM credentials (ProvisionerUser or PCloudAccount)
 2. `cyberarksia_target_set` - VM/server target set with matching patterns
 
 ### Key Features Tested
@@ -78,7 +78,7 @@ terraform init
 
 ```bash
 # Option A: Create test secret (recommended for isolated testing)
-terraform apply -target=cyberarksia_virtual_machine_secret.test -auto-approve
+terraform apply -target=cyberarksia_vm_secret.test -auto-approve
 
 # Option B: Use existing secret by updating secret_id in template
 # Edit crud-test-target-set.tf and set secret_id to existing secret ID
@@ -140,7 +140,7 @@ Edit `crud-test-target-set.tf`:
 resource "cyberarksia_target_set" "test" {
   name        = "crud-test-${local.test_suffix}.example.com"
   type        = "Suffix"  # CHANGED from "Domain"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
 
   description                   = "UPDATED: CRUD validation test - modified"  # CHANGED
@@ -173,7 +173,7 @@ Edit `crud-test-target-set.tf`:
 resource "cyberarksia_target_set" "test" {
   name        = "crud-test-${local.test_suffix}-renamed.example.com"  # CHANGED
   type        = "Suffix"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
 
   description                   = "UPDATED: CRUD validation test - modified"
@@ -204,7 +204,7 @@ Edit `crud-test-target-set.tf` and **remove** the `provision_format` line:
 resource "cyberarksia_target_set" "test" {
   name        = "crud-test-${local.test_suffix}-renamed.example.com"
   type        = "Suffix"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
 
   description                   = "UPDATED: CRUD validation test - modified"
@@ -241,7 +241,7 @@ Create separate test configuration:
 resource "cyberarksia_target_set" "forward_slash_test" {
   name        = "env/test/servers-${local.test_suffix}"  # Contains forward slashes
   type        = "Domain"
-  secret_id   = cyberarksia_virtual_machine_secret.test.id
+  secret_id   = cyberarksia_vm_secret.test.id
   secret_type = "ProvisionerUser"
 }
 ```
@@ -309,7 +309,7 @@ terraform plan
 terraform destroy -target=cyberarksia_target_set.test -auto-approve
 
 # Delete VM secret
-terraform destroy -target=cyberarksia_virtual_machine_secret.test -auto-approve
+terraform destroy -target=cyberarksia_vm_secret.test -auto-approve
 ```
 
 **Validation**:
