@@ -33,6 +33,9 @@ linters:
       enable-all: true
       disable:
         - shadow
+        # 'inline' is experimental and errors on generic calls (e.g. slices.Contains):
+        # "cannot inline: type parameter inference is not yet supported". Disable until it supports generics.
+        - inline
 
     staticcheck:
       checks: ["all"]
