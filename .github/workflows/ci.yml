@@ -59,7 +59,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.3'
+          go-version: '1.25.11'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -92,6 +92,17 @@ jobs:
         with:
           sarif_file: golangci-lint.sarif
 
+      # tfplugindocs uses a terraform binary from PATH if present, otherwise
+      # downloads one via hc-install -- which currently fails with
+      # "openpgp: key expired" against HashiCorp's signing key. Provide a
+      # terraform binary here (wrapper disabled so it is the real exe on PATH)
+      # so tfplugindocs skips the download entirely.
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5"
+          terraform_wrapper: false
+
       - name: Verify documentation is up-to-date
         run: |
           go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.24.0
@@ -121,7 +132,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.3'
+          go-version: '1.25.11'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -213,7 +224,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.3'
+          go-version: '1.25.11'
 
       - name: Cache Go modules
         uses: actions/cache@v4
