@@ -3,13 +3,13 @@
 page_title: "cyberarksia_database_workspace Resource - cyberarksia"
 subcategory: ""
 description: |-
-  Manages a database workspace in CyberArk SIA. Database workspaces represent existing databases (AWS RDS, Azure SQL, on-premise) registered with SIA for secure access management.
+  Manages a database workspace in Idira SIA. Database workspaces represent existing databases (AWS RDS, Azure SQL, on-premise) registered with SIA for secure access management.
   Note: This resource does NOT create databases. It only registers existing databases with SIA.
 ---
 
 # cyberarksia_database_workspace (Resource)
 
-Manages a database workspace in CyberArk SIA. Database workspaces represent existing databases (AWS RDS, Azure SQL, on-premise) registered with SIA for secure access management.
+Manages a database workspace in Idira SIA. Database workspaces represent existing databases (AWS RDS, Azure SQL, on-premise) registered with SIA for secure access management.
 
 **Note**: This resource does NOT create databases. It only registers existing databases with SIA.
 

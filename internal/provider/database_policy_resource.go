@@ -50,7 +50,7 @@ func (r *DatabasePolicyResource) Metadata(ctx context.Context, req resource.Meta
 
 func (r *DatabasePolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CyberArk SIA database access policy including metadata and access conditions. " +
+		MarkdownDescription: "Manages an Idira SIA database access policy including metadata and access conditions. " +
 			"This resource manages policy-level configuration only. Use `cyberarksia_database_policy_principal_assignment` " +
 			"to assign principals (users/groups/roles) and `cyberarksia_database_policy_workspace_assignment` to assign database workspaces.\n\n" +
 			"**Pattern**: Follows the modular assignment pattern for distributed team workflows - security teams manage policies " +
@@ -604,7 +604,7 @@ func (r *DatabasePolicyResource) ModifyPlan(ctx context.Context, req resource.Mo
 						"  • External principals (via cyberarksia_database_policy_principal_assignment): %d\n"+
 						"  • Total principals: %d\n\n"+
 						"After this change: %d principal(s) remaining\n\n"+
-						"CyberArk SIA policies require at least 1 principal.\n\n"+
+						"Idira SIA policies require at least 1 principal.\n\n"+
 						"To resolve:\n"+
 						"  1. Add another principal via cyberarksia_database_policy_principal_assignment first\n"+
 						"  2. Delete the entire policy resource instead: terraform destroy cyberarksia_database_policy.comprehensive_test",
@@ -642,7 +642,7 @@ func (r *DatabasePolicyResource) ModifyPlan(ctx context.Context, req resource.Mo
 						"  • External targets (via cyberarksia_database_policy_workspace_assignment): %d\n"+
 						"  • Total targets: %d\n\n"+
 						"After this change: %d target(s) remaining\n\n"+
-						"CyberArk SIA policies require at least 1 target database.\n\n"+
+						"Idira SIA policies require at least 1 target database.\n\n"+
 						"To resolve:\n"+
 						"  1. Add another target via cyberarksia_database_policy_workspace_assignment first\n"+
 						"  2. Delete the entire policy resource instead: terraform destroy cyberarksia_database_policy.comprehensive_test",

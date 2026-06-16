@@ -53,7 +53,7 @@ func (r *VMPolicyResource) Metadata(ctx context.Context, req resource.MetadataRe
 
 func (r *VMPolicyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a CyberArk SIA virtual machine access policy. " +
+		MarkdownDescription: "Manages an Idira SIA virtual machine access policy. " +
 			"Defines WHO can access (principals), WHAT they access (targets), " +
 			"WHEN they can access (conditions), and HOW they connect (behavior).\n\n" +
 			"**Required**: At least one principal MUST be assigned at policy creation. " +
@@ -1278,7 +1278,7 @@ func (r *VMPolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPl
 					"  • External principals (via cyberarksia_vm_policy_principal_assignment): %d\n"+
 					"  • Total principals: %d\n\n"+
 					"After this change: %d principal(s) remaining\n\n"+
-					"CyberArk SIA policies require at least 1 principal.\n\n"+
+					"Idira SIA policies require at least 1 principal.\n\n"+
 					"To resolve:\n"+
 					"  1. Add another principal via cyberarksia_vm_policy_principal_assignment first\n"+
 					"  2. Delete the entire policy resource instead: terraform destroy <resource_name>",

@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document summarizes the implementation of VM access policy management resources for the CyberArk SIA Terraform provider. The implementation adds two new resources enabling infrastructure-as-code configuration of just-in-time privileged access to virtual machines and servers.
+This document summarizes the implementation of VM access policy management resources for the Idira SIA Terraform provider. The implementation adds two new resources enabling infrastructure-as-code configuration of just-in-time privileged access to virtual machines and servers.
 
 ## Resources Implemented
 
@@ -198,7 +198,7 @@ NewVMPolicyPrincipalAssignmentResource,
 
 ### ⏳ Pending
 - **Acceptance tests**: Not implemented (T022-T026, T036-T039, T044-T046, T052-T054, T060-T061, T064-T071)
-  - Blocked by: Need live CyberArk SIA tenant with test credentials
+  - Blocked by: Need live Idira SIA tenant with test credentials
   - Scope: 38 test tasks across 7 user stories
   - Priority: US1 (P1), US2 (P1) for MVP validation
 
@@ -308,7 +308,7 @@ NewVMPolicyPrincipalAssignmentResource,
 
 ### 3. Acceptance Test Gap
 - **Status**: No acceptance tests implemented yet
-- **Blocker**: Requires live CyberArk SIA tenant with test data
+- **Blocker**: Requires live Idira SIA tenant with test data
 - **Mitigation**: Comprehensive examples + CRUD template for manual validation
 - **Priority**: US1+US2 tests (P1) for MVP confidence
 

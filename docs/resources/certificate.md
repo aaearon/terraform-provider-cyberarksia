@@ -3,12 +3,12 @@
 page_title: "cyberarksia_certificate Resource - cyberarksia"
 subcategory: ""
 description: |-
-  Manages a TLS/SSL certificate in CyberArk Secure Infrastructure Access. Certificates are used by database workspaces for TLS-validated connections.
+  Manages a TLS/SSL certificate in Idira Secure Infrastructure Access. Certificates are used by database workspaces for TLS-validated connections.
 ---
 
 # cyberarksia_certificate (Resource)
 
-Manages a TLS/SSL certificate in CyberArk Secure Infrastructure Access. Certificates are used by database workspaces for TLS-validated connections.
+Manages a TLS/SSL certificate in Idira Secure Infrastructure Access. Certificates are used by database workspaces for TLS-validated connections.
 
 
 

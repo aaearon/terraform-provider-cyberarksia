@@ -12,16 +12,16 @@
 
 ## Executive Summary
 
-This document provides a comprehensive analysis of all Secure Infrastructure Access (SIA) services available in the CyberArk ARK SDK for Go (v1.5.0) that could be added to the Terraform provider. The analysis was conducted using three independent perspectives to ensure completeness and identify potential blind spots.
+This document provides a comprehensive analysis of all Secure Infrastructure Access (SIA) services available in the Idira ARK SDK for Go (v1.5.0) that could be added to the Terraform provider. The analysis was conducted using three independent perspectives to ensure completeness and identify potential blind spots.
 
 **Key Findings**:
-- **9 SIA services** verified in ARK SDK v1.5.0 ✅ **Confirmed by CyberArk's official `ark` CLI**
+- **9 SIA services** verified in ARK SDK v1.5.0 ✅ **Confirmed by Idira's official `ark` CLI**
 - **8 resources + 2 data sources currently implemented** (10 total Terraform components):
   - Resources: Database workspaces, database secrets, VM secrets, target sets, certificates, database policies, database policy principal assignments, database policy workspace assignments
   - Data sources: Database policies, principals
 - **2 services available for implementation** (VM policies + assignments; SSH CA)
 - **3 CLI-only services excluded** (end-user tools, not infrastructure management)
-- **Critical SDK bugs REPRODUCED IN CYBERARK'S PRODUCTION CLI**:
+- **Critical SDK bugs REPRODUCED IN IDIRA'S PRODUCTION CLI**:
   - DELETE panic bug ✅ **Production CLI crashes**: `ark exec sia secrets vm delete-secret` panics with nil pointer dereference during HTTP request construction. **Resource is NOT deleted** (panic occurs before API call).
   - VM filtering bug ✅ **Production CLI broken**: `list-secrets-by --secret-types X` returns `[]` for all filters. Filtering completely non-functional.
   - Serialization quirks ✅ **Verified**: Manual camel/snake conversions in VM policies
@@ -510,12 +510,12 @@ These services are **available in ARK SDK v1.5.0** but are **NOT suitable for Te
 ### Priority 1: DELETE Panic Bug ⚠️ **CRITICAL** - ✅ **PROVEN**
 
 **Validation Status**: ✅ **REPRODUCED IN PRODUCTION & PoCs**
-- CyberArk's own CLI panics with this bug (tested 2025-11-02)
+- Idira's own CLI panics with this bug (tested 2025-11-02)
 - Dual independent PoCs confirmed (tested 2025-11-15)
   - Primary PoC: `/tmp/target-sets-poc/`
   - Codex PoC: `/tmp/target-sets-poc-codex/`
 
-**CyberArk CLI Testing**: Confirmed `delete-secret` and `delete-target-set` crash with identical panic (nil pointer dereference in `http.NewRequestWithContext`). **CRITICAL: The API call NEVER succeeds and resources are NOT deleted** - panic occurs during HTTP request construction, BEFORE the request is sent to the API.
+**Idira CLI Testing**: Confirmed `delete-secret` and `delete-target-set` crash with identical panic (nil pointer dereference in `http.NewRequestWithContext`). **CRITICAL: The API call NEVER succeeds and resources are NOT deleted** - panic occurs during HTTP request construction, BEFORE the request is sent to the API.
 
 **PoC Validation (2025-11-15)**:
 - ✅ **Both PoCs**: VM Secret DELETE panics with nil pointer dereference
@@ -537,7 +537,7 @@ These services are **available in ARK SDK v1.5.0** but are **NOT suitable for Te
 - **ALL** new VM resources will hit this bug on Delete operations
 - Provider will panic instead of graceful error handling
 
-**Validation Testing** - Reproduced in CyberArk's Production CLI (2025-11-02):
+**Validation Testing** - Reproduced in Idira's Production CLI (2025-11-02):
 
 **Test 1: VM Secrets Delete**
 ```bash
@@ -628,11 +628,11 @@ err := siaAPI.WorkspacesDB().DeleteDatabase(databaseID)
 
 ### Priority 2: VM Secrets Filtering Bug ⚠️ **FUNCTIONAL** - ✅ **PROVEN**
 
-**Validation Status**: ✅ **CONFIRMED IN PRODUCTION** - Filtering completely broken in CyberArk's own CLI
+**Validation Status**: ✅ **CONFIRMED IN PRODUCTION** - Filtering completely broken in Idira's own CLI
 
 **Affected Service**: `SecretsVM().ListSecretsBy()`
 
-**Validation Testing** - Reproduced in CyberArk's Production CLI (2025-11-02):
+**Validation Testing** - Reproduced in Idira's Production CLI (2025-11-02):
 
 ```bash
 # Step 1: List all secrets to confirm data exists
@@ -1182,7 +1182,7 @@ if err != nil {
 **Prerequisites** (`examples/testing/TESTING-GUIDE.md`):
 - Environment variables: `CYBERARK_USERNAME`, `CYBERARK_PASSWORD`, `TF_ACC=1`
 - Service account scopes: `sia`, `identity`
-- CyberArk tenant with SIA enabled
+- Idira tenant with SIA enabled
 
 **CRUD Validation**:
 - Run acceptance tests: `TF_ACC=1 go test ./internal/provider -v -run TestAccResourceName`
@@ -1202,7 +1202,7 @@ if err != nil {
 ### Real API Testing
 
 **Requirements**:
-- CyberArk Identity tenant with SIA enabled
+- Idira Identity tenant with SIA enabled
 - OAuth2 service account with `sia` and `identity` scopes
 - Test data (secrets, workspaces, policies)
 
@@ -1361,7 +1361,7 @@ The ARK SDK v1.5.0 analysis identified 9 SIA services. The Terraform provider cu
 
 **Document Version**: 2.0 (Phase 1 Complete + Azure Bug Fix)
 **Last Updated**: 2025-11-25
-**Research Methodology**: Multi-perspective (Claude + Gemini + Codex) with SDK source code validation + **CyberArk ark CLI production testing** + **Dual independent PoCs**
+**Research Methodology**: Multi-perspective (Claude + Gemini + Codex) with SDK source code validation + **Idira ark CLI production testing** + **Dual independent PoCs**
 **Implementation Update**: Phase 1 VM Infrastructure complete (VM Secrets, Target Sets, VM Policies, VM Policy Principal Assignments)
 **PoC Validation (2025-11-15)**:
 - Primary PoC: `/tmp/target-sets-poc/` - Full CRUD validation, SDK method testing
@@ -1374,9 +1374,9 @@ The ARK SDK v1.5.0 analysis identified 9 SIA services. The Terraform provider cu
 - All 27 VM policy tests passing
 **ARK SDK Version Analyzed**: v1.5.0
 **Validation Status**:
-- ✅ All services confirmed against CyberArk's official `ark` CLI at `/home/tim/go/bin/ark`
+- ✅ All services confirmed against Idira's official `ark` CLI at `/home/tim/go/bin/ark`
 - ✅ All operations verified in production CLI (VM secrets, target sets, SSH CA, VM policies)
-- ✅ **SDK bugs FULLY REPRODUCED in CyberArk's production CLI** (Validation Date: 2025-11-02):
+- ✅ **SDK bugs FULLY REPRODUCED in Idira's production CLI** (Validation Date: 2025-11-02):
   - DELETE panic: ✅ Confirmed with `delete-secret` and `delete-target-set` (crashes with nil pointer, resources NOT deleted)
   - VM filtering: ✅ Confirmed with `list-secrets-by` (all filters return `[]` despite matching data existing)
 - ✅ SDK source code verified at `/home/tim/go/pkg/mod/github.com/cyberark/ark-sdk-golang@v1.5.0/pkg/services/sia/ark_sia_api.go`

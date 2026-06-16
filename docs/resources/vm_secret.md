@@ -3,14 +3,14 @@
 page_title: "cyberarksia_vm_secret Resource - cyberarksia"
 subcategory: ""
 description: |-
-  Manages a virtual machine secret (credential) in CyberArk SIA. VM secrets are credentials used for VM/server access provisioning.
+  Manages a virtual machine secret (credential) in Idira SIA. VM secrets are credentials used for VM/server access provisioning.
   Secret Types:
   ProvisionerUser: Username/password stored directly in SIAPCloudAccount: Reference to an existing PAM vault account
 ---
 
 # cyberarksia_vm_secret (Resource)
 
-Manages a virtual machine secret (credential) in CyberArk SIA. VM secrets are credentials used for VM/server access provisioning.
+Manages a virtual machine secret (credential) in Idira SIA. VM secrets are credentials used for VM/server access provisioning.
 
 **Secret Types**:
 - `ProvisionerUser`: Username/password stored directly in SIA

@@ -81,9 +81,9 @@ func (r *databaseWorkspaceResource) Metadata(ctx context.Context, req resource.M
 // Schema defines the schema for the resource
 func (r *databaseWorkspaceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a database workspace in CyberArk SIA. Database workspaces represent existing databases " +
+		Description: "Manages a database workspace in Idira SIA. Database workspaces represent existing databases " +
 			"(AWS RDS, Azure SQL, on-premise) registered with SIA for secure access management.",
-		MarkdownDescription: "Manages a database workspace in CyberArk SIA. Database workspaces represent existing databases " +
+		MarkdownDescription: "Manages a database workspace in Idira SIA. Database workspaces represent existing databases " +
 			"(AWS RDS, Azure SQL, on-premise) registered with SIA for secure access management.\n\n" +
 			"**Note**: This resource does NOT create databases. It only registers existing databases with SIA.",
 

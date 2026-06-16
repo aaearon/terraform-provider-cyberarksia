@@ -1,6 +1,6 @@
-# Terraform Provider for CyberArk Secure Infrastructure Access (SIA)
+# Terraform Provider for Idira (formerly CyberArk) Secure Infrastructure Access (SIA)
 
-A Terraform provider for managing CyberArk Secure Infrastructure Access (SIA) resources, enabling infrastructure-as-code workflows for database and VM/server access control with Just-In-Time privileged access.
+A Terraform provider for managing Idira Secure Infrastructure Access (SIA) resources, enabling infrastructure-as-code workflows for database and VM/server access control with Just-In-Time privileged access.
 
 ## Features
 
@@ -29,8 +29,8 @@ A Terraform provider for managing CyberArk Secure Infrastructure Access (SIA) re
 
 - Terraform >= 1.0
 - Go >= 1.25 (for development)
-- CyberArk Identity Security Platform Shared Services tenant with SIA and Unified Access Policies (UAP) enabled
-- Valid CyberArk service account credentials with `DpaAdmin` role
+- Idira Identity Security Platform Shared Services tenant with SIA and Unified Access Policies (UAP) enabled
+- Valid Idira service account credentials with `DpaAdmin` role
 
 ## Installation
 
@@ -52,14 +52,14 @@ This installs the provider to `~/.terraform.d/plugins/` for local testing.
 
 ## Authentication
 
-The provider authenticates using a CyberArk service account. Simply provide the service account username and password - the provider handles OAuth2 authentication automatically.
+The provider authenticates using an Idira service account. Simply provide the service account username and password - the provider handles OAuth2 authentication automatically.
 
 **Service Account Setup:**
-1. Create a service account in CyberArk Identity Security Platform Shared Services
+1. Create a service account in Idira Identity Security Platform Shared Services
 2. Assign the **`DpaAdmin`** role (required for managing SIA resources)
 3. Provide the username and password to the provider
 
-**Important:** Never commit credentials to version control. Use environment variables or secure variable storage (e.g., CyberArk Conjur).
+**Important:** Never commit credentials to version control. Use environment variables or secure variable storage (e.g., Idira Conjur).
 
 ## Quick Start
 
@@ -403,10 +403,10 @@ make validate              # Run all checks locally (mirrors CI)
 ## Acknowledgments
 
 This provider is built on top of:
-- **[CyberArk ARK SDK for Go](https://github.com/cyberark/ark-sdk-golang)** - Official Go SDK for CyberArk platform APIs. All provider API calls use this SDK for authentication, SIA workspace management, and UAP policy operations.
+- **[Idira ARK SDK for Go](https://github.com/cyberark/ark-sdk-golang)** - Official Go SDK for Idira platform APIs. All provider API calls use this SDK for authentication, SIA workspace management, and UAP policy operations.
 - [HashiCorp Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) - Framework for building Terraform providers with type-safe schemas and state management.
 
-The provider implements custom OAuth2 authentication flows for CyberArk Identity Security Platform Shared Services integration.
+The provider implements custom OAuth2 authentication flows for Idira Identity Security Platform Shared Services integration.
 
 ## Support
 

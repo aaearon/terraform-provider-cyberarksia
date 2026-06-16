@@ -199,7 +199,7 @@ secret, err := siaAPI.SecretsVM().AddSecret(
 
 **Secret Types**:
 - `"ProvisionerUser"` - Username/password for VM provisioning
-- `"PCloudAccount"` - Reference to CyberArk PAM vault account (requires Safe + AccountName)
+- `"PCloudAccount"` - Reference to Idira PAM vault account (requires Safe + AccountName)
 
 **For PCloudAccount Type**:
 ```go
@@ -511,7 +511,7 @@ See `internal/client/retry.go` for `RetryWithBackoff()` with exponential backoff
 Database policy assignment resources use a unique deletion pattern that differs from standard resource deletion. Instead of calling a Delete API endpoint, they use **Read-Modify-Write with API-enforced constraints**.
 
 ### Why This Pattern?
-**CyberArk SIA API Constraint**: Policies must have ≥1 principal AND ≥1 target at all times.
+**Idira SIA API Constraint**: Policies must have ≥1 principal AND ≥1 target at all times.
 
 **Problem with Client-Side Validation**:
 - Race conditions during concurrent deletes (last-write-wins)
