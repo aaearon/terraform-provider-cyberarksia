@@ -1,4 +1,4 @@
-# Troubleshooting Guide: CyberArk SIA Terraform Provider
+# Troubleshooting Guide: Idira SIA Terraform Provider
 
 ## Table of Contents
 
@@ -125,7 +125,7 @@ Insufficient permissions: Service account lacks required role memberships
 ```
 
 **Resolution**:
-1. Log in to CyberArk Identity Admin Portal
+1. Log in to Idira Identity Admin Portal
 2. Navigate to Users & Roles
 3. Find your ISPSS service account
 4. Add required roles:
@@ -348,8 +348,8 @@ When opening support tickets, include:
 ### Support Channels
 
 - **Provider Issues**: https://github.com/aaearon/terraform-provider-cyberarksia/issues
-- **CyberArk SIA Support**: https://www.cyberark.com/customer-support/
-- **Community Forums**: CyberArk Commons
+- **Idira SIA Support**: https://www.cyberark.com/customer-support/
+- **Community Forums**: Idira Commons
 
 ## Additional Resources
 
@@ -687,7 +687,7 @@ Error: DELETE operation failed with status 403 Forbidden
 │ Failed to delete target set 'env/test/servers'. Manual deletion via SIA UI required.
 ```
 
-**Root Cause**: CyberArk SIA API limitation:
+**Root Cause**: Idira SIA API limitation:
 - **POST (Create)**: Accepts names with forward slashes (e.g., `env/test/servers`)
 - **DELETE**: Treats forward slashes as URL path separators, resulting in malformed DELETE requests
 - **API Endpoint**: `/WorkspacesVMs/TargetSets/{name}` - forward slashes in `{name}` break the URL parsing
@@ -747,7 +747,7 @@ If you've already created a target set with forward slashes:
 **Option 1: Manual Deletion via SIA UI + State Removal**
 
 ```bash
-# 1. Log into CyberArk SIA UI
+# 1. Log into Idira SIA UI
 # 2. Navigate to VM Access → Target Sets
 # 3. Find the problematic target set (e.g., "env/test/servers")
 # 4. Click Delete button in UI
@@ -843,9 +843,9 @@ func TestAccTargetSet_forwardSlashWarning(t *testing.T) {
 #### Future Considerations
 
 **If API evolves**:
-- Monitor CyberArk SIA API updates for improved DELETE endpoint (e.g., ID-based deletion)
+- Monitor Idira SIA API updates for improved DELETE endpoint (e.g., ID-based deletion)
 - Consider URL encoding target set names in DELETE requests (may fix issue)
-- Track feedback with CyberArk product team
+- Track feedback with Idira product team
 
 **Provider Enhancements**:
 - Could upgrade validator to ERROR severity if strict mode is requested

@@ -46,10 +46,10 @@ func (r *databaseSecretResource) Metadata(ctx context.Context, req resource.Meta
 // Schema defines the schema for the resource
 func (r *databaseSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a secret (credential) in CyberArk SIA. Secrets are credentials " +
+		Description: "Manages a secret (credential) in Idira SIA. Secrets are credentials " +
 			"that SIA uses to provision ephemeral database access for users. Supports local authentication, " +
 			"Active Directory, and AWS IAM authentication methods.",
-		MarkdownDescription: "Manages a secret (credential) in CyberArk SIA. Secrets are credentials " +
+		MarkdownDescription: "Manages a secret (credential) in Idira SIA. Secrets are credentials " +
 			"that SIA uses to provision ephemeral database access for users.\n\n" +
 			"**Authentication Types**:\n" +
 			"- `local`: Username/password stored in SIA (username_password secret type)\n" +

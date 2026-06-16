@@ -3,14 +3,14 @@
 page_title: "cyberarksia_database_secret Resource - cyberarksia"
 subcategory: ""
 description: |-
-  Manages a secret (credential) in CyberArk SIA. Secrets are credentials that SIA uses to provision ephemeral database access for users.
+  Manages a secret (credential) in Idira SIA. Secrets are credentials that SIA uses to provision ephemeral database access for users.
   Authentication Types:
   local: Username/password stored in SIA (username_password secret type)domain: Active Directory account (username_password secret type with domain)aws_iam: AWS IAM credentials (iam_user secret type)
 ---
 
 # cyberarksia_database_secret (Resource)
 
-Manages a secret (credential) in CyberArk SIA. Secrets are credentials that SIA uses to provision ephemeral database access for users.
+Manages a secret (credential) in Idira SIA. Secrets are credentials that SIA uses to provision ephemeral database access for users.
 
 **Authentication Types**:
 - `local`: Username/password stored in SIA (username_password secret type)

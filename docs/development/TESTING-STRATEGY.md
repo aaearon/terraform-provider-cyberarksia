@@ -1,7 +1,7 @@
 # Testing Strategy
 
 **Last Updated**: 2025-11-09
-**Purpose**: Define testing philosophy and guidelines for the CyberArk SIA Terraform Provider
+**Purpose**: Define testing philosophy and guidelines for the Idira SIA Terraform Provider
 
 ## Philosophy
 

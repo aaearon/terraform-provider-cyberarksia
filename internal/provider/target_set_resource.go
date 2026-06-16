@@ -58,10 +58,10 @@ func (r *targetSetResource) Metadata(ctx context.Context, req resource.MetadataR
 // Schema defines the schema for the resource
 func (r *targetSetResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a VM/server target set in CyberArk Secure Infrastructure Access (SIA). " +
+		Description: "Manages a VM/server target set in Idira Secure Infrastructure Access (SIA). " +
 			"Target sets define logical groupings of virtual machines and servers that share common " +
 			"access credentials for Just-In-Time (JIT) privileged access.",
-		MarkdownDescription: "Manages a VM/server target set in CyberArk Secure Infrastructure Access (SIA). " +
+		MarkdownDescription: "Manages a VM/server target set in Idira Secure Infrastructure Access (SIA). " +
 			"Target sets define logical groupings of virtual machines and servers that share common " +
 			"access credentials for Just-In-Time (JIT) privileged access.\n\n" +
 			"**Matching Patterns**:\n" +

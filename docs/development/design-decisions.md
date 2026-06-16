@@ -65,7 +65,7 @@ req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyBytes)  // Pani
 
 ## Certificate Resource Changes (Breaking - 2025-10-25)
 
-**Removed Fabricated Fields**: The following attributes were removed as they don't exist in the CyberArk SIA Certificates API:
+**Removed Fabricated Fields**: The following attributes were removed as they don't exist in the Idira SIA Certificates API:
 - `created_by` - User who created certificate (not returned by API)
 - `last_updated_by` - User who last updated (not returned by API)
 - `version` - Version number (not returned by API)

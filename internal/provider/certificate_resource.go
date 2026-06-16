@@ -1,4 +1,4 @@
-// Package provider implements the CyberArk SIA Terraform provider
+// Package provider implements the Idira SIA Terraform provider
 package provider
 
 import (
@@ -79,7 +79,7 @@ func (r *CertificateResource) Metadata(ctx context.Context, req resource.Metadat
 // Schema defines the resource schema
 func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a TLS/SSL certificate in CyberArk Secure Infrastructure Access. " +
+		Description: "Manages a TLS/SSL certificate in Idira Secure Infrastructure Access. " +
 			"Certificates are used by database workspaces for TLS-validated connections.",
 		Attributes: map[string]schema.Attribute{
 			// Core Identifiers

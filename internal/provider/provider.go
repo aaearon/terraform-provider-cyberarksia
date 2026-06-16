@@ -1,4 +1,4 @@
-// Package provider implements the CyberArk SIA Terraform provider
+// Package provider implements the Idira SIA Terraform provider
 package provider
 
 import (
@@ -76,11 +76,11 @@ func (p *CyberArkSIAProvider) Metadata(ctx context.Context, req provider.Metadat
 // Schema defines the provider-level schema for configuration data
 func (p *CyberArkSIAProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Terraform provider for CyberArk Secure Infrastructure Access (SIA). " +
+		Description: "Terraform provider for Idira Secure Infrastructure Access (SIA). " +
 			"Manage database workspaces, secrets, certificates, and access policies for Zero Standing Privilege (ZSP) " +
 			"and Just-In-Time (JIT) database access. Supports 60+ database engines including AWS RDS, Azure SQL Database, " +
 			"PostgreSQL, MySQL, MongoDB, Oracle, SQL Server, and more. " +
-			"Uses the CyberArk ARK SDK for OAuth2 authentication with automatic token refresh.",
+			"Uses the Idira ARK SDK for OAuth2 authentication with automatic token refresh.",
 		Attributes: map[string]schema.Attribute{
 			"username": schema.StringAttribute{
 				Description: "Service account username in full format (e.g., 'my-service-account@cyberark.cloud.12345'). " +
@@ -102,7 +102,7 @@ func (p *CyberArkSIAProvider) Schema(ctx context.Context, req provider.SchemaReq
 				},
 			},
 			"identity_url": schema.StringAttribute{
-				Description: "CyberArk Identity tenant URL (e.g., https://abc123.cyberark.cloud). " +
+				Description: "Idira Identity tenant URL (e.g., https://abc123.cyberark.cloud). " +
 					"OPTIONAL - only needed for GovCloud (https://abc123.cyberarkgov.cloud) or custom identity deployments. " +
 					"If not provided, the URL is automatically resolved from the username by the ARK SDK. " +
 					"Can also be set via CYBERARK_IDENTITY_URL environment variable.",
@@ -115,7 +115,7 @@ func (p *CyberArkSIAProvider) Schema(ctx context.Context, req provider.SchemaReq
 	}
 }
 
-// Configure prepares a CyberArk SIA API client for data sources and resources
+// Configure prepares an Idira SIA API client for data sources and resources
 func (p *CyberArkSIAProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	var config CyberArkSIAProviderModel
 

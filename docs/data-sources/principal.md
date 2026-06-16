@@ -3,12 +3,12 @@
 page_title: "cyberarksia_principal Data Source - cyberarksia"
 subcategory: ""
 description: |-
-  Looks up a principal (user, group, or role) by name from CyberArk Identity directories. Supports Cloud Directory (CDS), Federated Directory (FDS/Entra ID), and Active Directory (AdProxy). Use this data source to get principal information for policy assignments.
+  Looks up a principal (user, group, or role) by name from Idira Identity directories. Supports Cloud Directory (CDS), Federated Directory (FDS/Entra ID), and Active Directory (AdProxy). Use this data source to get principal information for policy assignments.
 ---
 
 # cyberarksia_principal (Data Source)
 
-Looks up a principal (user, group, or role) by name from CyberArk Identity directories. Supports Cloud Directory (CDS), Federated Directory (FDS/Entra ID), and Active Directory (AdProxy). Use this data source to get principal information for policy assignments.
+Looks up a principal (user, group, or role) by name from Idira Identity directories. Supports Cloud Directory (CDS), Federated Directory (FDS/Entra ID), and Active Directory (AdProxy). Use this data source to get principal information for policy assignments.
 
 ## Example Usage
 

@@ -1,4 +1,4 @@
-// Package provider implements the CyberArk SIA Terraform provider
+// Package provider implements the Idira SIA Terraform provider
 package provider
 
 // TestEnvVars documents the environment variables required for acceptance tests
@@ -14,7 +14,7 @@ const (
 	// CYBERARK_PASSWORD is the service account password
 	EnvPassword = "CYBERARK_PASSWORD" //nolint:gosec // Environment variable name, not a credential
 
-	// CYBERARK_IDENTITY_URL is the CyberArk Identity tenant URL (optional)
+	// CYBERARK_IDENTITY_URL is the Idira Identity tenant URL (optional)
 	// Example: https://example.cyberark.cloud
 	// If not provided, automatically resolved from username by ARK SDK
 	EnvIdentityURL = "CYBERARK_IDENTITY_URL"

@@ -45,10 +45,10 @@ func (r *vmSecretResource) Metadata(ctx context.Context, req resource.MetadataRe
 // Schema defines the schema for the resource
 func (r *vmSecretResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manages a virtual machine secret (credential) in CyberArk SIA. VM secrets are credentials " +
+		Description: "Manages a virtual machine secret (credential) in Idira SIA. VM secrets are credentials " +
 			"used for VM/server access provisioning. Supports ProvisionerUser (self-contained username/password) " +
 			"and PCloudAccount (PAM vault account references).",
-		MarkdownDescription: "Manages a virtual machine secret (credential) in CyberArk SIA. VM secrets are credentials " +
+		MarkdownDescription: "Manages a virtual machine secret (credential) in Idira SIA. VM secrets are credentials " +
 			"used for VM/server access provisioning.\n\n" +
 			"**Secret Types**:\n" +
 			"- `ProvisionerUser`: Username/password stored directly in SIA\n" +

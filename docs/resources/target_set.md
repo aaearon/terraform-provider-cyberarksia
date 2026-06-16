@@ -3,14 +3,14 @@
 page_title: "cyberarksia_target_set Resource - cyberarksia"
 subcategory: ""
 description: |-
-  Manages a VM/server target set in CyberArk Secure Infrastructure Access (SIA). Target sets define logical groupings of virtual machines and servers that share common access credentials for Just-In-Time (JIT) privileged access.
+  Manages a VM/server target set in Idira Secure Infrastructure Access (SIA). Target sets define logical groupings of virtual machines and servers that share common access credentials for Just-In-Time (JIT) privileged access.
   Matching Patterns:
   Domain: Matches all servers in a domain (e.g., *.example.com)Suffix: Matches servers with hostname suffix (e.g., *.dc1.example.com)Target: Matches specific server hostname
 ---
 
 # cyberarksia_target_set (Resource)
 
-Manages a VM/server target set in CyberArk Secure Infrastructure Access (SIA). Target sets define logical groupings of virtual machines and servers that share common access credentials for Just-In-Time (JIT) privileged access.
+Manages a VM/server target set in Idira Secure Infrastructure Access (SIA). Target sets define logical groupings of virtual machines and servers that share common access credentials for Just-In-Time (JIT) privileged access.
 
 **Matching Patterns**:
 - `Domain`: Matches all servers in a domain (e.g., *.example.com)

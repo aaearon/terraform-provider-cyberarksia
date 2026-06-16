@@ -124,7 +124,7 @@ These phases can be completed in a future session as they are non-critical docum
 
 ## Executive Summary
 
-This plan addresses critical technical debt in the CyberArk SIA Terraform provider, focusing on:
+This plan addresses critical technical debt in the Idira SIA Terraform provider, focusing on:
 
 1. **Profile Factory Refactoring** (Priority 1) - Eliminate ~800 lines of duplicated authentication profile logic
 2. **Helper Extraction** (Priority 2) - Create shared utilities for common patterns
@@ -1117,7 +1117,7 @@ go build -v
 # Unit tests
 go test ./... -v
 
-# Acceptance tests (requires CyberArk SIA tenant)
+# Acceptance tests (requires Idira SIA tenant)
 TF_ACC=1 go test ./... -v
 ```
 

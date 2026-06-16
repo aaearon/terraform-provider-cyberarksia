@@ -1,4 +1,4 @@
-// Package provider implements the CyberArk SIA Terraform provider
+// Package provider implements the Idira SIA Terraform provider
 package provider
 
 import (
@@ -28,12 +28,12 @@ func LogProviderConfig(ctx context.Context, config *CyberArkSIAProviderModel) {
 
 // LogAuthSuccess logs successful authentication
 func LogAuthSuccess(ctx context.Context) {
-	tflog.Info(ctx, "Successfully authenticated with CyberArk ISPSS")
+	tflog.Info(ctx, "Successfully authenticated with Idira ISPSS")
 }
 
 // LogAuthStart logs authentication attempt
 func LogAuthStart(ctx context.Context) {
-	tflog.Debug(ctx, "Initializing authentication with CyberArk ISPSS")
+	tflog.Debug(ctx, "Initializing authentication with Idira ISPSS")
 }
 
 // LogSIAClientInit logs SIA API client initialization

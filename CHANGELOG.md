@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rebranded user-facing text from CyberArk to Idira (formerly CyberArk) following the Palo Alto Networks rebrand: provider/resource/data-source schema descriptions, validator messages, log messages, README, and hand-written docs; generated docs regenerated via `tfplugindocs`. No functional changes. Resource/data-source type names (`cyberarksia_*`), `CYBERARK_*` environment variables, the `cyberark_pam` secret-type value, `*.cyberark.cloud` URLs, the `github.com/cyberark/ark-sdk-golang` SDK, and API-returned values (e.g. the `CyberArk Cloud Directory` directory name) are unchanged.
+
 ## [0.3.0] - 2025-11-27
 
 ### BREAKING CHANGES

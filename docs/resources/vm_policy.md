@@ -2,7 +2,7 @@
 page_title: "cyberarksia_vm_policy Resource - cyberarksia"
 subcategory: ""
 description: |-
-  Manages a CyberArk SIA virtual machine access policy. Defines WHO can access (principals), WHAT they access (targets), WHEN they can access (conditions), and HOW they connect (behavior).
+  Manages an Idira SIA virtual machine access policy. Defines WHO can access (principals), WHAT they access (targets), WHEN they can access (conditions), and HOW they connect (behavior).
   Required: At least one principal MUST be assigned at policy creation. Additional principals can be added via cyberarksia_vm_policy_principal_assignment resource.
   Constraint: Exactly ONE location type per policy (FQDN/IP, AWS, Azure, or GCP).
   User Story: Basic FQDN/IP policies with SSH behavior (MVP foundation).
@@ -10,7 +10,7 @@ description: |-
 
 # cyberarksia_vm_policy (Resource)
 
-Manages a CyberArk SIA virtual machine access policy. Defines WHO can access (principals), WHAT they access (targets), WHEN they can access (conditions), and HOW they connect (behavior).
+Manages an Idira SIA virtual machine access policy. Defines WHO can access (principals), WHAT they access (targets), WHEN they can access (conditions), and HOW they connect (behavior).
 
 **Required**: At least one principal MUST be assigned at policy creation. Additional principals can be added via `cyberarksia_vm_policy_principal_assignment` resource.
 

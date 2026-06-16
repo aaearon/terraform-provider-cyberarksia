@@ -20,7 +20,7 @@ import (
 Principal Lookup Implementation - Hybrid Two-Phase Strategy
 
 This data source implements a sophisticated hybrid lookup strategy to resolve principals
-(users, groups, roles) from CyberArk Identity directories while working around SDK API limitations.
+(users, groups, roles) from Idira Identity directories while working around SDK API limitations.
 
 DESIGN RATIONALE:
 The hybrid approach is necessary because the Identity SDK provides two complementary APIs,
@@ -43,7 +43,7 @@ PERFORMANCE CHARACTERISTICS:
 - Typical execution: Phase 1 succeeds 90% of the time for user lookups
 
 DIRECTORY TYPES SUPPORTED:
-- CDS (Cloud Directory Service): Native CyberArk cloud directory
+- CDS (Cloud Directory Service): Native Idira cloud directory
 - FDS (Federated Directory Service): Azure AD/Entra ID federation
 - AdProxy: On-premise Active Directory via connector
 
@@ -92,7 +92,7 @@ func (d *PrincipalDataSource) Metadata(ctx context.Context, req datasource.Metad
 // Schema defines the schema for the data source.
 func (d *PrincipalDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Looks up a principal (user, group, or role) by name from CyberArk Identity directories. " +
+		MarkdownDescription: "Looks up a principal (user, group, or role) by name from Idira Identity directories. " +
 			"Supports Cloud Directory (CDS), Federated Directory (FDS/Entra ID), and Active Directory (AdProxy). " +
 			"Use this data source to get principal information for policy assignments.",
 
@@ -452,7 +452,7 @@ func (d *PrincipalDataSource) getDirectoriesAndEntities(ctx context.Context, typ
 // CRITICAL FIELDS:
 //   - ID: Principal UUID (required for policy assignments, workspace assignments)
 //   - PrincipalType: USER/GROUP/ROLE (used for type validation in resources)
-//   - DirectoryName: Human-readable directory name (e.g., "CyberArk Cloud Directory")
+//   - DirectoryName: Human-readable directory name (e.g., "Idira Cloud Directory")
 //   - DirectoryID: Directory UUID (resolved via dirMap from DirectoryServiceType)
 //   - DisplayName: Human-readable principal name (e.g., "John Doe")
 //

@@ -166,7 +166,7 @@ Target sets define VM/server targets with associated credentials for privileged 
 - **Purpose**: Descriptive text for documentation
 - **Default**: `null`
 - **Mutability**: MUTABLE
-- **UI Visibility**: Not shown in CyberArk SIA UI
+- **UI Visibility**: Not shown in Idira SIA UI
 - **Evidence**: Updated descriptions multiple times in PoC
 
 #### `enable_certificate_validation` (Bool, Optional)
@@ -815,7 +815,7 @@ func (r *TargetSetResource) Delete(ctx context.Context, req resource.DeleteReque
 
 **Prerequisites**:
 - VM secret created first
-- Valid CyberArk SIA tenant with credentials
+- Valid Idira SIA tenant with credentials
 
 **Test Cases**:
 1. ✅ Basic CRUD lifecycle
@@ -1049,7 +1049,7 @@ Based on Codex feedback, added validation for:
 ## Comprehensive Revalidation Against Live Tenant
 
 **Revalidation Date**: 2025-11-08
-**Method**: Automated PoC validation against real CyberArk tenant
+**Method**: Automated PoC validation against real Idira tenant
 **Tests Run**: 50 total (22 baseline + 28 enhanced)
 **Pass Rate**: 98% (49/50 - only cleanup issue on slash-containing name)
 
